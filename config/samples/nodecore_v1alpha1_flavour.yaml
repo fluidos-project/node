@@ -1,6 +1,22 @@
 apiVersion: nodecore.fluidos.eu/v1alpha1
 kind: Flavour
 metadata:
-  name: flavour-sample
+  name: owner-002-k8s-fluidos-6090
 spec:
-  # TODO(user): Add fields here
+  providerID: provider-001
+  type: k8s-fluidos
+  characteristics:
+    cpu: 4
+    ram: 16
+  policy: {}
+  owner:
+    ID: owner-002
+    IP: 192.168.0.2
+    domainName: example.com
+  price:
+    amount: 19.99
+    currency: USD
+    period: month
+  expirationTime: "2023-07-31T12:00:00Z"
+  optionalFields: {}
+

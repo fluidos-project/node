@@ -61,6 +61,9 @@ spec:
                           and can change depending on it. In this case, the type is
                           K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                         properties:
+                          architecture:
+                            description: Architecture is the architecture of the Flavour.
+                            type: string
                           cpu:
                             anyOf:
                             - type: integer
@@ -99,9 +102,13 @@ spec:
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         required:
+                        - architecture
                         - cpu
                         - memory
                         type: object
+                      flavourID:
+                        description: FlavourID is the name of the Flavour.
+                        type: string
                       optionalFields:
                         description: This field is used to specify the optional fields
                           that can be retrieved from the Flavour. In the future it
@@ -113,6 +120,10 @@ spec:
                               the Flavour. It is a field inherited from the REAR Protocol
                               specifications.
                             type: boolean
+                          workerID:
+                            description: WorkerID is the ID of the worker that provides
+                              the Flavour.
+                            type: string
                         type: object
                       owner:
                         description: Owner contains the identity info of the owner
@@ -207,6 +218,7 @@ spec:
                         type: string
                     required:
                     - characteristics
+                    - flavourID
                     - optionalFields
                     - owner
                     - policy

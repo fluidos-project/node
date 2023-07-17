@@ -29,6 +29,9 @@ type FlavourType string
 
 type Characteristics struct {
 
+	// Architecture is the architecture of the Flavour.
+	Architecture string `json:"architecture"`
+
 	// CPU is the number of CPU cores of the Flavour.
 	Cpu resource.Quantity `json:"cpu"`
 
@@ -95,11 +98,17 @@ type OptionalFields struct {
 	// Availability is the availability flag of the Flavour.
 	// It is a field inherited from the REAR Protocol specifications.
 	Availability bool `json:"availability,omitempty"`
+
+	// WorkerID is the ID of the worker that provides the Flavour.
+	WorkerID string `json:"workerID,omitempty"`
 }
 
 // FlavourSpec defines the desired state of Flavour
 type FlavourSpec struct {
 	// This specs are based on the REAR Protocol specifications.
+
+	// FlavourID is the name of the Flavour.
+	FlavourID string `json:"flavourID"`
 
 	// ProviderID is the ID of the FLUIDOS Node ID that provides this Flavour.
 	// It can correspond to ID of the owner FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents the entry point to a FLUIDOS Domain
