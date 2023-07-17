@@ -4,8 +4,8 @@ metadata:
   name: solver-sample
 spec:
   selector:
-    cpu: 1
-    memory: 1Gi
+    cpu: 4
+    memory: 16
   intentID: "intent-sample"
   findCandidate: true
   enstablishPeering: false

@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -25,17 +27,42 @@ import (
 
 // ReservationSpec defines the desired state of Reservation
 type ReservationSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Reservation. Edit reservation_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// TransactionID is the ID of the transaction that this reservation is part of
+	TransactionID string `json:"transactionID,omitempty"`
+
+	// This is the Node identity of the buyer FLUIDOS Node.
+	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
+
+	// This is the Node identity of the seller FLUIDOS Node.
+	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
+
+	// Parition is the partition of the flavour that is being reserved
+	Partition nodecorev1alpha1.FlavourSelector `json:"partition,omitempty"`
+
+	// Reserve indicates if the reservation is a reserve or not
+	Reserve bool `json:"reserve,omitempty"`
+
+	// Purchase indicates if the reservation is an purchase or not
+	Purchase bool `json:"purchase,omitempty"`
+
+	// PeeringCandidate is the reference to the PeeringCandidate of the Reservation
+	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
+
+	// Contract is the reference to the Contract of the Reservation
+	Contract nodecorev1alpha1.GenericRef `json:"contract,omitempty"`
 }
 
 // ReservationStatus defines the observed state of Reservation
 type ReservationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// This is the current phase of the reservation
+	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
+
+	// ReservePhase is the current phase of the reservation
+	ReservePhase nodecorev1alpha1.Phase `json:"reservePhase,omitempty"`
+
+	// PurchasePhase is the current phase of the reservation
+	PurchasePhase nodecorev1alpha1.Phase `json:"purchasePhase,omitempty"`
 }
 
 //+kubebuilder:object:root=true

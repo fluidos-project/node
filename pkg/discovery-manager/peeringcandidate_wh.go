@@ -16,7 +16,6 @@ import (
 
 //+kubebuilder:webhook:path=/validate/peeringcandidate,mutating=false,failurePolicy=ignore,groups=advertisement.node.fluidos.io,resources=peeringcandidates,verbs=create;update;delete,versions=v1alpha1,name=pc.validate.fluidos.eu,sideEffects=None,admissionReviewVersions={v1,v1beta1}
 
-
 type PCValidator struct {
 	client  client.Client
 	decoder *admission.Decoder

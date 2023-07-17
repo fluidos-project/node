@@ -105,6 +105,9 @@ spec:
                           and can change depending on it. In this case, the type is
                           K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                         properties:
+                          architecture:
+                            description: Architecture is the architecture of the Flavour.
+                            type: string
                           cpu:
                             anyOf:
                             - type: integer
@@ -143,6 +146,7 @@ spec:
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         required:
+                        - architecture
                         - cpu
                         - memory
                         type: object
@@ -157,6 +161,10 @@ spec:
                               the Flavour. It is a field inherited from the REAR Protocol
                               specifications.
                             type: boolean
+                          workerID:
+                            description: WorkerID is the ID of the worker that provides
+                              the Flavour.
+                            type: string
                         type: object
                       owner:
                         description: Owner contains the identity info of the owner
@@ -333,6 +341,10 @@ spec:
                 - ip
                 - nodeID
                 type: object
+              transactionID:
+                description: TransactionID is the ID of the transaction that this
+                  contract is part of
+                type: string
             required:
             - buyer
             - credentials

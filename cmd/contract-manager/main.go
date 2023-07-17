@@ -31,8 +31,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
 	contractmanager "fluidos.eu/node/pkg/contract-manager"
+	"fluidos.eu/node/pkg/utils/flags"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -45,6 +47,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -52,8 +55,14 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	// TODO: after the demo recover correct addresses (8080 and 8081)
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9090", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9091", "The address the probe endpoint binds to.")
+	flag.StringVar(&flags.FLAVOUR_DEFAULT_NAMESPACE, "flavour-namespace", "default", "Namespace where the flavour CRs are created")
+	flag.StringVar(&flags.CONTRACT_DEFAULT_NAMESPACE, "contract-namespace", "default", "Namespace where the contract CRs are created")
+	flag.StringVar(&flags.TRANSACTION_DEFAULT_NAMESPACE, "transaction-namespace", "default", "Namespace where the transaction CRs are created")
+	flag.StringVar(&flags.SERVER_ADDR, "server-addr", "http://localhost:14144/api", "Address of neighbour server")
+	flag.StringVar(&flags.HTTP_PORT, "http-port", ":14144", "Port of the HTTP server")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -95,6 +104,13 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	cl := mgr.GetClient()
+
+	// Start the HTTP server
+	go func() {
+		contractmanager.StartHttpServer(cl)
+	}()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
