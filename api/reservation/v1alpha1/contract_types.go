@@ -18,24 +18,49 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
+type LiqoCredentials struct {
+	ClusterID   string `json:"clusterID"`
+	ClusterName string `json:"clusterName"`
+	Token       string `json:"token"`
+	Endpoint    string `json:"endpoint"`
+}
 
 // ContractSpec defines the desired state of Contract
 type ContractSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Contract. Edit contract_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// This is the flavour on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
+	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
+
+	// The partition represents the dimension of the resources sold/bought.
+	// So it will reflect the dimension of the resources allocated on the remote cluster and reflected on the local virtual node.
+	Partition nodecorev1alpha1.FlavourSelector `json:"partition,omitempty"`
+
+	// This is the Node identity of the buyer FLUIDOS Node.
+	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
+
+	// This is the Node identity of the seller FLUIDOS Node.
+	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
+
+	// This credentials will be used by the customer to connect and enstablish a peering with the seller FLUIDOS Node through Liqo.
+	Credentials LiqoCredentials `json:"credentials"`
+
+	// This is the expiration time of the contract. It can be empty if the contract is not time limited.
+	ExpirationTime string `json:"expirationTime,omitempty"`
+
+	// This contains additional information about the contract if needed.
+	ExtraInformation map[string]string `json:"extraInformation,omitempty"`
 }
 
 // ContractStatus defines the observed state of Contract
 type ContractStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+
+	// This is the status of the contract.
+	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
 }
 
 //+kubebuilder:object:root=true

@@ -1,7 +1,7 @@
 package v1alpha1
 
 const (
-	PhaseReady   Phase = "Ready"
+	//PhaseReady   Phase = "Ready"
 	PhaseSolved  Phase = "Solved"
 	PhaseFailed  Phase = "Failed"
 	PhaseRunning Phase = "Running"

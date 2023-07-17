@@ -41,14 +41,14 @@ type DiscoverySpec struct {
 	Subscribe bool `json:"subscribe"`
 
 	// This is the reference to the PeeringCandidate CRD that is the result of the discovery if a match is found
-	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate"`
+	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery
 type DiscoveryStatus struct {
 
 	// This is the current phase of the discovery
-	Phase nodecorev1alpha1.Phase `json:"phase"`
+	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
 }
 
 //+kubebuilder:object:root=true

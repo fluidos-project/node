@@ -20,19 +20,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type NodeType int64
-type Status int64
+type NodeType string
+type Status string
 
 const (
-	Node NodeType = iota
-	VirtualNode
+	Node        NodeType = "Node"
+	VirtualNode NodeType = "VirtualNode"
 )
 
 const (
-	Active Status = iota
-	Reserved
-	Released
-	Inactive
+	Active   Status = "Active"
+	Reserved Status = "Reserved"
+	Released Status = "Released"
+	Inactive Status = "Inactive"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -40,6 +40,11 @@ const (
 
 // AllocationSpec defines the desired state of Allocation
 type AllocationSpec struct {
+
+	// CustomerID
+
+	// This is the ID of the intent for which the allocation was created. It is used by the Node Orchestrator to identify the correct allocation for a given intent
+	IntentID string `json:"intentID"`
 
 	// This is the corresponding Node or VirtualNode name
 	LocalNode string `json:"localNode"`
@@ -52,6 +57,9 @@ type AllocationSpec struct {
 
 	// This Flavour describes the characteristics of the allocation, it is based on the Flavour CRD from which it was created
 	Flavour Flavour `json:"flavour"`
+
+	// This is the dimension of the allocation, it is based on the Flavour CRD from which it was created
+	Partition FlavourSelector `json:"partition,omitempty"`
 }
 
 // AllocationStatus defines the observed state of Allocation

@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the advertisement v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=advertisement.fluidos.eu
+// +kubebuilder:object:generate=true
+// +groupName=advertisement.fluidos.eu
 package v1alpha1
 
 import (

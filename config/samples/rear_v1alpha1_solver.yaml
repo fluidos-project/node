@@ -3,4 +3,9 @@ kind: Solver
 metadata:
   name: solver-sample
 spec:
-  # TODO(user): Add fields here
+  selector:
+    cpu: 1
+    memory: 1Gi
+  intentID: "intent-sample"
+  findCandidate: true
+  enstablishPeering: false

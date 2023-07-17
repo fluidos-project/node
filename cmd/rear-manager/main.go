@@ -30,8 +30,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	//"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
+	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
 
 	//"fluidos.eu/node/controllers"
 	rearmanager "fluidos.eu/node/pkg/rear"
@@ -47,6 +50,9 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -87,6 +93,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Solver")
 		os.Exit(1)
 	}
+
+	if err = (&rearmanager.AllocationReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Allocation")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -97,6 +111,10 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	//av := rearmanager.NewValidator(mgr.GetClient())
+
+	//mgr.GetWebhookServer().Register("/validate/allocation", &webhook.Admission{Handler: av})
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

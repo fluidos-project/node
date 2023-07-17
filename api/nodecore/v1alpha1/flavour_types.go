@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,16 +30,19 @@ type FlavourType string
 type Characteristics struct {
 
 	// CPU is the number of CPU cores of the Flavour.
-	Cpu string `json:"cpu"`
+	Cpu resource.Quantity `json:"cpu"`
 
 	// Memory is the amount of RAM of the Flavour.
-	Memory string `json:"memory"`
+	Memory resource.Quantity `json:"memory"`
 
 	// GPU is the number of GPU cores of the Flavour.
-	Gpu string `json:"gpu,omitempty"`
+	Gpu resource.Quantity `json:"gpu,omitempty"`
 
 	// EphemeralStorage is the amount of ephemeral storage of the Flavour.
-	EphemeralStorage string `json:"ephemeral-storage,omitempty"`
+	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
+
+	// PersistentStorage is the amount of persistent storage of the Flavour.
+	PersistentStorage resource.Quantity `json:"persistent-storage,omitempty"`
 }
 
 type Policy struct {
@@ -77,13 +81,13 @@ type Aggregatable struct {
 type Price struct {
 
 	// Amount is the amount of the price.
-	Amount   string `json:"amount"`
+	Amount string `json:"amount"`
 
 	// Currency is the currency of the price.
-	Currency string  `json:"currency"`
+	Currency string `json:"currency"`
 
 	// Period is the period of the price.
-	Period   string  `json:"period"`
+	Period string `json:"period"`
 }
 
 type OptionalFields struct {
