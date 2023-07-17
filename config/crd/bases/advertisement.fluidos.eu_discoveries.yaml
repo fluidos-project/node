@@ -106,6 +106,10 @@ spec:
           status:
             description: DiscoveryStatus defines the observed state of Discovery
             properties:
+              attempt:
+                description: Attempt is the number of attempts that have been done
+                  to do the discovery
+                type: integer
               phase:
                 description: This is the current phase of the discovery
                 properties:

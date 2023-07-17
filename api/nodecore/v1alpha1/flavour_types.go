@@ -29,6 +29,9 @@ type FlavourType string
 
 type Characteristics struct {
 
+	// Architecture is the architecture of the Flavour.
+	Architecture string `json:"architecture"`
+
 	// CPU is the number of CPU cores of the Flavour.
 	Cpu resource.Quantity `json:"cpu"`
 
@@ -95,6 +98,9 @@ type OptionalFields struct {
 	// Availability is the availability flag of the Flavour.
 	// It is a field inherited from the REAR Protocol specifications.
 	Availability bool `json:"availability,omitempty"`
+
+	// WorkerID is the ID of the worker that provides the Flavour.
+	WorkerID string `json:"workerID,omitempty"`
 }
 
 // FlavourSpec defines the desired state of Flavour

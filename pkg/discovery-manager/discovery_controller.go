@@ -20,11 +20,16 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
+	"fluidos.eu/node/pkg/utils/common"
+	"fluidos.eu/node/pkg/utils/models"
+	resourceforge "fluidos.eu/node/pkg/utils/resourceforge"
+	"fluidos.eu/node/pkg/utils/services"
 )
 
 // DiscoveryReconciler reconciles a Discovery object
@@ -47,11 +52,107 @@ type DiscoveryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.2/pkg/reconcile
 func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx, "discovery", req.NamespacedName)
+	ctx = ctrl.LoggerInto(ctx, log)
 
-	// TODO(user): your logic here
+	var peeringCandidate *advertisementv1alpha1.PeeringCandidate
+	var peeringCandidateReserved advertisementv1alpha1.PeeringCandidate
+
+	var discovery advertisementv1alpha1.Discovery
+	if err := r.Get(ctx, req.NamespacedName, &discovery); client.IgnoreNotFound(err) != nil {
+		klog.Errorf("Error when getting Discovery %s before reconcile: %s", req.NamespacedName, err)
+		return ctrl.Result{}, err
+	} else if err != nil {
+		klog.Infof("Discovery %s not found, probably deleted", req.NamespacedName)
+		return ctrl.Result{}, nil
+	}
+
+	klog.Infof("Discovery %s started", discovery.Name)
+
+	if discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseSolved &&
+		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseTimeout &&
+		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseFailed &&
+		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseRunning &&
+		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseIdle {
+
+		discovery.Status.Phase.StartTime = common.GetTimeNow()
+		common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseRunning, "Discovery started")
+
+		if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
+			klog.Errorf("Error when updating Discovery %s status before reconcile: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	switch discovery.Status.Phase.Phase {
+	case nodecorev1alpha1.PhaseRunning:
+		flavours, err := services.SearchFlavour(discovery.Spec.Selector)
+		if err != nil {
+			klog.Errorf("Error when getting Flavour: %s", err)
+			return ctrl.Result{}, err
+		}
+
+		if len(flavours) == 0 {
+			klog.Infof("No Flavours found")
+			common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseFailed, "No Flavours found")
+			if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
+				klog.Errorf("Error when updating Discovery %s status: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
+		klog.Infof("Flavours found: %d", len(flavours))
+
+		var first bool = true
+		for _, flavour := range flavours {
+			if first {
+				// We refer to the first peering candidate as the one that is reserved
+				peeringCandidate = resourceforge.ForgePeeringCandidateCustomResources(flavour, &discovery, true)
+				models.AddFlavourToPcCache(flavour.Name)
+				peeringCandidateReserved = *peeringCandidate
+				first = false
+			} else {
+				// the others are created as not reserved
+				peeringCandidate = resourceforge.ForgePeeringCandidateCustomResources(flavour, &discovery, false)
+				models.AddFlavourToPcCache(flavour.Name)
+			}
+
+			err = r.Create(context.Background(), peeringCandidate)
+			if err != nil {
+				klog.Infof("Discovery %s failed: error while creating Peering Candidate", discovery.Name)
+				return ctrl.Result{}, err
+			}
+		}
+
+		// Update the Discovery with the PeeringCandidate
+		discovery.Spec.PeeringCandidate = nodecorev1alpha1.GenericRef{
+			Name:      peeringCandidateReserved.Name,
+			Namespace: peeringCandidateReserved.Namespace,
+		}
+
+		common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseSolved, "Discovery Solved: Peering Candidate found")
+		if err := r.Update(ctx, &discovery); err != nil {
+			klog.Errorf("Error when updating Discovery %s: %s", discovery.Name, err)
+			return ctrl.Result{}, err
+		}
+		klog.Infof("Discovery %s updated", discovery.Name)
+
+		return ctrl.Result{}, nil
+
+	case nodecorev1alpha1.PhaseSolved:
+		klog.Infof("Discovery %s solved", discovery.Name)
+	case nodecorev1alpha1.PhaseFailed:
+		klog.Infof("Discovery %s failed", discovery.Name)
+	}
 
 	return ctrl.Result{}, nil
+}
+
+// updateDiscoveryStatus updates the status of the discovery
+func (r *DiscoveryReconciler) updateDiscoveryStatus(ctx context.Context, discovery *advertisementv1alpha1.Discovery) error {
+	return r.Status().Update(ctx, discovery)
 }
 
 // SetupWithManager sets up the controller with the Manager.

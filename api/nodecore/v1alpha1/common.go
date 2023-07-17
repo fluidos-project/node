@@ -2,11 +2,15 @@ package v1alpha1
 
 const (
 	//PhaseReady   Phase = "Ready"
-	PhaseSolved  Phase = "Solved"
-	PhaseFailed  Phase = "Failed"
-	PhaseRunning Phase = "Running"
-	PhaseIdle    Phase = "Idle"
-	PhaseTimeout Phase = "Timeout"
+	PhaseSolved   Phase = "Solved"
+	PhaseFailed   Phase = "Failed"
+	PhaseRunning  Phase = "Running"
+	PhaseIdle     Phase = "Idle"
+	PhaseTimeout  Phase = "Timed Out"
+	PhaseBackoff  Phase = "Backoff"
+	PhaseActive   Phase = "Active"
+	PhasePending  Phase = "Pending"
+	PhaseInactive Phase = "Inactive"
 )
 
 // GenericRef represents a reference to a generic Kubernetes resource,

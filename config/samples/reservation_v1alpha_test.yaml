@@ -1,0 +1,24 @@
+apiVersion: reservation.fluidos.eu/v1alpha1
+kind: Reservation
+metadata:
+  creationTimestamp: "2023-08-31T15:27:10Z"
+  generation: 1
+  name: reservation-peeringcandidate-k8s-002-5c13-a4d1
+  namespace: default
+  resourceVersion: "849259"
+  uid: 1d4f57dd-bdf2-4ed7-acc3-d2acbcd36e19
+spec:
+  buyer:
+    domain: fluidos.eu
+    ip: ""
+    nodeID: 95c063688b636b95cb52fluidos.eu
+  flavourID: k8s-002
+  peeringCandidate:
+    name: peeringcandidate-k8s-002-5c13
+    namespace: default
+  purchase: true
+  reserve: true
+  seller:
+    domain: ""
+    ip: ""
+    nodeID: owner-002

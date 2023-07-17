@@ -36,6 +36,9 @@ type ContractSpec struct {
 	// This is the flavour on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
 	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
 
+	// TransactionID is the ID of the transaction that this contract is part of
+	TransactionID string `json:"transactionID,omitempty"`
+
 	// The partition represents the dimension of the resources sold/bought.
 	// So it will reflect the dimension of the resources allocated on the remote cluster and reflected on the local virtual node.
 	Partition nodecorev1alpha1.FlavourSelector `json:"partition,omitempty"`

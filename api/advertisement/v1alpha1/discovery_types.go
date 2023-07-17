@@ -49,6 +49,9 @@ type DiscoveryStatus struct {
 
 	// This is the current phase of the discovery
 	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
+
+	// Attempt is the number of attempts that have been done to do the discovery
+	Attempt int `json:"attempt,omitempty"`
 }
 
 //+kubebuilder:object:root=true
