@@ -31,4 +31,5 @@ var (
 	EXPIRATION_PHASE_RUNNING      = 2 * time.Minute
 	EXPIRATION_SOLVER             = 5 * time.Minute
 	EXPIRATION_TRANSACTION        = 20 * time.Second
+	EXPIRATION_CONTRACT           = 365 * 24 * time.Hour
 )

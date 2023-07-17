@@ -18,24 +18,27 @@ func ForgeContractName(flavourID string) string {
 }
 
 // ForgePeeringCandidateName generates a name for the PeeringCandidate
-func ForgePeeringCandidateName(flavorName string) string {
-	return fmt.Sprintf("peeringcandidate-%s", flavorName)
+func ForgePeeringCandidateName(flavourID string) string {
+	return fmt.Sprintf("peeringcandidate-%s", flavourID)
 }
 
 // ForgeReservationName generates a name for the Reservation
-func ForgeReservationName(flavorName string) string {
-	hash := ForgeUniqueString(flavorName)
-	return fmt.Sprintf("reservation-%s-%s", flavorName, hash)
+func ForgeReservationName(solverID string) string {
+	return fmt.Sprintf("reservation-%s", solverID)
 }
 
 // ForgeFlavourName returns the name of the flavour following the pattern nodeID-Type-rand(4)
-func ForgeFlavourName(id string) string {
-	return id + "-" + flags.RESOURCE_TYPE + "-" + ForgeUniqueString(id)
+func ForgeFlavourName(nodeID string) string {
+	return nodeID + "-" + flags.RESOURCE_TYPE + "-" + ForgeUniqueString(nodeID)
 }
 
 // ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery
 func ForgeDiscoveryName(solverID string) string {
-	return fmt.Sprintf("%s-discovery", solverID)
+	return fmt.Sprintf("discovery-%s", solverID)
+}
+
+func RetrieveSolverNameFromDiscovery(discoveryName string) string {
+	return strings.TrimPrefix(discoveryName, "discovery-")
 }
 
 // ForgeTransactionID Generates a unique transaction ID using the current timestamp
@@ -56,8 +59,8 @@ func ForgeTransactionID() (string, error) {
 	return transactionID, nil
 }
 
-// ForgeFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate
-func ForgeFlavourNameFromPC(pcName string) string {
+// RetrieveFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate
+func RetrieveFlavourNameFromPC(pcName string) string {
 	return strings.TrimPrefix(pcName, "peeringcandidate-")
 }
 

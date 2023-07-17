@@ -16,7 +16,7 @@ limitations under the License.
 
 package main
 
-import (
+/* import (
 	"flag"
 	"os"
 
@@ -35,7 +35,6 @@ import (
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
 	contractmanager "fluidos.eu/node/pkg/contract-manager"
 	"fluidos.eu/node/pkg/utils/flags"
-	//+kubebuilder:scaffold:imports
 )
 
 var (
@@ -117,4 +116,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
+} */

@@ -16,7 +16,7 @@ limitations under the License.
 
 package main
 
-/* import (
+import (
 	"flag"
 	"os"
 
@@ -33,7 +33,9 @@ package main
 
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	discoverymanager "fluidos.eu/node/pkg/discovery-manager"
+	contractmanager "fluidos.eu/node/pkg/rear-controller/contract-manager"
+	discoverymanager "fluidos.eu/node/pkg/rear-controller/discovery-manager"
+	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
 	"fluidos.eu/node/pkg/utils/flags"
 	"fluidos.eu/node/pkg/utils/namings"
 	//+kubebuilder:scaffold:imports
@@ -94,11 +96,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	gw := gateway.NewGateway(mgr.GetClient())
+
 	if err = (&discoverymanager.DiscoveryReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Gateway: gw,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Discovery")
+		os.Exit(1)
+	}
+
+	if err = (&contractmanager.ReservationReconciler{
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Gateway: gw,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Reservation")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
@@ -112,6 +126,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Start the HTTP server
+	go func() {
+		gw.StartHttpServer()
+	}()
+
 	// TODO: Uncomment this when the webhook is ready. For now it does not work (Ale)
 	// pcv := discoverymanager.NewPCValidator(mgr.GetClient())
 
@@ -122,4 +141,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-} */
+}

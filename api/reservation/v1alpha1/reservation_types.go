@@ -17,19 +17,26 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type Partition struct {
+	Architecture      string            `json:"architecture"`
+	Cpu               resource.Quantity `json:"cpu"`
+	Memory            resource.Quantity `json:"memory"`
+	Gpu               resource.Quantity `json:"gpu,omitempty"`
+	EphemeralStorage  resource.Quantity `json:"ephemeral-storage,omitempty"`
+	PersistentStorage resource.Quantity `json:"persistent-storage,omitempty"`
+}
 
 // ReservationSpec defines the desired state of Reservation
 type ReservationSpec struct {
 
-	// TransactionID is the ID of the transaction that this reservation is part of
-	TransactionID string `json:"transactionID,omitempty"`
+	// SolverID is the ID of the solver that asks for the reservation
+	SolverID string `json:"solverID"`
 
 	// This is the Node identity of the buyer FLUIDOS Node.
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
@@ -38,7 +45,7 @@ type ReservationSpec struct {
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
 	// Parition is the partition of the flavour that is being reserved
-	Partition nodecorev1alpha1.FlavourSelector `json:"partition,omitempty"`
+	Partition Partition `json:"partition,omitempty"`
 
 	// Reserve indicates if the reservation is a reserve or not
 	Reserve bool `json:"reserve,omitempty"`
@@ -48,9 +55,6 @@ type ReservationSpec struct {
 
 	// PeeringCandidate is the reference to the PeeringCandidate of the Reservation
 	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
-
-	// Contract is the reference to the Contract of the Reservation
-	Contract nodecorev1alpha1.GenericRef `json:"contract,omitempty"`
 }
 
 // ReservationStatus defines the observed state of Reservation
@@ -63,6 +67,12 @@ type ReservationStatus struct {
 
 	// PurchasePhase is the current phase of the reservation
 	PurchasePhase nodecorev1alpha1.Phase `json:"purchasePhase,omitempty"`
+
+	// TransactionID is the ID of the transaction that this reservation is part of
+	TransactionID string `json:"transactionID,omitempty"`
+
+	// Contract is the reference to the Contract of the Reservation
+	Contract nodecorev1alpha1.GenericRef `json:"contract,omitempty"`
 }
 
 //+kubebuilder:object:root=true

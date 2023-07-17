@@ -1,14 +1,13 @@
-package services
+package localResourceManager
 
 import (
 	"context"
+	"log"
 
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	"fluidos.eu/node/pkg/utils/flags"
-	"fluidos.eu/node/pkg/utils/models"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
@@ -44,9 +43,9 @@ func GetKClient(ctx context.Context) (client.Client, error) {
 }
 
 // GetNodesResources retrieves the metrics from all the worker nodes in the cluster
-func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInfo, error) {
+func GetNodesResources(ctx context.Context, cl client.Client) (*[]NodeInfo, error) {
 	// Set a label selector to filter worker nodes
-	labelSelector := labels.Set{flags.WorkerLabelKey: ""}.AsSelector()
+	labelSelector := labels.Set{workerLabelKey: ""}.AsSelector()
 
 	// Get a list of nodes
 	nodes := &corev1.NodeList{}
@@ -66,7 +65,7 @@ func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInf
 		return nil, err
 	}
 
-	var nodesInfo []models.NodeInfo
+	var nodesInfo []NodeInfo
 	// Print the name of each node
 	for _, node := range nodes.Items {
 		for _, metrics := range nodesMetrics.Items {
@@ -86,7 +85,7 @@ func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInf
 }
 
 // getNodeResourceMetrics gets a ResourceMetrics struct
-func getNodeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.Node) *models.ResourceMetrics {
+func getNodeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.Node) *ResourceMetrics {
 	cpuTotal := node.Status.Allocatable.Cpu()
 	cpuUsed := nodeMetrics.Usage.Cpu()
 	memoryTotal := node.Status.Allocatable.Memory()
@@ -96,59 +95,59 @@ func getNodeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev
 }
 
 // getNodeInfo gets a NodeInfo struct
-func getNodeInfo(node *corev1.Node, metrics *models.ResourceMetrics) *models.NodeInfo {
+func getNodeInfo(node *corev1.Node, metrics *ResourceMetrics) *NodeInfo {
 	return fromNodeInfo(string(node.UID), node.Name, node.Status.NodeInfo.Architecture, node.Status.NodeInfo.OperatingSystem, *metrics)
 }
 
-// fromNodeInfo creates from params a new NodeInfo Struct
-func fromNodeInfo(uid, name, arch, os string, metrics models.ResourceMetrics) *models.NodeInfo {
-	return &models.NodeInfo{
-		UID:             uid,
-		Name:            name,
-		Architecture:    arch,
-		OperatingSystem: os,
-		ResourceMetrics: metrics,
-	}
-}
+// createFlavourCustomResource creates a new flavour custom resource
+func createFlavourCustomResource(maxCPUAvailableNode NodeInfo, cl client.Client) error {
+	flavour := (&nodecorev1alpha1.Flavour{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "flavour-topix",
+			Namespace: "default", // Specify the namespace where you want to create the CR
+		},
+		Spec: nodecorev1alpha1.FlavourSpec{
+			FlavourID:  string(nodecorev1alpha1.K8S) + "-" + generateUniqueString(maxCPUAvailableNode.UID),
+			ProviderID: maxCPUAvailableNode.UID,
+			Type:       nodecorev1alpha1.K8S,
+			Characteristics: nodecorev1alpha1.Characteristics{
+				Cpu:              maxCPUAvailableNode.ResourceMetrics.CPUAvailable,
+				Memory:           maxCPUAvailableNode.ResourceMetrics.MemoryAvailable,
+				EphemeralStorage: maxCPUAvailableNode.ResourceMetrics.EphemeralStorage,
+			},
+			Policy: nodecorev1alpha1.Policy{
+				Partitionable: &nodecorev1alpha1.Partitionable{
+					CpuMin:     2,
+					MemoryMin:  4,
+					CpuStep:    1,
+					MemoryStep: 2,
+				},
+				Aggregatable: &nodecorev1alpha1.Aggregatable{
+					MinCount: 1,
+					MaxCount: 5,
+				},
+			},
+			Owner: nodecorev1alpha1.NodeIdentity{
+				Domain: DOMAIN,
+				IP:     IP_ADDR,
+				NodeID: maxCPUAvailableNode.UID,
+			},
+			Price: nodecorev1alpha1.Price{
+				Amount:   AMOUNT,
+				Currency: CURRENCY,
+				Period:   PERIOD,
+			},
+			OptionalFields: nodecorev1alpha1.OptionalFields{
+				Availability: true,
+			},
+		},
+	})
 
-// fromResourceMetrics creates from params a new ResourceMetrics Struct
-func fromResourceMetrics(cpuTotal, cpuUsed, memoryTotal, memoryUsed, ephStorage resource.Quantity) *models.ResourceMetrics {
-	cpuAvail := cpuTotal.DeepCopy()
-	memAvail := memoryTotal.DeepCopy()
-
-	cpuAvail.Sub(cpuUsed)
-	memAvail.Sub(memoryUsed)
-
-	return &models.ResourceMetrics{
-		CPUTotal:         cpuTotal,
-		CPUAvailable:     cpuAvail,
-		MemoryTotal:      memoryTotal,
-		MemoryAvailable:  memAvail,
-		EphemeralStorage: ephStorage,
-	}
-}
-
-// compareByCPUAvailable is a custom comparison function based on CPUAvailable
-func compareByCPUAvailable(node1, node2 models.NodeInfo) bool {
-	cmpResult := node1.ResourceMetrics.CPUAvailable.Cmp(node2.ResourceMetrics.CPUAvailable)
-	if cmpResult == 1 {
-		return true
+	err := cl.Create(context.Background(), flavour)
+	if err != nil {
+		return err
 	} else {
-		return false
+		log.Printf("Flavour created successfully")
+		return nil
 	}
-}
-
-// maxNode find the node with the maximum value based on the provided comparison function
-func maxNode(nodes []models.NodeInfo, compareFunc func(models.NodeInfo, models.NodeInfo) bool) models.NodeInfo {
-	if len(nodes) == 0 {
-		panic("Empty node list")
-	}
-
-	maxNode := nodes[0]
-	for _, node := range nodes {
-		if compareFunc(node, maxNode) {
-			maxNode = node
-		}
-	}
-	return maxNode
 }

@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"fluidos.eu/node/pkg/utils/namings"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,10 +47,12 @@ type Flavour struct {
 
 // Characteristics represents the characteristics of a Flavour, such as CPU and RAM.
 type Characteristics struct {
-	CPU              int    `json:"cpu,omitempty"`
-	RAM              int    `json:"ram,omitempty"`
-	EphemeralStorage int    `json:"ephemeralStorage,omitempty"`
-	Architecture     string `json:"architecture,omitempty"`
+	CPU               int    `json:"cpu,omitempty"`
+	Memory            int    `json:"memory,omitempty"`
+	PersistentStorage int    `json:"storage,omitempty"`
+	EphemeralStorage  int    `json:"ephemeralStorage,omitempty"`
+	GPU               int    `json:"gpu,omitempty"`
+	Architecture      string `json:"architecture,omitempty"`
 }
 
 // Policy represents the policy associated with a Flavour, which can be either Partitionable or Aggregatable.
@@ -62,10 +63,10 @@ type Policy struct {
 
 // Partitionable represents the partitioning properties of a Flavour, such as the minimum and incremental values of CPU and RAM.
 type Partitionable struct {
-	CPUMinimum int `json:"cpuMinimum"`
-	RAMMinimum int `json:"ramMinimum"`
-	CPUStep    int `json:"cpuStep"`
-	RAMStep    int `json:"ramStep"`
+	CPUMinimum    int `json:"cpuMinimum"`
+	MemoryMinimum int `json:"memoryMinimum"`
+	CPUStep       int `json:"cpuStep"`
+	MemoryStep    int `json:"memoryStep"`
 }
 
 // Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.
@@ -76,9 +77,9 @@ type Aggregatable struct {
 
 // Owner represents the owner of a Flavour, with associated ID, IP, and domain name.
 type Owner struct {
-	ID         string `json:"ID"`
-	IP         string `json:"IP"`
-	DomainName string `json:"domainName"`
+	NodeID string `json:"ID"`
+	IP     string `json:"IP"`
+	Domain string `json:"domain"`
 }
 
 // Price represents the price of a Flavour, with the amount, currency, and period associated.
@@ -95,7 +96,7 @@ type OptionalFields struct {
 }
 
 // Selector represents the criteria for selecting Flavours.
-type Selector struct {
+/* type Selector struct {
 	FlavourType      string `json:"type,omitempty"`
 	Architecture     string `json:"architecture,omitempty"`
 	Cpu              int    `json:"cpu,omitempty"`
@@ -107,22 +108,55 @@ type Selector struct {
 	LessThanCpu      int    `json:"lessThanCpu,omitempty"`
 	LessThanMemory   int    `json:"lessThanMemory,omitempty"`
 	LessThanEph      int    `json:"lessThanEph,omitempty"`
+} */
+
+type Selector struct {
+	FlavourType   string         `json:"type,omitempty"`
+	Architecture  string         `json:"architecture,omitempty"`
+	RangeSelector *RangeSelector `json:"rangeSelector,omitempty"`
+	MatchSelector *MatchSelector `json:"matchSelector,omitempty"`
+}
+
+// MatchSelector represents the criteria for selecting Flavours through a strict match.
+type MatchSelector struct {
+	Cpu              int `json:"cpu,omitempty"`
+	Memory           int `json:"memory,omitempty"`
+	Storage          int `json:"storage,omitempty"`
+	EphemeralStorage int `json:"ephemeralStorage,omitempty"`
+	Gpu              int `json:"gpu,omitempty"`
+}
+
+// RangeSelector represents the criteria for selecting Flavours through a range.
+type RangeSelector struct {
+	MoreThanCPU     int `json:"moreThanCPU,omitempty"`
+	MoreThanMemory  int `json:"moreThanMemory,omitempty"`
+	MoreThanEph     int `json:"moreThanEph,omitempty"`
+	MoreThanStorage int `json:"moreThanStorage,omitempty"`
+	MoreThanGpu     int `json:"moreThanGpu,omitempty"`
+	LessThanCPU     int `json:"lessThanCPU,omitempty"`
+	LessThanMemory  int `json:"lessThanMemory,omitempty"`
+	LessThanEph     int `json:"lessThanEph,omitempty"`
+	LessThanStorage int `json:"lessThanStorage,omitempty"`
+	LessThanGpu     int `json:"lessThanGpu,omitempty"`
 }
 
 // Partition represents the partitioning properties of a Flavour
 type Partition struct {
-	Architecture     string `json:"architecture,omitempty"`
-	Cpu              int    `json:"cpu,omitempty"`
-	Memory           int    `json:"memory,omitempty"`
+	Architecture     string `json:"architecture"`
+	Cpu              int    `json:"cpu"`
+	Memory           int    `json:"memory"`
 	EphemeralStorage int    `json:"ephemeral-storage,omitempty"`
+	Gpu              int    `json:"gpu,omitempty"`
+	Storage          int    `json:"storage,omitempty"`
 }
 
 // Transaction contains information regarding the transaction for a flavour
 type Transaction struct {
-	TransactionID string `json:"transactionID"`
-	FlavourID     string `json:"flavourID"`
-	Buyer         Owner  `json:"buyer"`
-	StartTime     string `json:"startTime,omitempty"`
+	TransactionID string    `json:"transactionID"`
+	FlavourID     string    `json:"flavourID"`
+	Partition     Partition `json:"partition"`
+	Buyer         Owner     `json:"buyer"`
+	StartTime     string    `json:"startTime,omitempty"`
 }
 
 // Contract represents a Contract object with its characteristics
@@ -130,19 +164,25 @@ type Contract struct {
 	ContractID       string            `json:"contractID"`
 	TransactionID    string            `json:"transactionID"`
 	Flavour          Flavour           `json:"flavour"`
-	BuyerID          string            `json:"buyerID"`
+	Buyer            Owner             `json:"buyerID"`
 	Seller           Owner             `json:"seller"`
 	ExpirationTime   string            `json:"expirationTime,omitempty"`
 	ExtraInformation map[string]string `json:"extraInformation,omitempty"`
-	Partition        Partition         `json:"partition"`
+	Partition        Partition         `json:"partition,omitempty"`
 }
 
 // Purchase contains information regarding the purchase for a flavour
 type Purchase struct {
-	Partition     Partition `json:"partition"`
-	TransactionID string    `json:"transactionID"`
-	FlavourID     string    `json:"flavourID"`
-	BuyerID       string    `json:"buyerID"`
+	Partition     Selector `json:"partition"`
+	TransactionID string   `json:"transactionID"`
+	FlavourID     string   `json:"flavourID"`
+	BuyerID       string   `json:"buyerID"`
+}
+
+type PurchaseRequest struct {
+	TransactionID string `json:"transactionID"`
+	FlavourID     string `json:"flavourID"`
+	BuyerID       string `json:"buyerID"`
 }
 
 // ResponsePurchase contain information after purchase a Flavour
@@ -151,72 +191,16 @@ type ResponsePurchase struct {
 	Status   string   `json:"status"`
 }
 
-// TransactionCache is the current transaction used in the Reservation controller
-var TransactionCache Transaction
-
-// Transactions is a map of Transaction
-var Transactions map[string]Transaction
-
-// FlavourPeeringCandidateMap is a map of Flavour and PeeringCandidate
-var FlavourPeeringCandidateMap = make(map[string]string)
+type ReserveRequest struct {
+	FlavourID string    `json:"flavourID"`
+	Buyer     Owner     `json:"buyerID"`
+	Partition Partition `json:"partition"`
+}
 
 // AddFlavourToPcCache adds a new entry to the FlavourPeeringCandidateMap map if it does not exist
-func AddFlavourToPcCache(flavourID string) {
+/* func AddFlavourToPcCache(flavourID string) {
 	peeringCandidateID := namings.ForgePeeringCandidateName(flavourID)
 	if _, ok := FlavourPeeringCandidateMap[peeringCandidateID]; !ok {
 		FlavourPeeringCandidateMap[peeringCandidateID] = flavourID
 	}
-}
-
-// fromNodeInfo creates from params a new NodeInfo Struct
-func FromNodeInfo(uid, name, arch, os string, metrics ResourceMetrics) *NodeInfo {
-	return &NodeInfo{
-		UID:             uid,
-		Name:            name,
-		Architecture:    arch,
-		OperatingSystem: os,
-		ResourceMetrics: metrics,
-	}
-}
-
-// fromResourceMetrics creates from params a new ResourceMetrics Struct
-func FromResourceMetrics(cpuTotal, cpuUsed, memoryTotal, memoryUsed, ephStorage resource.Quantity) *ResourceMetrics {
-	cpuAvail := cpuTotal.DeepCopy()
-	memAvail := memoryTotal.DeepCopy()
-
-	cpuAvail.Sub(cpuUsed)
-	memAvail.Sub(memoryUsed)
-
-	return &ResourceMetrics{
-		CPUTotal:         cpuTotal,
-		CPUAvailable:     cpuAvail,
-		MemoryTotal:      memoryTotal,
-		MemoryAvailable:  memAvail,
-		EphemeralStorage: ephStorage,
-	}
-}
-
-// compareByCPUAvailable is a custom comparison function based on CPUAvailable
-func CompareByCPUAvailable(node1, node2 NodeInfo) bool {
-	cmpResult := node1.ResourceMetrics.CPUAvailable.Cmp(node2.ResourceMetrics.CPUAvailable)
-	if cmpResult == 1 {
-		return true
-	} else {
-		return false
-	}
-}
-
-// maxNode find the node with the maximum value based on the provided comparison function
-func MaxNode(nodes []NodeInfo, compareFunc func(NodeInfo, NodeInfo) bool) NodeInfo {
-	if len(nodes) == 0 {
-		panic("Empty node list")
-	}
-
-	maxNode := nodes[0]
-	for _, node := range nodes {
-		if compareFunc(node, maxNode) {
-			maxNode = node
-		}
-	}
-	return maxNode
-}
+} */

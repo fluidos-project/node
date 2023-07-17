@@ -1,6 +1,11 @@
 package resourceforge
 
 import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
@@ -8,8 +13,7 @@ import (
 	"fluidos.eu/node/pkg/utils/flags"
 	"fluidos.eu/node/pkg/utils/models"
 	"fluidos.eu/node/pkg/utils/namings"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fluidos.eu/node/pkg/utils/parseutil"
 )
 
 // ForgeDiscovery creates a Discovery CR from a FlavourSelector and a solverID
@@ -27,84 +31,8 @@ func ForgeDiscovery(selector nodecorev1alpha1.FlavourSelector, solverID string) 
 	}
 }
 
-// ForgeContractFromModel creates a Contract from a reservation
-func ForgeContractFromModel(reservation *reservationv1alpha1.Reservation, contract models.Contract) *reservationv1alpha1.Contract {
-	return &reservationv1alpha1.Contract{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "contract-" + reservation.Name,
-			Namespace: flags.CONTRACT_DEFAULT_NAMESPACE,
-		},
-		Spec: reservationv1alpha1.ContractSpec{
-			Flavour: *ForgeFlavourCustomResource(contract.Flavour),
-			Buyer: nodecorev1alpha1.NodeIdentity{
-				NodeID: reservation.Spec.Buyer.NodeID,
-			},
-			Seller: nodecorev1alpha1.NodeIdentity{
-				NodeID: reservation.Spec.Seller.NodeID,
-			},
-		},
-		Status: reservationv1alpha1.ContractStatus{
-			Phase: nodecorev1alpha1.PhaseStatus{
-				Phase:     nodecorev1alpha1.PhaseActive,
-				StartTime: common.GetTimeNow(),
-			},
-		},
-	}
-}
-
-// ForgeFlavourCustomResource creates a Flavour CR from a Flavour Object (REAR)
-func ForgeFlavourCustomResource(flavour models.Flavour) *nodecorev1alpha1.Flavour {
-	return &nodecorev1alpha1.Flavour{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      flavour.FlavourID,
-			Namespace: flags.DEFAULT_NAMESPACE,
-		},
-		Spec: nodecorev1alpha1.FlavourSpec{
-			ProviderID: flavour.Owner.ID,
-			Type:       nodecorev1alpha1.K8S,
-			Characteristics: nodecorev1alpha1.Characteristics{
-				Cpu:    *resource.NewQuantity(int64(flavour.Characteristics.CPU), resource.DecimalSI),
-				Memory: *resource.NewQuantity(int64(flavour.Characteristics.RAM), resource.BinarySI),
-			},
-			Policy: nodecorev1alpha1.Policy{
-				// Check if flavour.Partitionable is not nil before setting Partitionable
-				Partitionable: func() *nodecorev1alpha1.Partitionable {
-					if flavour.Policy.Partitionable != nil {
-						return &nodecorev1alpha1.Partitionable{
-							CpuMin:     flavour.Policy.Partitionable.CPUMinimum,
-							MemoryMin:  flavour.Policy.Partitionable.RAMMinimum,
-							CpuStep:    flavour.Policy.Partitionable.CPUStep,
-							MemoryStep: flavour.Policy.Partitionable.RAMStep,
-						}
-					}
-					return nil
-				}(),
-				Aggregatable: func() *nodecorev1alpha1.Aggregatable {
-					if flavour.Policy.Aggregatable != nil {
-						return &nodecorev1alpha1.Aggregatable{
-							MinCount: flavour.Policy.Aggregatable.MinCount,
-							MaxCount: flavour.Policy.Aggregatable.MaxCount,
-						}
-					}
-					return nil
-				}(),
-			},
-			Owner: nodecorev1alpha1.NodeIdentity{
-				Domain: flavour.Owner.DomainName,
-				IP:     flavour.Owner.IP,
-				NodeID: flavour.Owner.ID,
-			},
-			Price: nodecorev1alpha1.Price{
-				Amount:   flavour.Price.Amount,
-				Currency: flavour.Price.Currency,
-				Period:   flavour.Price.Period,
-			},
-		},
-	}
-}
-
-// ForgePeeringCandidateCustomResources creates a PeeringCandidate CR from a Flavour and a Discovery
-func ForgePeeringCandidateCustomResources(flavourPeeringCandidate *nodecorev1alpha1.Flavour, discovery *advertisementv1alpha1.Discovery, reserved bool) (pc *advertisementv1alpha1.PeeringCandidate) {
+// ForgePeeringCandidate creates a PeeringCandidate CR from a Flavour and a Discovery
+func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, solverID string, reserved bool) (pc *advertisementv1alpha1.PeeringCandidate) {
 	pc = &advertisementv1alpha1.PeeringCandidate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgePeeringCandidateName(flavourPeeringCandidate.Name),
@@ -122,18 +50,19 @@ func ForgePeeringCandidateCustomResources(flavourPeeringCandidate *nodecorev1alp
 	}
 
 	if reserved {
-		pc.Spec.SolverID = discovery.Spec.SolverID
+		pc.Spec.SolverID = solverID
 		pc.Spec.Reserved = true
 	}
 
 	return
 }
 
-// ForgeReservationCustomResource creates a Reservation CR from a PeeringCandidate
-func ForgeReservationCustomResource(peeringCandidate advertisementv1alpha1.PeeringCandidate) *reservationv1alpha1.Reservation {
+// ForgeReservation creates a Reservation CR from a PeeringCandidate
+func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate) *reservationv1alpha1.Reservation {
+	solverID := peeringCandidate.Spec.SolverID
 	return &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgeReservationName(peeringCandidate.Name),
+			Name:      namings.ForgeReservationName(solverID),
 			Namespace: flags.RESERVATION_DEFAULT_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.ReservationSpec{
@@ -157,22 +86,8 @@ func ForgeReservationCustomResource(peeringCandidate advertisementv1alpha1.Peeri
 	}
 }
 
-// ForgeTransaction creates a transaction from a Transaction object
-func ForgeTransaction(reservation *models.Transaction) *reservationv1alpha1.Transaction {
-	return &reservationv1alpha1.Transaction{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      reservation.TransactionID,
-			Namespace: flags.TRANSACTION_DEFAULT_NAMESPACE,
-		},
-		Spec: reservationv1alpha1.TransactionSpec{
-			FlavourID: reservation.FlavourID,
-			StartTime: reservation.StartTime,
-		},
-	}
-}
-
-// ForgeContractCustomResource creates a Contract CR
-func ForgeContractCustomResource(flavour nodecorev1alpha1.Flavour, buyerID string) *reservationv1alpha1.Contract {
+// ForgeContract creates a Contract CR
+func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transaction) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavour.Name),
@@ -181,9 +96,14 @@ func ForgeContractCustomResource(flavour nodecorev1alpha1.Flavour, buyerID strin
 		Spec: reservationv1alpha1.ContractSpec{
 			Flavour: flavour,
 			Buyer: nodecorev1alpha1.NodeIdentity{
-				NodeID: buyerID,
+				Domain: transaction.Buyer.Domain,
+				IP:     transaction.Buyer.IP,
+				NodeID: transaction.Buyer.NodeID,
 			},
-			Seller: flavour.Spec.Owner,
+			Seller:         flavour.Spec.Owner,
+			TransactionID:  transaction.TransactionID,
+			Partition:      parseutil.ParsePartitionFromObj(transaction.Partition),
+			ExpirationTime: time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -239,70 +159,152 @@ func ForgeFlavourFromMetrics(node models.NodeInfo) (flavour *nodecorev1alpha1.Fl
 	}
 }
 
+// FORGER FUNCTIONS FROM OBJECTS
+
 // ForgeTransaction creates a new transaction
-func ForgeTransactionObject(flavourID, transactionID string, buyer models.Owner) models.Transaction {
+func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transaction {
 	return models.Transaction{
-		TransactionID: transactionID,
-		Buyer:         buyer,
-		FlavourID:     flavourID,
+		TransactionID: ID,
+		Buyer:         req.Buyer,
+		FlavourID:     req.FlavourID,
+		Partition:     req.Partition,
 		StartTime:     common.GetTimeNow(),
 	}
 }
 
-// ForgeFlavourObject creates a Flavour Object from a Flavour CR
-func ForgeFlavourObject(flavour *nodecorev1alpha1.Flavour) models.Flavour {
-	cpu, _ := flavour.Spec.Characteristics.Cpu.AsInt64()
-	ram, _ := flavour.Spec.Characteristics.Memory.AsInt64()
-	return models.Flavour{
-		FlavourID: flavour.Name,
-		Owner: models.Owner{
-			ID:         flavour.Spec.Owner.NodeID,
-			IP:         flavour.Spec.Owner.IP,
-			DomainName: flavour.Spec.Owner.Domain,
-		},
-		Characteristics: models.Characteristics{
-			CPU: int(cpu),
-			RAM: int(ram),
-		},
-		Policy: models.Policy{
-			Partitionable: &models.Partitionable{
-				CPUMinimum: flavour.Spec.Policy.Partitionable.CpuMin,
-				RAMMinimum: flavour.Spec.Policy.Partitionable.MemoryMin,
-				CPUStep:    flavour.Spec.Policy.Partitionable.CpuStep,
-				RAMStep:    flavour.Spec.Policy.Partitionable.MemoryStep,
-			},
-			Aggregatable: &models.Aggregatable{
-				MinCount: flavour.Spec.Policy.Aggregatable.MinCount,
-				MaxCount: flavour.Spec.Policy.Aggregatable.MaxCount,
-			},
-		},
-		Price: models.Price{
-			Amount:   flavour.Spec.Price.Amount,
-			Currency: flavour.Spec.Price.Currency,
-			Period:   flavour.Spec.Price.Period,
-		},
-		OptionalFields: models.OptionalFields{
-			Availability: flavour.Spec.OptionalFields.Availability,
-			WorkerID:     flavour.Spec.OptionalFields.WorkerID,
-		},
-	}
-}
-
-// ForgeContractObject creates a Contract Object
-func ForgeContractObject(contract *reservationv1alpha1.Contract, buyerID, transactionID string, partition models.Partition) models.Contract {
+func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 	return models.Contract{
-		ContractID:    contract.Name,
-		Flavour:       ForgeFlavourObject(&contract.Spec.Flavour),
-		BuyerID:       buyerID,
-		TransactionID: transactionID,
-		Partition:     partition,
+		ContractID:     contract.Name,
+		Flavour:        parseutil.ParseFlavour(contract.Spec.Flavour),
+		Buyer:          parseutil.ParseNodeIdentity(contract.Spec.Buyer),
+		Seller:         parseutil.ParseNodeIdentity(contract.Spec.Seller),
+		Partition:      parseutil.ParsePartition(contract.Spec.Partition),
+		TransactionID:  contract.Spec.TransactionID,
+		ExpirationTime: contract.Spec.ExpirationTime,
 	}
 }
 
-// ForgeResponsePurchaseObject creates a new response purchase
-func ForgeResponsePurchaseObject(contract models.Contract) models.ResponsePurchase {
+// ForgeResponsePurchaseObj creates a new response purchase
+func ForgeResponsePurchaseObj(contract models.Contract) models.ResponsePurchase {
 	return models.ResponsePurchase{
 		Contract: contract,
 		Status:   "Completed",
 	}
+}
+
+// ForgeContractFromObj creates a Contract from a reservation
+func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contract {
+	return &reservationv1alpha1.Contract{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      contract.ContractID,
+			Namespace: flags.CONTRACT_DEFAULT_NAMESPACE,
+		},
+		Spec: reservationv1alpha1.ContractSpec{
+			Flavour: *ForgeFlavourFromObj(contract.Flavour),
+			Buyer: nodecorev1alpha1.NodeIdentity{
+				Domain: contract.Buyer.Domain,
+				IP:     contract.Buyer.IP,
+				NodeID: contract.Buyer.NodeID,
+			},
+			Seller: nodecorev1alpha1.NodeIdentity{
+				NodeID: contract.Seller.NodeID,
+				IP:     contract.Seller.IP,
+				Domain: contract.Seller.Domain,
+			},
+			TransactionID:  contract.TransactionID,
+			Partition:      parseutil.ParsePartitionFromObj(contract.Partition),
+			ExpirationTime: contract.ExpirationTime,
+		},
+		Status: reservationv1alpha1.ContractStatus{
+			Phase: nodecorev1alpha1.PhaseStatus{
+				Phase:     nodecorev1alpha1.PhaseActive,
+				StartTime: common.GetTimeNow(),
+			},
+		},
+	}
+}
+
+// ForgeTransactionFromObj creates a transaction from a Transaction object
+func ForgeTransactionFromObj(reservation *models.Transaction) *reservationv1alpha1.Transaction {
+	return &reservationv1alpha1.Transaction{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      reservation.TransactionID,
+			Namespace: flags.TRANSACTION_DEFAULT_NAMESPACE,
+		},
+		Spec: reservationv1alpha1.TransactionSpec{
+			FlavourID: reservation.FlavourID,
+			StartTime: reservation.StartTime,
+			Buyer: nodecorev1alpha1.NodeIdentity{
+				Domain: reservation.Buyer.Domain,
+				IP:     reservation.Buyer.IP,
+				NodeID: reservation.Buyer.NodeID,
+			},
+			Partition: parseutil.ParsePartitionFromObj(reservation.Partition),
+		},
+	}
+}
+
+// ForgeFlavourFromObj creates a Flavour CR from a Flavour Object (REAR)
+func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
+	f := &nodecorev1alpha1.Flavour{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      flavour.FlavourID,
+			Namespace: flags.DEFAULT_NAMESPACE,
+		},
+		Spec: nodecorev1alpha1.FlavourSpec{
+			ProviderID: flavour.Owner.NodeID,
+			Type:       nodecorev1alpha1.K8S,
+			Characteristics: nodecorev1alpha1.Characteristics{
+				Cpu:    *resource.NewQuantity(int64(flavour.Characteristics.CPU), resource.DecimalSI),
+				Memory: *resource.NewQuantity(int64(flavour.Characteristics.Memory), resource.BinarySI),
+			},
+			Policy: nodecorev1alpha1.Policy{
+				// Check if flavour.Partitionable is not nil before setting Partitionable
+				Partitionable: func() *nodecorev1alpha1.Partitionable {
+					if flavour.Policy.Partitionable != nil {
+						return &nodecorev1alpha1.Partitionable{
+							CpuMin:     flavour.Policy.Partitionable.CPUMinimum,
+							MemoryMin:  flavour.Policy.Partitionable.MemoryMinimum,
+							CpuStep:    flavour.Policy.Partitionable.CPUStep,
+							MemoryStep: flavour.Policy.Partitionable.MemoryStep,
+						}
+					}
+					return nil
+				}(),
+				Aggregatable: func() *nodecorev1alpha1.Aggregatable {
+					if flavour.Policy.Aggregatable != nil {
+						return &nodecorev1alpha1.Aggregatable{
+							MinCount: flavour.Policy.Aggregatable.MinCount,
+							MaxCount: flavour.Policy.Aggregatable.MaxCount,
+						}
+					}
+					return nil
+				}(),
+			},
+			Owner: nodecorev1alpha1.NodeIdentity{
+				Domain: flavour.Owner.Domain,
+				IP:     flavour.Owner.IP,
+				NodeID: flavour.Owner.NodeID,
+			},
+			Price: nodecorev1alpha1.Price{
+				Amount:   flavour.Price.Amount,
+				Currency: flavour.Price.Currency,
+				Period:   flavour.Price.Period,
+			},
+		},
+	}
+
+	if flavour.Characteristics.EphemeralStorage != 0 {
+		f.Spec.Characteristics.EphemeralStorage = *resource.NewQuantity(int64(flavour.Characteristics.EphemeralStorage), resource.BinarySI)
+	}
+	if flavour.Characteristics.PersistentStorage != 0 {
+		f.Spec.Characteristics.PersistentStorage = *resource.NewQuantity(int64(flavour.Characteristics.PersistentStorage), resource.BinarySI)
+	}
+	if flavour.Characteristics.GPU != 0 {
+		f.Spec.Characteristics.Gpu = *resource.NewQuantity(int64(flavour.Characteristics.GPU), resource.DecimalSI)
+	}
+	if flavour.Characteristics.Architecture != "" {
+		f.Spec.Characteristics.Architecture = flavour.Characteristics.Architecture
+	}
+	return f
 }
