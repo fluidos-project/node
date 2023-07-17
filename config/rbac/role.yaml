@@ -34,6 +34,32 @@ rules:
 - apiGroups:
   - nodecore.fluidos.eu
   resources:
+  - allocations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
   - solvers
   verbs:
   - create

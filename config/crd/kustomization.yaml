@@ -4,15 +4,15 @@
 resources:
   - bases/nodecore.fluidos.eu_solvers.yaml
   - bases/nodecore.fluidos.eu_flavours.yaml
-- bases/nodecore.fluidos.eu_allocations.yaml
+  - bases/nodecore.fluidos.eu_allocations.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
-#- patches/webhook_in_solvers.yaml
-#- patches/webhook_in_flavours.yaml
-#- patches/webhook_in_allocations.yaml
+  - patches/webhook_in_solvers.yaml
+  - patches/webhook_in_flavours.yaml
+  - patches/webhook_in_allocations.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.

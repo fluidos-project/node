@@ -63,18 +63,42 @@ spec:
                           K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                         properties:
                           cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: CPU is the number of CPU cores of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           ephemeral-storage:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: EphemeralStorage is the amount of ephemeral
                               storage of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           gpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: GPU is the number of GPU cores of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: Memory is the amount of RAM of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          persistent-storage:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: PersistentStorage is the amount of persistent
+                              storage of the Flavour.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         required:
                         - cpu
                         - memory
@@ -218,18 +242,61 @@ spec:
                   allocation, if true it represents only a placeholder to undertand
                   that the cluster is just a proxy to another cluster
                 type: boolean
+              intentID:
+                description: This is the ID of the intent for which the allocation
+                  was created. It is used by the Node Orchestrator to identify the
+                  correct allocation for a given intent
+                type: string
               localNode:
                 description: This is the corresponding Node or VirtualNode name
                 type: string
+              partition:
+                description: This is the dimension of the allocation, it is based
+                  on the Flavour CRD from which it was created
+                properties:
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  ephemeralStorage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  gpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  memory:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  storage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                required:
+                - cpu
+                - memory
+                type: object
               type:
                 description: 'This specifies the type of the node: Node (Physical
                   node of the cluster) or VirtualNode (Remote node owned by a different
                   cluster)'
-                format: int64
-                type: integer
+                type: string
             required:
             - flavour
             - forwarding
+            - intentID
             - localNode
             - type
             type: object
@@ -246,8 +313,7 @@ spec:
                 type: string
               status:
                 description: This allow to know the current status of the allocation
-                format: int64
-                type: integer
+                type: string
             required:
             - creationTime
             - lastUpdateTime

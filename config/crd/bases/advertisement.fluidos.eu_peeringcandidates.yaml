@@ -62,18 +62,42 @@ spec:
                           K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                         properties:
                           cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: CPU is the number of CPU cores of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           ephemeral-storage:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: EphemeralStorage is the amount of ephemeral
                               storage of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           gpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: GPU is the number of GPU cores of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                           memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
                             description: Memory is the amount of RAM of the Flavour.
-                            type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          persistent-storage:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: PersistentStorage is the amount of persistent
+                              storage of the Flavour.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         required:
                         - cpu
                         - memory

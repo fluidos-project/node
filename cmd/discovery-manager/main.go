@@ -30,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	discoverymanager "fluidos.eu/node/pkg/discovery-manager"
@@ -95,6 +96,10 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	pcv := discoverymanager.NewPCValidator(mgr.GetClient())
+
+	mgr.GetWebhookServer().Register("/validate/peeringcandidate", &webhook.Admission{Handler: pcv})
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

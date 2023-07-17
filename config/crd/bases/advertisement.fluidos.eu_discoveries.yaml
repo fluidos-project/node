@@ -99,7 +99,6 @@ spec:
                   updates of the status of the matching Flavour
                 type: boolean
             required:
-            - peeringCandidate
             - selector
             - solverID
             - subscribe
@@ -109,7 +108,20 @@ spec:
             properties:
               phase:
                 description: This is the current phase of the discovery
-                type: string
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
             required:
             - phase
             type: object

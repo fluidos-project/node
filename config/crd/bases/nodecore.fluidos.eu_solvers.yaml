@@ -111,92 +111,41 @@ spec:
                 description: CandidatesPhase describes the status of the PeeringCandidates
                   phase where the Rear Manager is looking for the best candidate Flavour
                   to solve the Node Orchestrator request.
-                properties:
-                  endTime:
-                    type: string
-                  lastChangeTime:
-                    type: string
-                  message:
-                    type: string
-                  phase:
-                    type: string
-                  startTime:
-                    type: string
-                required:
-                - phase
-                type: object
+                type: string
               consumePhase:
                 description: ConsumePhase describes the status of the Consume phase
                   where the VFM (Liqo) is enstablishing a peering with the candidate
                   node.
-                properties:
-                  endTime:
-                    type: string
-                  lastChangeTime:
-                    type: string
-                  message:
-                    type: string
-                  phase:
-                    type: string
-                  startTime:
-                    type: string
-                required:
-                - phase
-                type: object
+                type: string
               discoveryPhase:
                 description: DiscoveryPhase describes the status of the discovery
                   where the Discovery Manager is looking for matching flavours outside
                   the FLUIDOS Node
+                type: string
+              peeringCandidate:
+                description: PeeringCandidate contains the candidate that the solver
+                  has eventually found to solve the intent.
                 properties:
-                  endTime:
+                  name:
+                    description: The name of the resource to be referenced.
                     type: string
-                  lastChangeTime:
-                    type: string
-                  message:
-                    type: string
-                  phase:
-                    type: string
-                  startTime:
+                  namespace:
+                    description: The namespace containing the resource to be referenced.
+                      It should be left empty in case of cluster-wide resources.
                     type: string
                 required:
-                - phase
+                - name
                 type: object
               purchasingPhase:
                 description: PurchasingPhase describes the status of the Purchasing
                   phase where the Contract Manager is purchasing the reserved resources
                   on the candidate node.
-                properties:
-                  endTime:
-                    type: string
-                  lastChangeTime:
-                    type: string
-                  message:
-                    type: string
-                  phase:
-                    type: string
-                  startTime:
-                    type: string
-                required:
-                - phase
-                type: object
+                type: string
               reservationPhase:
                 description: ReservationPhase describes the status of the Reservation
                   phase where the Contract Manager is reserving the resources on the
                   candidate node.
-                properties:
-                  endTime:
-                    type: string
-                  lastChangeTime:
-                    type: string
-                  message:
-                    type: string
-                  phase:
-                    type: string
-                  startTime:
-                    type: string
-                required:
-                - phase
-                type: object
+                type: string
               solverPhase:
                 description: SolverPhase describes the status of the Solver generated
                   by the Node Orchestrator. It is usefull to understand if the solver

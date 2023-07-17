@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the reservation v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=reservation.fluidos.eu
+// +kubebuilder:object:generate=true
+// +groupName=reservation.fluidos.eu
 package v1alpha1
 
 import (
