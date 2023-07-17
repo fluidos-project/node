@@ -20,7 +20,9 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -121,8 +123,10 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		} else if candidatePhase.Phase == nodecorev1alpha1.PhaseTimeout {
 
 		} else {
+			time := time.Now().String()
 			candidatePhase.Phase = nodecorev1alpha1.PhaseIdle
-			candidatePhase.LastChangeTime = time.Now().String()
+			candidatePhase.StartTime = time
+			candidatePhase.LastChangeTime = time
 
 			// Update the Solver status
 			if err := r.updateSolverStatus(ctx, &solver); err != nil {
@@ -164,10 +168,75 @@ func (r *SolverReconciler) createOrUpdateContract(ctx context.Context, solver *n
 }
 
 func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context, solver *nodecorev1alpha1.Solver) ([]advertisementv1alpha1.PeeringCandidate, error) {
-	pc := []advertisementv1alpha1.PeeringCandidate{}
-	return pc, nil
+	pc := advertisementv1alpha1.PeeringCandidateList{}
+	result := []advertisementv1alpha1.PeeringCandidate{}
+
+	// Get the Flavour Selector from the Solver
+	selector := solver.Spec.Selector
+
+	// Get the list of PeeringCandidates
+	if err := r.List(ctx, &pc); err != nil {
+		klog.Errorf("Error when listing PeeringCandidates: %s", err)
+		return nil, err
+	}
+
+	// TODO: Maybe not needed
+	if len(pc.Items) == 0 {
+		klog.Infof("No PeeringCandidates found")
+		return nil, errors.NewNotFound(schema.GroupResource{Group: "advertisement", Resource: "PeeringCandidate"}, "PeeringCandidate")
+	}
+
+	// Filter the reserved PeeringCandidates
+	filtered := []advertisementv1alpha1.PeeringCandidate{}
+	for _, p := range pc.Items {
+		if p.Spec.Reserved == false && p.Spec.SolverID == "" {
+			filtered = append(filtered, p)
+		}
+	}
+
+	// Filter the list of PeeringCandidates based on the Flavour Selector
+	for _, p := range filtered {
+		res := filterPeeringCandidate(&selector, &p)
+		if res {
+			result = append(result, p)
+		}
+	}
+
+	return result, nil
 }
 
 func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context, solver *nodecorev1alpha1.Solver, pc []advertisementv1alpha1.PeeringCandidate) (*advertisementv1alpha1.PeeringCandidate, error) {
-	return &advertisementv1alpha1.PeeringCandidate{}, nil
+	// Select the first PeeringCandidate
+	selected := pc[0]
+
+	// Book the PeeringCandidate
+	selected.Spec.Reserved = true
+	selected.Spec.SolverID = solver.Name
+
+	// Update the PeeringCandidate
+	if err := r.Update(ctx, &selected); err != nil {
+		klog.Errorf("Error when updating PeeringCandidate %s: %s", selected.Name, err)
+		return nil, err
+	}
+
+	return &selected, nil
+}
+
+func filterPeeringCandidate(selector *nodecorev1alpha1.FlavourSelector, pc *advertisementv1alpha1.PeeringCandidate) bool {
+	if selector.Cpu.Cmp(pc.Spec.Flavour.Spec.Characteristics.Cpu) > 0 {
+		return false
+	}
+	if selector.Memory.Cmp(pc.Spec.Flavour.Spec.Characteristics.Memory) > 0 {
+		return false
+	}
+	if !selector.EphemeralStorage.IsZero() && selector.EphemeralStorage.Cmp(pc.Spec.Flavour.Spec.Characteristics.EphemeralStorage) > 0 {
+		return false
+	}
+	if !selector.Gpu.IsZero() && selector.Gpu.Cmp(pc.Spec.Flavour.Spec.Characteristics.Gpu) > 0 {
+		return false
+	}
+	if !selector.Storage.IsZero() && selector.Storage.Cmp(pc.Spec.Flavour.Spec.Characteristics.PersistentStorage) > 0 {
+		return false
+	}
+	return true
 }
