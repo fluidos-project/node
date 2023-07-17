@@ -1,0 +1,24 @@
+# permissions for end users to edit allocations.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: allocation-editor-role
+rules:
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations/status
+  verbs:
+  - get

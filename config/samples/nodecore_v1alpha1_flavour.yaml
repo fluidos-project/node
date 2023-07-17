@@ -1,0 +1,6 @@
+apiVersion: nodecore.fluidos.eu/v1alpha1
+kind: Flavour
+metadata:
+  name: flavour-sample
+spec:
+  # TODO(user): Add fields here

@@ -1,0 +1,229 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: solvers.nodecore.fluidos.eu
+spec:
+  group: nodecore.fluidos.eu
+  names:
+    kind: Solver
+    listKind: SolverList
+    plural: solvers
+    singular: solver
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Solver is the Schema for the solvers API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SolverSpec defines the desired state of Solver
+            properties:
+              enstablishPeering:
+                description: EnstablishPeering is a flag that indicates if the solver
+                  should enstablish a peering with the candidate.
+                type: boolean
+              findCandidate:
+                description: FindCandidate is a flag that indicates if the solver
+                  should find a candidate to solve the intent.
+                type: boolean
+              intentID:
+                description: IntentID is the ID of the intent that the Node Orchestrator
+                  is trying to solve. It is used to link the solver with the intent.
+                type: string
+              selector:
+                description: Selector contains the flavour requirements for the solver.
+                properties:
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  ephemeralStorage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  gpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  memory:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  storage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                required:
+                - cpu
+                - memory
+                type: object
+            required:
+            - intentID
+            - selector
+            type: object
+          status:
+            description: SolverStatus defines the observed state of Solver
+            properties:
+              allocation:
+                description: Allocation contains the allocation that the solver has
+                  eventually created for the intent. It can correspond to a virtual
+                  node The Node Orchestrator will use this allocation to fullfill
+                  the intent.
+                properties:
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: The namespace containing the resource to be referenced.
+                      It should be left empty in case of cluster-wide resources.
+                    type: string
+                required:
+                - name
+                type: object
+              candidatesPhase:
+                description: CandidatesPhase describes the status of the PeeringCandidates
+                  phase where the Rear Manager is looking for the best candidate Flavour
+                  to solve the Node Orchestrator request.
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              consumePhase:
+                description: ConsumePhase describes the status of the Consume phase
+                  where the VFM (Liqo) is enstablishing a peering with the candidate
+                  node.
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              discoveryPhase:
+                description: DiscoveryPhase describes the status of the discovery
+                  where the Discovery Manager is looking for matching flavours outside
+                  the FLUIDOS Node
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              purchasingPhase:
+                description: PurchasingPhase describes the status of the Purchasing
+                  phase where the Contract Manager is purchasing the reserved resources
+                  on the candidate node.
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              reservationPhase:
+                description: ReservationPhase describes the status of the Reservation
+                  phase where the Contract Manager is reserving the resources on the
+                  candidate node.
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              solverPhase:
+                description: SolverPhase describes the status of the Solver generated
+                  by the Node Orchestrator. It is usefull to understand if the solver
+                  is still running or if it has finished or failed.
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -1,0 +1,24 @@
+# permissions for end users to edit solvers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: solver-editor-role
+rules:
+  - apiGroups:
+      - nodecore.fluidos.eu
+    resources:
+      - solvers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - nodecore.fluidos.eu
+    resources:
+      - solvers/status
+    verbs:
+      - get

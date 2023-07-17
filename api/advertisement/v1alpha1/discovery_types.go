@@ -1,0 +1,77 @@
+/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
+)
+
+// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// DiscoverySpec defines the desired state of Discovery
+type DiscoverySpec struct {
+
+	// This is the Solver ID of the solver that creates and so asks for the discovery.
+	// This is a reference to the Solver CRD
+	SolverID string `json:"solverID"`
+
+	// This is the FlavourSelector that describes the characteristics of the intent that the solver is looking to satisfy
+	// This pattern corresponds to what has been defined in the REAR Protocol to do a discovery with a selector
+	Selector nodecorev1alpha1.FlavourSelector `json:"selector"`
+
+	// This flag indicates that needs to be enstablished a subscription to the provider in case a match is found.
+	// In order to have periodic updates of the status of the matching Flavour
+	Subscribe bool `json:"subscribe"`
+
+	// This is the reference to the PeeringCandidate CRD that is the result of the discovery if a match is found
+	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate"`
+}
+
+// DiscoveryStatus defines the observed state of Discovery
+type DiscoveryStatus struct {
+
+	// This is the current phase of the discovery
+	Phase nodecorev1alpha1.Phase `json:"phase"`
+}
+
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+
+// Discovery is the Schema for the discoveries API
+type Discovery struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   DiscoverySpec   `json:"spec,omitempty"`
+	Status DiscoveryStatus `json:"status,omitempty"`
+}
+
+//+kubebuilder:object:root=true
+
+// DiscoveryList contains a list of Discovery
+type DiscoveryList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Discovery `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&Discovery{}, &DiscoveryList{})
+}
