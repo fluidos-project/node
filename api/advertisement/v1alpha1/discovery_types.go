@@ -48,7 +48,7 @@ type DiscoverySpec struct {
 type DiscoveryStatus struct {
 
 	// This is the current phase of the discovery
-	Phase nodecorev1alpha1.Phase `json:"phase"`
+	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
 }
 
 //+kubebuilder:object:root=true
