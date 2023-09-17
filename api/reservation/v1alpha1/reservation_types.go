@@ -24,12 +24,12 @@ import (
 )
 
 type Partition struct {
-	Architecture      string            `json:"architecture"`
-	Cpu               resource.Quantity `json:"cpu"`
-	Memory            resource.Quantity `json:"memory"`
-	Gpu               resource.Quantity `json:"gpu,omitempty"`
-	EphemeralStorage  resource.Quantity `json:"ephemeral-storage,omitempty"`
-	PersistentStorage resource.Quantity `json:"persistent-storage,omitempty"`
+	Architecture     string            `json:"architecture"`
+	Cpu              resource.Quantity `json:"cpu"`
+	Memory           resource.Quantity `json:"memory"`
+	Gpu              resource.Quantity `json:"gpu,omitempty"`
+	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
+	Storage          resource.Quantity `json:"storage,omitempty"`
 }
 
 // ReservationSpec defines the desired state of Reservation
@@ -78,6 +78,17 @@ type ReservationStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Solver ID",type=string,JSONPath=`.spec.solverID`
+// +kubebuilder:printcolumn:name="Reserve",type=boolean,JSONPath=`.spec.reserve`
+// +kubebuilder:printcolumn:name="Purchase",type=boolean,JSONPath=`.spec.purchase`
+// +kubebuilder:printcolumn:name="Seller",type=string,JSONPath=`.spec.seller.name`
+// +kubebuilder:printcolumn:name="Peering Candidate",type=string,priority=1,JSONPath=`.spec.peeringCandidate.name`
+// +kubebuilder:printcolumn:name="Transaction ID",type=string,JSONPath=`.status.transactionID`
+// +kubebuilder:printcolumn:name="Reserve Phase",type=string,priority=1,JSONPath=`.status.reservePhase.phase`
+// +kubebuilder:printcolumn:name="Purchase Phase",type=string,priority=1,JSONPath=`.status.purchasePhase.phase`
+// +kubebuilder:printcolumn:name="Contract Name",type=string,JSONPath=`.status.contract.name`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
+// +kubebuilder:printcolumn:name="Message",type=string,priority=1,JSONPath=`.status.phase.message`
 // Reservation is the Schema for the reservations API
 type Reservation struct {
 	metav1.TypeMeta   `json:",inline"`

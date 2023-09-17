@@ -49,7 +49,7 @@ type PhaseStatus struct {
 } */
 
 type FlavourSelector struct {
-	FlavourType   string         `json:"type,omitempty"`
+	FlavourType   string         `json:"type"`
 	Architecture  string         `json:"architecture"`
 	RangeSelector *RangeSelector `json:"rangeSelector,omitempty"`
 	MatchSelector *MatchSelector `json:"matchSelector,omitempty"`
@@ -66,16 +66,16 @@ type MatchSelector struct {
 
 // RangeSelector represents the criteria for selecting Flavours through a range.
 type RangeSelector struct {
-	MoreThanCPU     resource.Quantity `json:"moreThanCPU,omitempty"`
-	MoreThanMemory  resource.Quantity `json:"moreThanMemory,omitempty"`
-	MoreThanEph     resource.Quantity `json:"moreThanEph,omitempty"`
-	MoreThanStorage resource.Quantity `json:"moreThanStorage,omitempty"`
-	MoreThanGpu     resource.Quantity `json:"moreThanGpu,omitempty"`
-	LessThanCPU     resource.Quantity `json:"lessThanCPU,omitempty"`
-	LessThanMemory  resource.Quantity `json:"lessThanMemory,omitempty"`
-	LessThanEph     resource.Quantity `json:"lessThanEph,omitempty"`
-	LessThanStorage resource.Quantity `json:"lessThanStorage,omitempty"`
-	LessThanGpu     resource.Quantity `json:"lessThanGpu,omitempty"`
+	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
+	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
+	MinEph     resource.Quantity `json:"minEph,omitempty"`
+	MinStorage resource.Quantity `json:"minStorage,omitempty"`
+	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
+	MaxCpu     resource.Quantity `json:"MaxCpu,omitempty"`
+	MaxMemory  resource.Quantity `json:"MaxMemory,omitempty"`
+	MaxEph     resource.Quantity `json:"MaxEph,omitempty"`
+	MaxStorage resource.Quantity `json:"MaxStorage,omitempty"`
+	MaxGpu     resource.Quantity `json:"MaxGpu,omitempty"`
 }
 
 // SolverSpec defines the desired state of Solver
@@ -103,11 +103,15 @@ type SolverStatus struct {
 
 	// FindCandidate describes the status of research of the candidate.
 	// Rear Manager is looking for the best candidate Flavour to solve the Node Orchestrator request.
-	FindCandidate Phase `json:"candidatesPhase,omitempty"`
+	FindCandidate Phase `json:"findCandidate,omitempty"`
 
 	// ReserveAndBuy describes the status of the reservation and purchase of selected Flavour.
 	// Rear Manager is trying to reserve and purchase the resources on the candidate FLUIDOS Node.
-	ReserveAndBuy Phase `json:"purchasingPhase,omitempty"`
+	ReserveAndBuy Phase `json:"reserveAndBuy,omitempty"`
+
+	// Peering describes the status of the peering with the candidate.
+	// Rear Manager is trying to enstablish a peering with the candidate FLUIDOS Node.
+	Peering Phase `json:"peering,omitempty"`
 
 	// DiscoveryPhase describes the status of the Discovery where the Discovery Manager
 	// is looking for matching flavours outside the FLUIDOS Node
@@ -137,6 +141,17 @@ type SolverStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// Solver is the Schema for the solvers API
+// +kubebuilder:printcolumn:name="Intent ID",type=string,JSONPath=`.spec.intentID`
+// +kubebuilder:printcolumn:name="Find Candidate",type=boolean,JSONPath=`.spec.findCandidate`
+// +kubebuilder:printcolumn:name="Reserve and Buy",type=boolean,JSONPath=`.spec.reserveAndBuy`
+// +kubebuilder:printcolumn:name="Peering",type=boolean,JSONPath=`.spec.enstablishPeering`
+// +kubebuilder:printcolumn:name="Candidate Phase",type=string,priority=1,JSONPath=`.status.findCandidate`
+// +kubebuilder:printcolumn:name="Reserving Phase",type=string,priority=1,JSONPath=`.status.reserveAndBuy`
+// +kubebuilder:printcolumn:name="Peering Phase",type=string,priority=1,JSONPath=`.status.peering`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.solverPhase.phase`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.solverPhase.message`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // Solver is the Schema for the solvers API
 type Solver struct {
 	metav1.TypeMeta   `json:",inline"`

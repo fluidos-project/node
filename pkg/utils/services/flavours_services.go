@@ -17,6 +17,7 @@ func GetAllFlavours(cl client.Client) ([]nodecorev1alpha1.Flavour, error) {
 	// List all Flavour CRs
 	err := cl.List(context.Background(), &flavourList)
 	if err != nil {
+		klog.Errorf("Error when listing Flavours: %s", err)
 		return nil, err
 	}
 

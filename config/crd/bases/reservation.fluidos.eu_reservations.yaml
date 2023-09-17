@@ -15,7 +15,45 @@ spec:
     singular: reservation
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.solverID
+      name: Solver ID
+      type: string
+    - jsonPath: .spec.reserve
+      name: Reserve
+      type: boolean
+    - jsonPath: .spec.purchase
+      name: Purchase
+      type: boolean
+    - jsonPath: .spec.seller.name
+      name: Seller
+      type: string
+    - jsonPath: .spec.peeringCandidate.name
+      name: Peering Candidate
+      priority: 1
+      type: string
+    - jsonPath: .status.transactionID
+      name: Transaction ID
+      type: string
+    - jsonPath: .status.reservePhase.phase
+      name: Reserve Phase
+      priority: 1
+      type: string
+    - jsonPath: .status.purchasePhase.phase
+      name: Purchase Phase
+      priority: 1
+      type: string
+    - jsonPath: .status.contract.name
+      name: Contract Name
+      type: string
+    - jsonPath: .status.phase.phase
+      name: Status
+      type: string
+    - jsonPath: .status.phase.message
+      name: Message
+      priority: 1
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Reservation is the Schema for the reservations API
@@ -79,7 +117,7 @@ spec:
                     - type: string
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
-                  persistent-storage:
+                  storage:
                     anyOf:
                     - type: integer
                     - type: string

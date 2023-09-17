@@ -19,6 +19,7 @@ package contractmanager
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,9 +29,9 @@ import (
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
 	"fluidos.eu/node/pkg/rear-controller/gateway"
-	"fluidos.eu/node/pkg/utils/common"
 	"fluidos.eu/node/pkg/utils/namings"
 	"fluidos.eu/node/pkg/utils/resourceforge"
+	"fluidos.eu/node/pkg/utils/tools"
 )
 
 // ReservationReconciler reconciles a Reservation object
@@ -65,13 +66,13 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, nil
 	}
 
-	var peeringCandidate *advertisementv1alpha1.PeeringCandidate
+	var peeringCandidate advertisementv1alpha1.PeeringCandidate
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      reservation.Spec.PeeringCandidate.Name,
 		Namespace: reservation.Spec.PeeringCandidate.Namespace,
-	}, peeringCandidate); err != nil {
+	}, &peeringCandidate); err != nil {
 		klog.Errorf("Error when getting PeeringCandidate %s before reconcile: %s", req.NamespacedName, err)
-		common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseFailed, "Reservation failed: error when getting PeeringCandidate")
+		reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when getting PeeringCandidate")
 		if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 			klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
@@ -86,10 +87,10 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		reservation.Status.Phase.Phase != nodecorev1alpha1.PhaseIdle {
 
 		klog.Infof("Reservation %s started", reservation.Name)
-		reservation.Status.Phase.StartTime = common.GetTimeNow()
-		common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseRunning, "Reservation started")
-		common.SetReserveStatus(&reservation, nodecorev1alpha1.PhaseIdle)
-		common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseIdle)
+		reservation.Status.Phase.StartTime = tools.GetTimeNow()
+		reservation.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation started")
+		reservation.SetReserveStatus(nodecorev1alpha1.PhaseIdle)
+		reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseIdle)
 
 		if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 			klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
@@ -107,14 +108,16 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			res, err := r.Gateway.ReserveFlavour(ctx, &reservation, flavourID)
 			if err != nil {
 				klog.Errorf("Error when reserving flavour for Reservation %s: %s", req.NamespacedName, err)
-				common.SetReserveStatus(&reservation, nodecorev1alpha1.PhaseFailed)
-				common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavour")
+				reservation.SetReserveStatus(nodecorev1alpha1.PhaseFailed)
+				reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavour")
 				if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 					klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{}, err
 			}
+
+			klog.Infof("Transaction: %v", res)
 
 			// Create a Transaction CR starting from the transaction object
 			transaction := resourceforge.ForgeTransactionFromObj(res)
@@ -126,7 +129,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 			klog.Infof("Transaction %s created", transaction.Name)
 			reservation.Status.TransactionID = res.TransactionID
-			common.SetReserveStatus(&reservation, nodecorev1alpha1.PhaseSolved)
+			reservation.SetReserveStatus(nodecorev1alpha1.PhaseSolved)
 
 			// Update the status for reconcile
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
@@ -143,7 +146,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, nil
 		case nodecorev1alpha1.PhaseIdle:
 			klog.Infof("Reserve %s idle", reservation.Name)
-			common.SetReserveStatus(&reservation, nodecorev1alpha1.PhaseRunning)
+			reservation.SetReserveStatus(nodecorev1alpha1.PhaseRunning)
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -151,7 +154,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, nil
 		default:
 			klog.Infof("Reserve %s unknown phase", reservation.Name)
-			common.SetReserveStatus(&reservation, nodecorev1alpha1.PhaseIdle)
+			reservation.SetReserveStatus(nodecorev1alpha1.PhaseIdle)
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -166,7 +169,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		switch purchasePhase {
 		case nodecorev1alpha1.PhaseIdle:
 			klog.Infof("Purchase phase for the reservation %s idle, starting...", reservation.Name)
-			common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseRunning)
+			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseRunning)
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -175,8 +178,8 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		case nodecorev1alpha1.PhaseRunning:
 			if reservation.Status.TransactionID == "" {
 				klog.Infof("TransactionID not set for Reservation %s", reservation.Name)
-				common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseFailed)
-				common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseFailed, "Reservation failed: TransactionID not set")
+				reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseFailed)
+				reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: TransactionID not set")
 				if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 					klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 					return ctrl.Result{}, err
@@ -188,8 +191,8 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			resPurchase, err := r.Gateway.PurchaseFlavour(ctx, transactionID)
 			if err != nil {
 				klog.Errorf("Error when purchasing flavour for Reservation %s: %s", req.NamespacedName, err)
-				common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseFailed)
-				common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseFailed, "Reservation failed: error when purchasing flavour")
+				reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseFailed)
+				reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when purchasing flavour")
 				if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 					klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 					return ctrl.Result{}, err
@@ -199,7 +202,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 			klog.Infof("Purchase completed with status %s", resPurchase.Status)
 
-			common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseRunning)
+			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseRunning)
 
 			if err := r.Update(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s: %s", reservation.Name, err)
@@ -210,14 +213,21 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 			// Create a contract CR now that the reservation is solved
 			contract := resourceforge.ForgeContractFromObj(resPurchase.Contract)
-			if err := r.Create(ctx, contract); err != nil {
+			err = r.Create(ctx, contract)
+			if errors.IsAlreadyExists(err) {
+				klog.Errorf("Error when creating Contract %s: %s", contract.Name, err)
+			} else if err != nil {
 				klog.Errorf("Error when creating Contract %s: %s", contract.Name, err)
 				return ctrl.Result{}, err
 			}
 			klog.Infof("Contract %s created", contract.Name)
 
-			common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseSolved)
-			common.SetReservationPhase(&reservation, nodecorev1alpha1.PhaseSolved, "Reservation solved")
+			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseSolved)
+			reservation.Status.Contract = nodecorev1alpha1.GenericRef{
+				Name:      contract.Name,
+				Namespace: contract.Namespace,
+			}
+			reservation.SetPhase(nodecorev1alpha1.PhaseSolved, "Reservation solved")
 
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
@@ -234,7 +244,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			klog.Infof("Purchase phase for the reservation %s solved", reservation.Name)
 		default:
 			klog.Infof("Purchase phase for the reservation %s unknown", reservation.Name)
-			common.SetPurchaseStatus(&reservation, nodecorev1alpha1.PhaseIdle)
+			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseIdle)
 			if err := r.updateReservationStatus(ctx, &reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err

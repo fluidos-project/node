@@ -13,7 +13,7 @@ import (
 
 // ForgeContractName creates a name for the Contract CR
 func ForgeContractName(flavourID string) string {
-	hash := ForgeUniqueString(flavourID)
+	hash := ForgeUniqueString(flavourID, 4)
 	return fmt.Sprintf("contract-%s-%s", flavourID, hash)
 }
 
@@ -29,7 +29,7 @@ func ForgeReservationName(solverID string) string {
 
 // ForgeFlavourName returns the name of the flavour following the pattern nodeID-Type-rand(4)
 func ForgeFlavourName(nodeID string) string {
-	return nodeID + "-" + flags.RESOURCE_TYPE + "-" + ForgeUniqueString(nodeID)
+	return flags.RESOURCE_TYPE + "-" + ForgeUniqueString(nodeID, 8)
 }
 
 // ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery
@@ -39,6 +39,10 @@ func ForgeDiscoveryName(solverID string) string {
 
 func RetrieveSolverNameFromDiscovery(discoveryName string) string {
 	return strings.TrimPrefix(discoveryName, "discovery-")
+}
+
+func RetrieveSolverNameFromReservation(reservationName string) string {
+	return strings.TrimPrefix(reservationName, "reservation-")
 }
 
 // ForgeTransactionID Generates a unique transaction ID using the current timestamp
@@ -77,10 +81,10 @@ func ForgePrefixClientID() (string, error) {
 }
 
 // ForgeUniqueString computes SHA-256 Hash of the NodeUID
-func ForgeUniqueString(input string) string {
+func ForgeUniqueString(input string, lenght int) string {
 	hash := sha256.Sum256([]byte(input))
 	hashString := hex.EncodeToString(hash[:])
-	uniqueString := hashString[:4]
+	uniqueString := hashString[:lenght]
 
 	return uniqueString
 }

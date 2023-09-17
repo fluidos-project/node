@@ -14,8 +14,6 @@ import (
 
 func main() {
 	done := make(chan bool)
-
-	flag.StringVar(&flags.WorkerLabelKey, "workerLabelKey", "node-role.kubernetes.io/worker", "Label key for worker nodes")
 	flag.StringVar(&flags.DOMAIN, "domain", "fluidos.eu", "Domain name")
 	flag.StringVar(&flags.IP_ADDR, "ip", "", "IP address of the node")
 	flag.StringVar(&flags.AMOUNT, "amount", "", "Amount of money set for the flavours of this node")
@@ -23,7 +21,6 @@ func main() {
 	flag.StringVar(&flags.PERIOD, "period", "", "Period set for the flavours of this node")
 	flag.StringVar(&flags.FLAVOUR_DEFAULT_NAMESPACE, "flavour-namespace", "default", "Namespace where the flavour CRs are created")
 	flag.StringVar(&flags.RESOURCE_TYPE, "resources-types", "k8s-fluidos", "Type of the Flavour related to k8s resources")
-
 	flag.Int64Var(&flags.CPU_MIN, "cpu-min", 0, "Minimum CPU value")
 	flag.Int64Var(&flags.MEMORY_MIN, "memory-min", 0, "Minimum memory value")
 	flag.Int64Var(&flags.CPU_STEP, "cpu-step", 0, "CPU step value")

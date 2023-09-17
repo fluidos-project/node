@@ -4,8 +4,12 @@ metadata:
   name: solver-sample
 spec:
   selector:
-    cpu: 4
-    memory: 16
+    type: k8s-fluidos
+    architecture: arm64
+    rangeSelector:
+      minCpu: 1
+      minMemory: 1
   intentID: "intent-sample"
   findCandidate: true
+  reserveAndBuy: true
   enstablishPeering: false

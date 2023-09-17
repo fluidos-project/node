@@ -40,6 +40,7 @@ import (
 	"fluidos.eu/node/pkg/utils/flags"
 	"fluidos.eu/node/pkg/utils/namings"
 	"fluidos.eu/node/pkg/utils/resourceforge"
+	"fluidos.eu/node/pkg/utils/tools"
 )
 
 // SolverReconciler reconciles a Solver object
@@ -72,7 +73,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		solver.Status.SolverPhase.Phase != nodecorev1alpha1.PhaseRunning &&
 		solver.Status.SolverPhase.Phase != nodecorev1alpha1.PhaseIdle {
 
-		common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseIdle, "Solver initialized")
+		solver.SetPhase(nodecorev1alpha1.PhaseIdle, "Solver initialized")
 
 		if err := r.updateSolverStatus(ctx, &solver); err != nil {
 			klog.Errorf("Error when updating Solver %s status before reconcile: %s", req.NamespacedName, err)
@@ -83,14 +84,18 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	klog.Infof("Reconciling Solver %s", req.NamespacedName)
 
-	findCandidatePhase := solver.Status.FindCandidate
-	reserveAndBuyPhase := solver.Status.ReserveAndBuy
+	findCandidateStatus := solver.Status.FindCandidate
+	reserveAndBuyStatus := solver.Status.ReserveAndBuy
+
+	// Check if the Solver has expired or failed, in this case do nothing and return
+	if solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseFailed ||
+		solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseTimeout ||
+		solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseSolved {
+		return ctrl.Result{}, nil
+	}
 
 	if solver.Spec.FindCandidate {
-
-		klog.Infof("Candidate phase is %s", findCandidatePhase)
-
-		switch findCandidatePhase {
+		switch findCandidateStatus {
 		case nodecorev1alpha1.PhaseIdle:
 			// Search a matching PeeringCandidate if available
 			pc, err := r.searchPeeringCandidates(ctx, &solver)
@@ -108,26 +113,32 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					return ctrl.Result{}, err
 				}
 				klog.Infof("Solver %s has selected and booked candidate %s", req.NamespacedName.Name, selectedPc.Name)
-				common.SetCandidatePhaseSolver(&solver, nodecorev1alpha1.PhaseSolved)
-			} else {
-				// If no PeeringCandidate is available, Create a Discovery
-				klog.Infof("Solver %s has not found any candidate. Trying a Discovery", req.NamespacedName.Name)
-				common.SetCandidatePhaseSolver(&solver, nodecorev1alpha1.PhaseRunning)
+				solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseSolved)
+				solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver has found a candidate")
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
 			}
 
-			common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseRunning, "Solver is running")
+			// If no PeeringCandidate is available, Create a Discovery
+			klog.Infof("Solver %s has not found any candidate. Trying a Discovery", req.NamespacedName.Name)
+			solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseRunning)
+			solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver is trying a Discovery")
 
 			// Update the Solver status
 			if err := r.updateSolverStatus(ctx, &solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, nil
 		case nodecorev1alpha1.PhaseRunning:
 			// Check solver expiration
-			if common.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.EXPIRATION_PHASE_RUNNING) {
+			if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.EXPIRATION_PHASE_RUNNING) {
 				klog.Infof("Solver %s has expired", req.NamespacedName.Name)
 
-				common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseTimeout, "Solver has expired before finding a candidate")
+				solver.SetPhase(nodecorev1alpha1.PhaseTimeout, "Solver has expired before finding a candidate")
 
 				if err := r.updateSolverStatus(ctx, &solver); err != nil {
 					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
@@ -152,7 +163,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, nil
 		case nodecorev1alpha1.PhaseFailed:
 			klog.Infof("Solver %s has not found any candidate", req.NamespacedName.Name)
-			common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseFailed, "Solver has not found any candidate")
+			solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has not found any candidate")
 			if err := r.updateSolverStatus(ctx, &solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -160,14 +171,10 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, nil
 		case nodecorev1alpha1.PhaseSolved:
 			klog.Infof("Solver %s has found a candidate", req.NamespacedName.Name)
-			common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseRunning, "Solver has found a candidate")
-			if err := r.updateSolverStatus(ctx, &solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
+			break
 		default:
-			common.SetCandidatePhaseSolver(&solver, nodecorev1alpha1.PhaseIdle)
+			solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseIdle)
+			solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver is running")
 			// Update the Solver status
 			if err := r.updateSolverStatus(ctx, &solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
@@ -175,106 +182,132 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}
 			return ctrl.Result{}, nil
 		}
-
+	} else {
+		klog.Infof("Solver %s Solved : No need to find a candidate", req.NamespacedName.Name)
+		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to find a candidate")
+		err := r.updateSolverStatus(ctx, &solver)
+		if err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
-	if solver.Spec.ReserveAndBuy && findCandidatePhase == nodecorev1alpha1.PhaseSolved {
-		switch reserveAndBuyPhase {
-		case nodecorev1alpha1.PhaseIdle:
-			klog.Infof("Creating the Reservation", req.NamespacedName.Name)
+	if solver.Spec.ReserveAndBuy {
+		if findCandidateStatus == nodecorev1alpha1.PhaseSolved {
+			klog.Infof("ReserveAndBuy %s", reserveAndBuyStatus)
+			switch reserveAndBuyStatus {
+			case nodecorev1alpha1.PhaseIdle:
+				klog.Infof("Creating the Reservation %s", req.NamespacedName.Name)
+				// Create the Reservation
+				var pc advertisementv1alpha1.PeeringCandidate
+				pcNamespaceName := types.NamespacedName{Name: solver.Status.PeeringCandidate.Name, Namespace: solver.Status.PeeringCandidate.Namespace}
 
-			// Create the Reservation
-			var pc *advertisementv1alpha1.PeeringCandidate
-			pcNamespaceName := types.NamespacedName{Name: solver.Status.PeeringCandidate.Name, Namespace: solver.Status.PeeringCandidate.Namespace}
+				// Get the PeeringCandidate from the Solver
+				if err := r.Get(ctx, pcNamespaceName, &pc); err != nil {
+					klog.Errorf("Error when getting PeeringCandidate %s: %s", solver.Status.PeeringCandidate.Name, err)
+					return ctrl.Result{}, err
+				}
 
-			// Get the PeeringCandidate from the Solver
-			if err := r.Get(ctx, pcNamespaceName, pc); err != nil {
-				klog.Errorf("Error when getting PeeringCandidate %s: %s", solver.Status.PeeringCandidate.Name, err)
-				return ctrl.Result{}, err
-			}
+				// Forge the Partition
+				partition := resourceforge.ForgePartition(solver.Spec.Selector)
 
-			// Forge the Reservation
-			reservation := resourceforge.ForgeReservation(*pc)
-			if err := r.Client.Create(ctx, reservation); err != nil {
-				klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
-				return ctrl.Result{}, err
-			}
+				// Forge the Reservation
+				reservation := resourceforge.ForgeReservation(pc, partition)
+				if err := r.Client.Create(ctx, reservation); err != nil {
+					klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
+					return ctrl.Result{}, err
+				}
 
-			klog.Infof("Reservation %s created", reservation.Name)
+				klog.Infof("Reservation %s created", reservation.Name)
 
-			common.SetReservationPhaseSolver(&solver, nodecorev1alpha1.PhaseRunning)
-			common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseRunning, "Reservation created")
-			if err := r.updateSolverStatus(ctx, &solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		case nodecorev1alpha1.PhaseRunning:
-			// Check solver expiration
-			if common.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.EXPIRATION_PHASE_RUNNING) {
-				klog.Infof("Solver %s has expired", req.NamespacedName.Name)
+				solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseRunning)
+				solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation created")
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			case nodecorev1alpha1.PhaseRunning:
+				// Check solver expiration
+				if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.EXPIRATION_PHASE_RUNNING) {
+					klog.Infof("Solver %s has expired", req.NamespacedName.Name)
+					solver.SetPhase(nodecorev1alpha1.PhaseTimeout, "Solver has expired before reserving the resources")
 
-				common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseTimeout, "Solver has expired before reserving the resources")
+					if err := r.updateSolverStatus(ctx, &solver); err != nil {
+						klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+
+				reservation := &reservationv1alpha1.Reservation{}
+				resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(solver.Name), Namespace: flags.RESERVATION_DEFAULT_NAMESPACE}
+
+				// Get the Reservation
+				err := r.Get(ctx, resNamespaceName, reservation)
+				if client.IgnoreNotFound(err) != nil {
+					klog.Errorf("Error when getting Reservation for Solver %s: %s", solver.Name, err)
+					return ctrl.Result{}, err
+				}
+
+				common.ReservationStatusCheck(&solver, reservation)
 
 				if err := r.updateSolverStatus(ctx, &solver); err != nil {
 					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{}, nil
+
+			case nodecorev1alpha1.PhaseFailed:
+				klog.Infof("Solver %s has failed to reserve and buy the resources", req.NamespacedName.Name)
+				solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has failed to reserve the resources")
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			case nodecorev1alpha1.PhaseSolved:
+				klog.Infof("Solver %s has reserved and purchased the resources", req.NamespacedName.Name)
+				break
+			default:
+				solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseIdle)
+				// Update the Solver status
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
 			}
-
-			reservation := &reservationv1alpha1.Reservation{}
-			flavourID := namings.RetrieveFlavourNameFromPC(solver.Status.PeeringCandidate.Name)
-			resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(flavourID), Namespace: flags.RESERVATION_DEFAULT_NAMESPACE}
-
-			// Get the Reservation
-			if err := r.Get(ctx, resNamespaceName, reservation); client.IgnoreNotFound(err) != nil {
-				klog.Errorf("Error when getting Reservation for Solver %s: %s", solver.Name, err)
-				return ctrl.Result{}, err
-			}
-
-			common.ReservationStatusCheck(&solver, reservation)
-
-			if err := r.updateSolverStatus(ctx, &solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-
-		case nodecorev1alpha1.PhaseFailed:
-			klog.Infof("Solver %s has failed to reserve the resources", req.NamespacedName.Name)
-			common.SetSolverPhase(&solver, nodecorev1alpha1.PhaseFailed, "Solver has failed to reserve the resources")
-			break
-		case nodecorev1alpha1.PhaseSolved:
-			// Update the Solver status
-			break
-		default:
-			// Initialize the Reservation phase
-			break
 		}
-
-		switch reserveAndBuyPhase {
+	} else {
+		klog.Infof("Solver %s Solved : No need to reserve and buy the resources", req.NamespacedName.Name)
+		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to reserve and buy the resources")
+		err := r.updateSolverStatus(ctx, &solver)
+		if err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
 	}
 
-	if solver.Spec.EnstablishPeering && reserveAndBuyPhase == nodecorev1alpha1.PhaseSolved {
-		// Peering phase to be implemented
+	if solver.Spec.EnstablishPeering {
+		if reserveAndBuyStatus == nodecorev1alpha1.PhaseSolved {
+			// Peering phase to be implemented
+		}
+	} else {
+		klog.Infof("Solver %s Solved : No need to enstablish a peering", req.NamespacedName.Name)
+		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to enstablish a peering")
+		err := r.updateSolverStatus(ctx, &solver)
+		if err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	return ctrl.Result{}, nil
 }
-
-/* func (r *SolverReconciler) discoveryEnrolled(o client.Object) []reconcile.Request {
-	requests := []reconcile.Request{}
-	discovery := o.(*advertisementv1alpha1.Discovery)
-	solver := nodecorev1alpha1.Solver{}
-	if err := r.Get(context.Background(), types.NamespacedName{Name: discovery.Spec.SolverName, Namespace: discovery.Namespace}, &solver); err != nil {
-		klog.Errorf("Error when getting Solver %s: %s", discovery.Spec.SolverName, err)
-		return nil
-	}
-	requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Name: solver.Name, Namespace: solver.Namespace}})
-	return requests
-} */
 
 func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context, solver *nodecorev1alpha1.Solver) ([]advertisementv1alpha1.PeeringCandidate, error) {
 	pc := advertisementv1alpha1.PeeringCandidateList{}
@@ -358,40 +391,6 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context, so
 	return selected, nil
 }
 
-/* func (r *SolverReconciler) createOrUpdateDiscovery(ctx context.Context, solver *nodecorev1alpha1.Solver) (*nodecorev1alpha1.GenericRef, error) {
-	pc := &nodecorev1alpha1.GenericRef{}
-	// Create the Discovery
-	discovery := resourceforge.ForgeDiscovery(solver.Spec.Selector, solver.Name)
-	if _, err := ctrl.CreateOrUpdate(ctx, r.Client, discovery, func() error {
-		if discovery.Status.Phase.Phase == nodecorev1alpha1.PhaseSolved {
-			// Get the PeeringCandidate
-			pc = &discovery.Spec.PeeringCandidate
-			return nil
-		}
-		if discovery.Status.Phase.Phase == nodecorev1alpha1.PhaseTimeout || discovery.Status.Phase.Phase == nodecorev1alpha1.PhaseIdle {
-			return nil
-		}
-		if discovery.Status.Phase.Phase == nodecorev1alpha1.PhaseRunning {
-			// Check if the phase has expired
-			if common.CheckExpiration(discovery.Status.Phase.LastChangeTime, flags.EXPIRATION_PHASE_RUNNING) {
-				discovery.Status.Phase.Phase = nodecorev1alpha1.PhaseTimeout
-				discovery.Status.Phase.LastChangeTime = common.GetTimeNow()
-				return nil
-			}
-			return nil
-		}
-		pc = nil
-		return nil
-	}); err != nil {
-		klog.Errorf("Error when creating Discovery for Solver %s: %s", solver.Name, err)
-		return nil, err
-	}
-	if pc != nil {
-		return pc, nil
-	}
-	return nil, nil
-} */
-
 func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nodecorev1alpha1.Solver) (*advertisementv1alpha1.Discovery, error) {
 	discovery := &advertisementv1alpha1.Discovery{}
 
@@ -410,36 +409,6 @@ func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nod
 	return discovery, nil
 }
 
-/* func (r *SolverReconciler) createOrGetReservation(ctx context.Context, solver *nodecorev1alpha1.Solver) (*reservationv1alpha1.Reservation, error) {
-	reservation := &reservationv1alpha1.Reservation{}
-	flavourID := namings.ForgeFlavourNameFromPC(solver.Status.PeeringCandidate.Name)
-	resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(flavourID), Namespace: flags.RESERVATION_DEFAULT_NAMESPACE}
-	pcNamespaceName := types.NamespacedName{Name: solver.Status.PeeringCandidate.Name, Namespace: solver.Status.PeeringCandidate.Namespace}
-
-	// Get the Reservation
-	if err := r.Get(ctx, resNamespaceName, reservation); client.IgnoreNotFound(err) != nil {
-		klog.Errorf("Error when getting Reservation for Solver %s: %s", solver.Name, err)
-		return nil, err
-	} else if err != nil {
-		// Create the Reservation
-		var pc *advertisementv1alpha1.PeeringCandidate
-
-		// Get the PeeringCandidate from the Solver
-		if err := r.Get(ctx, pcNamespaceName, pc); err != nil {
-			klog.Errorf("Error when getting PeeringCandidate %s: %s", solver.Status.PeeringCandidate.Name, err)
-			return nil, err
-		}
-
-		// Forge the Reservation
-		reservation := resourceforge.ForgeReservationCustomResource(*pc)
-		if err := r.Client.Create(ctx, reservation); err != nil {
-			klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
-			return nil, err
-		}
-	}
-	return reservation, nil
-} */
-
 func (r *SolverReconciler) updateSolverStatus(ctx context.Context, solver *nodecorev1alpha1.Solver) error {
 	return r.Status().Update(ctx, solver)
 }
@@ -448,23 +417,12 @@ func (r *SolverReconciler) updateSolverStatus(ctx context.Context, solver *nodec
 func (r *SolverReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&nodecorev1alpha1.Solver{}).
-		//Owns(&advertisementv1alpha1.Discovery{}).
-		//Owns(&reservationv1alpha1.Contract{}, builder.WithPredicates()).
-		/* Watches(&source.Kind{Type: &advertisementv1alpha1.Discovery{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(predicate.Funcs{})).WithEventFilter(predicate.Funcs{
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				return e.ObjectNew.(*advertisementv1alpha1.Discovery).Status.Phase.Phase == nodecorev1alpha1.PhaseSolved
-			},
-		}). */
-		// Here we want to watch Discovery resources which status is Solved
-		// This is because we want to create a contract only when a Discovery has found a candidate
 		Watches(&advertisementv1alpha1.Discovery{}, handler.EnqueueRequestsFromMapFunc(
 			r.discoveryToSolver,
 		), builder.WithPredicates(discoveryPredicate())).
 		Watches(&reservationv1alpha1.Reservation{}, handler.EnqueueRequestsFromMapFunc(
 			r.reservationToSolver,
 		), builder.WithPredicates(reservationPredicate())).
-		// Here we want to watch Contract resources which status is Solved
-
 		Complete(r)
 }
 
@@ -499,7 +457,7 @@ func (r *SolverReconciler) discoveryToSolver(ctx context.Context, o client.Objec
 }
 
 func (r *SolverReconciler) reservationToSolver(ctx context.Context, o client.Object) []reconcile.Request {
-	solverName := o.(*reservationv1alpha1.Reservation).Spec.SolverID
+	solverName := namings.RetrieveSolverNameFromReservation(o.GetName())
 	return []reconcile.Request{
 		{
 			NamespacedName: types.NamespacedName{

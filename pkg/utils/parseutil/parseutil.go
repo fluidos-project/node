@@ -30,28 +30,28 @@ func ParseFlavourSelector(selector nodecorev1alpha1.FlavourSelector) (s models.S
 	}
 
 	if selector.RangeSelector != nil {
-		moreThanCpu, _ := selector.RangeSelector.MoreThanCPU.AsInt64()
-		moreThanMemory, _ := selector.RangeSelector.MoreThanMemory.AsInt64()
-		moreThanEph, _ := selector.RangeSelector.MoreThanEph.AsInt64()
-		moreThanStorage, _ := selector.RangeSelector.MoreThanStorage.AsInt64()
-		moreThanGpu, _ := selector.RangeSelector.MoreThanGpu.AsInt64()
-		lessThanCpu, _ := selector.RangeSelector.LessThanCPU.AsInt64()
-		lessThanMemory, _ := selector.RangeSelector.LessThanMemory.AsInt64()
-		lessThanEph, _ := selector.RangeSelector.LessThanEph.AsInt64()
-		lessThanStorage, _ := selector.RangeSelector.LessThanStorage.AsInt64()
-		lessThanGpu, _ := selector.RangeSelector.LessThanGpu.AsInt64()
+		minCpu, _ := selector.RangeSelector.MinCpu.AsInt64()
+		minMemory, _ := selector.RangeSelector.MinMemory.AsInt64()
+		minEph, _ := selector.RangeSelector.MinEph.AsInt64()
+		minStorage, _ := selector.RangeSelector.MinStorage.AsInt64()
+		minGpu, _ := selector.RangeSelector.MinGpu.AsInt64()
+		maxCpu, _ := selector.RangeSelector.MaxCpu.AsInt64()
+		maxMemory, _ := selector.RangeSelector.MaxMemory.AsInt64()
+		maxEph, _ := selector.RangeSelector.MaxEph.AsInt64()
+		maxStorage, _ := selector.RangeSelector.MaxStorage.AsInt64()
+		maxGpu, _ := selector.RangeSelector.MaxGpu.AsInt64()
 
 		s.RangeSelector = &models.RangeSelector{
-			MoreThanCPU:     int(moreThanCpu),
-			MoreThanMemory:  int(moreThanMemory),
-			MoreThanEph:     int(moreThanEph),
-			MoreThanStorage: int(moreThanStorage),
-			MoreThanGpu:     int(moreThanGpu),
-			LessThanCPU:     int(lessThanCpu),
-			LessThanMemory:  int(lessThanMemory),
-			LessThanEph:     int(lessThanEph),
-			LessThanStorage: int(lessThanStorage),
-			LessThanGpu:     int(lessThanGpu),
+			MinCpu:     int(minCpu),
+			MinMemory:  int(minMemory),
+			MinEph:     int(minEph),
+			MinStorage: int(minStorage),
+			MinGpu:     int(minGpu),
+			MaxCpu:     int(maxCpu),
+			MaxMemory:  int(maxMemory),
+			MaxEph:     int(maxEph),
+			MaxStorage: int(maxStorage),
+			MaxGpu:     int(maxGpu),
 		}
 	}
 
@@ -62,7 +62,7 @@ func ParsePartition(partition reservationv1alpha1.Partition) models.Partition {
 	cpu, _ := partition.Cpu.AsInt64()
 	memory, _ := partition.Memory.AsInt64()
 	ephStorage, _ := partition.EphemeralStorage.AsInt64()
-	storage, _ := partition.PersistentStorage.AsInt64()
+	storage, _ := partition.Storage.AsInt64()
 	gpu, _ := partition.Gpu.AsInt64()
 
 	return models.Partition{
@@ -84,7 +84,7 @@ func ParsePartitionFromObj(partition models.Partition) reservationv1alpha1.Parti
 		p.EphemeralStorage = *resource.NewQuantity(int64(partition.EphemeralStorage), resource.BinarySI)
 	}
 	if partition.Storage != 0 {
-		p.PersistentStorage = *resource.NewQuantity(int64(partition.Storage), resource.BinarySI)
+		p.Storage = *resource.NewQuantity(int64(partition.Storage), resource.BinarySI)
 	}
 	if partition.Gpu != 0 {
 		p.Gpu = *resource.NewQuantity(int64(partition.Gpu), resource.DecimalSI)
@@ -92,8 +92,8 @@ func ParsePartitionFromObj(partition models.Partition) reservationv1alpha1.Parti
 	return p
 }
 
-func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.Owner {
-	return models.Owner{
+func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
+	return models.NodeIdentity{
 		NodeID: node.NodeID,
 		IP:     node.IP,
 		Domain: node.Domain,

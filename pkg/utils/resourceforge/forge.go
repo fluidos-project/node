@@ -9,11 +9,11 @@ import (
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	"fluidos.eu/node/pkg/utils/common"
 	"fluidos.eu/node/pkg/utils/flags"
 	"fluidos.eu/node/pkg/utils/models"
 	"fluidos.eu/node/pkg/utils/namings"
 	"fluidos.eu/node/pkg/utils/parseutil"
+	"fluidos.eu/node/pkg/utils/tools"
 )
 
 // ForgeDiscovery creates a Discovery CR from a FlavourSelector and a solverID
@@ -58,7 +58,7 @@ func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, so
 }
 
 // ForgeReservation creates a Reservation CR from a PeeringCandidate
-func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate) *reservationv1alpha1.Reservation {
+func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition reservationv1alpha1.Partition) *reservationv1alpha1.Reservation {
 	solverID := peeringCandidate.Spec.SolverID
 	return &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
@@ -66,6 +66,7 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate) *
 			Namespace: flags.RESERVATION_DEFAULT_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.ReservationSpec{
+			SolverID: solverID,
 			Buyer: nodecorev1alpha1.NodeIdentity{
 				Domain: flags.DOMAIN,
 				NodeID: flags.CLIENT_ID,
@@ -80,8 +81,9 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate) *
 				Name:      peeringCandidate.Name,
 				Namespace: peeringCandidate.Namespace,
 			},
-			Reserve:  true,
-			Purchase: true,
+			Reserve:   true,
+			Purchase:  true,
+			Partition: partition,
 		},
 	}
 }
@@ -108,7 +110,7 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
 				Phase:     nodecorev1alpha1.PhaseActive,
-				StartTime: common.GetTimeNow(),
+				StartTime: tools.GetTimeNow(),
 			},
 		},
 	}
@@ -125,6 +127,7 @@ func ForgeFlavourFromMetrics(node models.NodeInfo) (flavour *nodecorev1alpha1.Fl
 			ProviderID: node.UID,
 			Type:       nodecorev1alpha1.K8S,
 			Characteristics: nodecorev1alpha1.Characteristics{
+				Architecture:     node.Architecture,
 				Cpu:              node.ResourceMetrics.CPUAvailable,
 				Memory:           node.ResourceMetrics.MemoryAvailable,
 				EphemeralStorage: node.ResourceMetrics.EphemeralStorage,
@@ -168,7 +171,7 @@ func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transactio
 		Buyer:         req.Buyer,
 		FlavourID:     req.FlavourID,
 		Partition:     req.Partition,
-		StartTime:     common.GetTimeNow(),
+		StartTime:     tools.GetTimeNow(),
 	}
 }
 
@@ -218,7 +221,7 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
 				Phase:     nodecorev1alpha1.PhaseActive,
-				StartTime: common.GetTimeNow(),
+				StartTime: tools.GetTimeNow(),
 			},
 		},
 	}
@@ -307,4 +310,15 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 		f.Spec.Characteristics.Architecture = flavour.Characteristics.Architecture
 	}
 	return f
+}
+
+func ForgePartition(selector nodecorev1alpha1.FlavourSelector) reservationv1alpha1.Partition {
+	return reservationv1alpha1.Partition{
+		Architecture:     selector.Architecture,
+		Cpu:              selector.RangeSelector.MinCpu,
+		Memory:           selector.RangeSelector.MinMemory,
+		EphemeralStorage: selector.RangeSelector.MinEph,
+		Storage:          selector.RangeSelector.MinStorage,
+		Gpu:              selector.RangeSelector.MinGpu,
+	}
 }

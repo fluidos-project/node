@@ -29,3 +29,11 @@ type NodeIdentity struct {
 	NodeID string `json:"nodeID"`
 	IP     string `json:"ip"`
 }
+
+// toString() returns a string representation of the GenericRef.
+func (r GenericRef) toString() string {
+	if r.Namespace != "" {
+		return r.Namespace + "/" + r.Name
+	}
+	return r.Name
+}
