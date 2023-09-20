@@ -13,29 +13,36 @@ import (
 
 // ForgeContractName creates a name for the Contract CR
 func ForgeContractName(flavourID string) string {
-	hash := ForgeUniqueString(flavourID)
+	hash := ForgeUniqueString(flavourID, 4)
 	return fmt.Sprintf("contract-%s-%s", flavourID, hash)
 }
 
 // ForgePeeringCandidateName generates a name for the PeeringCandidate
-func ForgePeeringCandidateName(flavorName string) string {
-	return fmt.Sprintf("peeringcandidate-%s", flavorName)
+func ForgePeeringCandidateName(flavourID string) string {
+	return fmt.Sprintf("peeringcandidate-%s", flavourID)
 }
 
 // ForgeReservationName generates a name for the Reservation
-func ForgeReservationName(flavorName string) string {
-	hash := ForgeUniqueString(flavorName)
-	return fmt.Sprintf("reservation-%s-%s", flavorName, hash)
+func ForgeReservationName(solverID string) string {
+	return fmt.Sprintf("reservation-%s", solverID)
 }
 
 // ForgeFlavourName returns the name of the flavour following the pattern nodeID-Type-rand(4)
-func ForgeFlavourName(id string) string {
-	return id + "-" + flags.RESOURCE_TYPE + "-" + ForgeUniqueString(id)
+func ForgeFlavourName(nodeID string) string {
+	return flags.RESOURCE_TYPE + "-" + ForgeUniqueString(nodeID, 8)
 }
 
 // ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery
 func ForgeDiscoveryName(solverID string) string {
-	return fmt.Sprintf("%s-discovery", solverID)
+	return fmt.Sprintf("discovery-%s", solverID)
+}
+
+func RetrieveSolverNameFromDiscovery(discoveryName string) string {
+	return strings.TrimPrefix(discoveryName, "discovery-")
+}
+
+func RetrieveSolverNameFromReservation(reservationName string) string {
+	return strings.TrimPrefix(reservationName, "reservation-")
 }
 
 // ForgeTransactionID Generates a unique transaction ID using the current timestamp
@@ -56,8 +63,8 @@ func ForgeTransactionID() (string, error) {
 	return transactionID, nil
 }
 
-// ForgeFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate
-func ForgeFlavourNameFromPC(pcName string) string {
+// RetrieveFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate
+func RetrieveFlavourNameFromPC(pcName string) string {
 	return strings.TrimPrefix(pcName, "peeringcandidate-")
 }
 
@@ -74,10 +81,10 @@ func ForgePrefixClientID() (string, error) {
 }
 
 // ForgeUniqueString computes SHA-256 Hash of the NodeUID
-func ForgeUniqueString(input string) string {
+func ForgeUniqueString(input string, lenght int) string {
 	hash := sha256.Sum256([]byte(input))
 	hashString := hex.EncodeToString(hash[:])
-	uniqueString := hashString[:4]
+	uniqueString := hashString[:lenght]
 
 	return uniqueString
 }

@@ -39,9 +39,6 @@ type DiscoverySpec struct {
 	// This flag indicates that needs to be enstablished a subscription to the provider in case a match is found.
 	// In order to have periodic updates of the status of the matching Flavour
 	Subscribe bool `json:"subscribe"`
-
-	// This is the reference to the PeeringCandidate CRD that is the result of the discovery if a match is found
-	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery
@@ -50,13 +47,19 @@ type DiscoveryStatus struct {
 	// This is the current phase of the discovery
 	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
 
-	// Attempt is the number of attempts that have been done to do the discovery
-	Attempt int `json:"attempt,omitempty"`
+	// This is the reference to the PeeringCandidate CRD that is the result of the discovery if a match is found
+	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Solver ID",type=string,JSONPath=`.spec.solverID`
+// +kubebuilder:printcolumn:name="Subscribe",type=boolean,JSONPath=`.spec.subscribe`
+// +kubebuilder:printcolumn:name="PC Namespace",type=string,JSONPath=`.status.peeringCandidate.namespace`
+// +kubebuilder:printcolumn:name="PC Name",type=string,JSONPath=`.status.peeringCandidate.name`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.phase.message`
 // Discovery is the Schema for the discoveries API
 type Discovery struct {
 	metav1.TypeMeta   `json:",inline"`

@@ -150,6 +150,9 @@ spec:
                         - cpu
                         - memory
                         type: object
+                      flavourID:
+                        description: FlavourID is the name of the Flavour.
+                        type: string
                       optionalFields:
                         description: This field is used to specify the optional fields
                           that can be retrieved from the Flavour. In the future it
@@ -259,6 +262,7 @@ spec:
                         type: string
                     required:
                     - characteristics
+                    - flavourID
                     - optionalFields
                     - owner
                     - policy
@@ -293,13 +297,15 @@ spec:
                   sold/bought. So it will reflect the dimension of the resources allocated
                   on the remote cluster and reflected on the local virtual node.
                 properties:
+                  architecture:
+                    type: string
                   cpu:
                     anyOf:
                     - type: integer
                     - type: string
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
-                  ephemeralStorage:
+                  ephemeral-storage:
                     anyOf:
                     - type: integer
                     - type: string
@@ -324,6 +330,7 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                 required:
+                - architecture
                 - cpu
                 - memory
                 type: object
@@ -347,7 +354,6 @@ spec:
                 type: string
             required:
             - buyer
-            - credentials
             - flavour
             - seller
             type: object

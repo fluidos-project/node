@@ -106,6 +106,9 @@ spec:
                         - cpu
                         - memory
                         type: object
+                      flavourID:
+                        description: FlavourID is the name of the Flavour.
+                        type: string
                       optionalFields:
                         description: This field is used to specify the optional fields
                           that can be retrieved from the Flavour. In the future it
@@ -215,6 +218,7 @@ spec:
                         type: string
                     required:
                     - characteristics
+                    - flavourID
                     - optionalFields
                     - owner
                     - policy
