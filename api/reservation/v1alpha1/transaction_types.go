@@ -29,6 +29,9 @@ type TransactionSpec struct {
 	// Buyer is the buyer Identity of the Fluidos Node that is reserving the Flavour
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
 
+	// Partition is the partition of the flavour that is being reserved
+	Partition Partition `json:"partition,omitempty"`
+
 	// StartTime is the time at which the reservation should start
 	StartTime string `json:"startTime,omitempty"`
 }

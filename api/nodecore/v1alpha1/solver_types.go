@@ -33,12 +33,49 @@ type PhaseStatus struct {
 	EndTime        string `json:"endTime,omitempty"`
 }
 
+// Selector represents the criteria for selecting Flavours.
+/* type Selector struct {
+	FlavourType      string `json:"type,omitempty"`
+	Architecture     string `json:"architecture,omitempty"`
+	Cpu              int    `json:"cpu,omitempty"`
+	Memory           int    `json:"memory,omitempty"`
+	EphemeralStorage int    `json:"ephemeral-storage,omitempty"`
+	MoreThanCpu      int    `json:"moreThanCpu,omitempty"`
+	MoreThanMemory   int    `json:"moreThanMemory,omitempty"`
+	MoreThanEph      int    `json:"moreThanEph,omitempty"`
+	LessThanCpu      int    `json:"lessThanCpu,omitempty"`
+	LessThanMemory   int    `json:"lessThanMemory,omitempty"`
+	LessThanEph      int    `json:"lessThanEph,omitempty"`
+} */
+
 type FlavourSelector struct {
+	FlavourType   string         `json:"type"`
+	Architecture  string         `json:"architecture"`
+	RangeSelector *RangeSelector `json:"rangeSelector,omitempty"`
+	MatchSelector *MatchSelector `json:"matchSelector,omitempty"`
+}
+
+// MatchSelector represents the criteria for selecting Flavours through a strict match.
+type MatchSelector struct {
 	Cpu              resource.Quantity `json:"cpu"`
 	Memory           resource.Quantity `json:"memory"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
+}
+
+// RangeSelector represents the criteria for selecting Flavours through a range.
+type RangeSelector struct {
+	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
+	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
+	MinEph     resource.Quantity `json:"minEph,omitempty"`
+	MinStorage resource.Quantity `json:"minStorage,omitempty"`
+	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
+	MaxCpu     resource.Quantity `json:"MaxCpu,omitempty"`
+	MaxMemory  resource.Quantity `json:"MaxMemory,omitempty"`
+	MaxEph     resource.Quantity `json:"MaxEph,omitempty"`
+	MaxStorage resource.Quantity `json:"MaxStorage,omitempty"`
+	MaxGpu     resource.Quantity `json:"MaxGpu,omitempty"`
 }
 
 // SolverSpec defines the desired state of Solver
@@ -54,8 +91,8 @@ type SolverSpec struct {
 	// FindCandidate is a flag that indicates if the solver should find a candidate to solve the intent.
 	FindCandidate bool `json:"findCandidate,omitempty"`
 
-	// StipulateContract is a flag that indicates if the solver should stipulate a contract with the candidate.
-	// StipulateContract bool `json:"stipulateContract,omitempty"`
+	// ReserveAndBuy is a flag that indicates if the solver should reserve and buy the resources on the candidate.
+	ReserveAndBuy bool `json:"reserveAndBuy,omitempty"`
 
 	// EnstablishPeering is a flag that indicates if the solver should enstablish a peering with the candidate.
 	EnstablishPeering bool `json:"enstablishPeering,omitempty"`
@@ -64,21 +101,25 @@ type SolverSpec struct {
 // SolverStatus defines the observed state of Solver
 type SolverStatus struct {
 
-	// DiscoveryPhase describes the status of the discovery where the Discovery Manager
+	// FindCandidate describes the status of research of the candidate.
+	// Rear Manager is looking for the best candidate Flavour to solve the Node Orchestrator request.
+	FindCandidate Phase `json:"findCandidate,omitempty"`
+
+	// ReserveAndBuy describes the status of the reservation and purchase of selected Flavour.
+	// Rear Manager is trying to reserve and purchase the resources on the candidate FLUIDOS Node.
+	ReserveAndBuy Phase `json:"reserveAndBuy,omitempty"`
+
+	// Peering describes the status of the peering with the candidate.
+	// Rear Manager is trying to enstablish a peering with the candidate FLUIDOS Node.
+	Peering Phase `json:"peering,omitempty"`
+
+	// DiscoveryPhase describes the status of the Discovery where the Discovery Manager
 	// is looking for matching flavours outside the FLUIDOS Node
 	DiscoveryPhase Phase `json:"discoveryPhase,omitempty"`
 
-	// CandidatesPhase describes the status of the PeeringCandidates phase where the
-	// Rear Manager is looking for the best candidate Flavour to solve the Node Orchestrator request.
-	CandidatesPhase Phase `json:"candidatesPhase,omitempty"`
-
-	// ReservationPhase describes the status of the Reservation phase where the Contract Manager
-	// is reserving the resources on the candidate node.
+	// ReservationPhase describes the status of the Reservation where the Contract Manager
+	// is reserving and purchasing the resources on the candidate node.
 	ReservationPhase Phase `json:"reservationPhase,omitempty"`
-
-	// PurchasingPhase describes the status of the Purchasing phase where the Contract Manager
-	// is purchasing the reserved resources on the candidate node.
-	PurchasingPhase Phase `json:"purchasingPhase,omitempty"`
 
 	// ConsumePhase describes the status of the Consume phase where the VFM (Liqo) is enstablishing
 	// a peering with the candidate node.
@@ -100,6 +141,17 @@ type SolverStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// Solver is the Schema for the solvers API
+// +kubebuilder:printcolumn:name="Intent ID",type=string,JSONPath=`.spec.intentID`
+// +kubebuilder:printcolumn:name="Find Candidate",type=boolean,JSONPath=`.spec.findCandidate`
+// +kubebuilder:printcolumn:name="Reserve and Buy",type=boolean,JSONPath=`.spec.reserveAndBuy`
+// +kubebuilder:printcolumn:name="Peering",type=boolean,JSONPath=`.spec.enstablishPeering`
+// +kubebuilder:printcolumn:name="Candidate Phase",type=string,priority=1,JSONPath=`.status.findCandidate`
+// +kubebuilder:printcolumn:name="Reserving Phase",type=string,priority=1,JSONPath=`.status.reserveAndBuy`
+// +kubebuilder:printcolumn:name="Peering Phase",type=string,priority=1,JSONPath=`.status.peering`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.solverPhase.phase`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.solverPhase.message`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // Solver is the Schema for the solvers API
 type Solver struct {
 	metav1.TypeMeta   `json:",inline"`

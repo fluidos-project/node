@@ -26,16 +26,16 @@ import (
 
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
 	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	"fluidos.eu/node/pkg/utils/common"
-	"fluidos.eu/node/pkg/utils/models"
+	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
 	resourceforge "fluidos.eu/node/pkg/utils/resourceforge"
-	"fluidos.eu/node/pkg/utils/services"
+	"fluidos.eu/node/pkg/utils/tools"
 )
 
 // DiscoveryReconciler reconciles a Discovery object
 type DiscoveryReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
+	Gateway *gateway.Gateway
 }
 
 //+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
@@ -75,8 +75,8 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseRunning &&
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseIdle {
 
-		discovery.Status.Phase.StartTime = common.GetTimeNow()
-		common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseRunning, "Discovery started")
+		discovery.Status.Phase.StartTime = tools.GetTimeNow()
+		discovery.SetPhase(nodecorev1alpha1.PhaseRunning, "Discovery started")
 
 		if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
 			klog.Errorf("Error when updating Discovery %s status before reconcile: %s", req.NamespacedName, err)
@@ -87,15 +87,20 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	switch discovery.Status.Phase.Phase {
 	case nodecorev1alpha1.PhaseRunning:
-		flavours, err := services.SearchFlavour(discovery.Spec.Selector)
+		flavours, err := r.Gateway.DiscoverFlavours(discovery.Spec.Selector)
 		if err != nil {
 			klog.Errorf("Error when getting Flavour: %s", err)
-			return ctrl.Result{}, err
+			discovery.SetPhase(nodecorev1alpha1.PhaseFailed, "Error when getting Flavour")
+			if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
+				klog.Errorf("Error when updating Discovery %s status: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
 
 		if len(flavours) == 0 {
 			klog.Infof("No Flavours found")
-			common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseFailed, "No Flavours found")
+			discovery.SetPhase(nodecorev1alpha1.PhaseFailed, "No Flavours found")
 			if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
 				klog.Errorf("Error when updating Discovery %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -105,18 +110,17 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		klog.Infof("Flavours found: %d", len(flavours))
 
+		// TODO: check if a corresponding PeeringCandidate already exists!!
 		var first bool = true
 		for _, flavour := range flavours {
 			if first {
 				// We refer to the first peering candidate as the one that is reserved
-				peeringCandidate = resourceforge.ForgePeeringCandidateCustomResources(flavour, &discovery, true)
-				models.AddFlavourToPcCache(flavour.Name)
+				peeringCandidate = resourceforge.ForgePeeringCandidate(flavour, discovery.Spec.SolverID, true)
 				peeringCandidateReserved = *peeringCandidate
 				first = false
 			} else {
 				// the others are created as not reserved
-				peeringCandidate = resourceforge.ForgePeeringCandidateCustomResources(flavour, &discovery, false)
-				models.AddFlavourToPcCache(flavour.Name)
+				peeringCandidate = resourceforge.ForgePeeringCandidate(flavour, discovery.Spec.SolverID, false)
 			}
 
 			err = r.Create(context.Background(), peeringCandidate)
@@ -127,13 +131,13 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Update the Discovery with the PeeringCandidate
-		discovery.Spec.PeeringCandidate = nodecorev1alpha1.GenericRef{
+		discovery.Status.PeeringCandidate = nodecorev1alpha1.GenericRef{
 			Name:      peeringCandidateReserved.Name,
 			Namespace: peeringCandidateReserved.Namespace,
 		}
 
-		common.SetDiscoveryPhase(&discovery, nodecorev1alpha1.PhaseSolved, "Discovery Solved: Peering Candidate found")
-		if err := r.Update(ctx, &discovery); err != nil {
+		discovery.SetPhase(nodecorev1alpha1.PhaseSolved, "Discovery Solved: Peering Candidate found")
+		if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
 			klog.Errorf("Error when updating Discovery %s: %s", discovery.Name, err)
 			return ctrl.Result{}, err
 		}

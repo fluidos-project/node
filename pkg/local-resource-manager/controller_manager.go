@@ -6,6 +6,7 @@ import (
 
 	"fluidos.eu/node/pkg/utils/resourceforge"
 	"fluidos.eu/node/pkg/utils/services"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -16,11 +17,14 @@ import (
 // StartController starts the controller
 func StartController(cl client.Client) {
 
+	klog.Info("Getting nodes resources...")
 	nodes, err := services.GetNodesResources(context.Background(), cl)
 	if err != nil {
 		log.Printf("Error getting nodes resources: %v", err)
 		return
 	}
+
+	klog.Infof("Creating Flavour CRs: found %d nodes", len(*nodes))
 
 	// For each node create a Flavour
 	for _, node := range *nodes {

@@ -33,6 +33,8 @@ type LiqoCredentials struct {
 // ContractSpec defines the desired state of Contract
 type ContractSpec struct {
 
+	// TODO: ClusterID is the ID used by Liqo to search a contract during the peering phase.
+
 	// This is the flavour on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
 	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
 
@@ -41,7 +43,7 @@ type ContractSpec struct {
 
 	// The partition represents the dimension of the resources sold/bought.
 	// So it will reflect the dimension of the resources allocated on the remote cluster and reflected on the local virtual node.
-	Partition nodecorev1alpha1.FlavourSelector `json:"partition,omitempty"`
+	Partition Partition `json:"partition,omitempty"`
 
 	// This is the Node identity of the buyer FLUIDOS Node.
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
@@ -50,7 +52,7 @@ type ContractSpec struct {
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
 	// This credentials will be used by the customer to connect and enstablish a peering with the seller FLUIDOS Node through Liqo.
-	Credentials LiqoCredentials `json:"credentials"`
+	Credentials *LiqoCredentials `json:"credentials,omitempty"`
 
 	// This is the expiration time of the contract. It can be empty if the contract is not time limited.
 	ExpirationTime string `json:"expirationTime,omitempty"`

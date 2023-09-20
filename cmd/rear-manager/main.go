@@ -37,7 +37,7 @@ import (
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
 
 	//"fluidos.eu/node/controllers"
-	rearmanager "fluidos.eu/node/pkg/rear"
+	rearmanager "fluidos.eu/node/pkg/rear-manager"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -48,9 +48,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
-
 	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme

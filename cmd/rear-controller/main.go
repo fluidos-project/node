@@ -17,23 +17,30 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/klog/v2"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
+	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
 	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	discoverymanager "fluidos.eu/node/pkg/discovery-manager"
+	contractmanager "fluidos.eu/node/pkg/rear-controller/contract-manager"
+	discoverymanager "fluidos.eu/node/pkg/rear-controller/discovery-manager"
+	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
 	"fluidos.eu/node/pkg/utils/flags"
 	"fluidos.eu/node/pkg/utils/namings"
 	//+kubebuilder:scaffold:imports
@@ -48,6 +55,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -56,20 +64,25 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	clientID, _ := namings.ForgePrefixClientID()
-
 	// TODO: after the demo recover correct addresses (8080 and 8081)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":7080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":7081", "The address the probe endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9081", "The address the probe endpoint binds to.")
+	// NodeIdentity Flags: these flags should be set by the user and probably thay will be related to Liqo
 	flag.StringVar(&flags.DOMAIN, "domain", "fluidos.eu", "Domain name of rhw FLUIDOS node")
 	flag.StringVar(&flags.IP_ADDR, "ip", "", "IP address of the FLUIDOS node")
 	flag.StringVar(&flags.CLIENT_ID, "client-id", clientID, "Client ID related to the FLUIDOS node")
-	// TODO: remember to delete this flag since the reservation is not created by the discovery manager
+	// Namespace Flags: these flags represent the namespaces where the CRs will be created
 	flag.StringVar(&flags.RESERVATION_DEFAULT_NAMESPACE, "reservation-namespace", "default", "Namespace where the Reservation Custom Resources are created")
+	flag.StringVar(&flags.FLAVOUR_DEFAULT_NAMESPACE, "flavour-namespace", "default", "Namespace where the flavour CRs are created")
+	flag.StringVar(&flags.CONTRACT_DEFAULT_NAMESPACE, "contract-namespace", "default", "Namespace where the contract CRs are created")
+	flag.StringVar(&flags.TRANSACTION_DEFAULT_NAMESPACE, "transaction-namespace", "default", "Namespace where the transaction CRs are created")
 	flag.StringVar(&flags.DEFAULT_NAMESPACE, "default-namespace", "default", "Default namespace used by the FLUIDOS node")
 	flag.StringVar(&flags.PC_DEFAULT_NAMESPACE, "pc-namespace", "default", "Default Namespace where the peering candidate CRs are created")
+	// Other Flags
 	flag.StringVar(&flags.RESOURCE_TYPE, "resources-types", "k8s-fluidos", "Type of the Flavour (for now we consider only k8s resources)")
-	flag.StringVar(&flags.SERVER_ADDR, "server-addr", "http://localhost:14144/api", "Address of neighbour server used to discover other FLUIDOS nodes")
+	flag.StringVar(&flags.SERVER_ADDR, "server-addr", "http://localhost:1414/api", "Address of neighbour server used to discover other FLUIDOS nodes")
 	flag.StringVar(&flags.SERVER_ADDRESSES[0], "server-address", flags.SERVER_ADDR, "Array of addresses of neighbour servers used to discover other FLUIDOS nodes")
+	flag.StringVar(&flags.HTTP_PORT, "http-port", ":14144", "Port of the HTTP server")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -94,11 +107,35 @@ func main() {
 		os.Exit(1)
 	}
 
+	cache := mgr.GetCache()
+
+	indexFunc := func(obj client.Object) []string {
+		contract := obj.(*reservationv1alpha1.Contract)
+		return []string{contract.Spec.TransactionID}
+	}
+
+	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.transactionID", indexFunc); err != nil {
+		setupLog.Error(err, "unable to create index for field", "field", "spec.transactionID")
+		os.Exit(1)
+	}
+
+	gw := gateway.NewGateway(mgr.GetClient())
+
 	if err = (&discoverymanager.DiscoveryReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Gateway: gw,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Discovery")
+		os.Exit(1)
+	}
+
+	if err = (&contractmanager.ReservationReconciler{
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Gateway: gw,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Reservation")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
@@ -111,6 +148,16 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	if err := mgr.Add(manager.RunnableFunc(gw.CacheRefresher(flags.REFRESH_CACHE_INTERVAL))); err != nil {
+		klog.Errorf("Unable to set up transaction cache refresher: %s", err)
+		os.Exit(1)
+	}
+
+	// Start the REAR Gateway HTTP server
+	go func() {
+		gw.StartHttpServer()
+	}()
 
 	// TODO: Uncomment this when the webhook is ready. For now it does not work (Ale)
 	// pcv := discoverymanager.NewPCValidator(mgr.GetClient())

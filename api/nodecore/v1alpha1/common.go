@@ -17,7 +17,7 @@ const (
 // and it is composed of the resource name and (optionally) its namespace.
 type GenericRef struct {
 	// The name of the resource to be referenced.
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 
 	// The namespace containing the resource to be referenced. It should be left
 	// empty in case of cluster-wide resources.
@@ -28,4 +28,12 @@ type NodeIdentity struct {
 	Domain string `json:"domain"`
 	NodeID string `json:"nodeID"`
 	IP     string `json:"ip"`
+}
+
+// toString() returns a string representation of the GenericRef.
+func (r GenericRef) toString() string {
+	if r.Namespace != "" {
+		return r.Namespace + "/" + r.Name
+	}
+	return r.Name
 }
