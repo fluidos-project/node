@@ -33,14 +33,14 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	"fluidos.eu/node/pkg/utils/common"
-	"fluidos.eu/node/pkg/utils/flags"
-	"fluidos.eu/node/pkg/utils/namings"
-	"fluidos.eu/node/pkg/utils/resourceforge"
-	"fluidos.eu/node/pkg/utils/tools"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/common"
+	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/namings"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
 // SolverReconciler reconciles a Solver object
@@ -49,9 +49,25 @@ type SolverReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+// clusterRole
 //+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates/finalizers,verbs=update
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries/finalizers,verbs=update
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/finalizers,verbs=update
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/finalizers,verbs=update
 
 func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx, "solver", req.NamespacedName)
@@ -171,7 +187,6 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, nil
 		case nodecorev1alpha1.PhaseSolved:
 			klog.Infof("Solver %s has found a candidate", req.NamespacedName.Name)
-			break
 		default:
 			solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseIdle)
 			solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver is running")
@@ -269,7 +284,6 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				return ctrl.Result{}, nil
 			case nodecorev1alpha1.PhaseSolved:
 				klog.Infof("Solver %s has reserved and purchased the resources", req.NamespacedName.Name)
-				break
 			default:
 				solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseIdle)
 				// Update the Solver status
@@ -331,7 +345,7 @@ func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context, solver *
 	// Filter the reserved PeeringCandidates
 	filtered := []advertisementv1alpha1.PeeringCandidate{}
 	for _, p := range pc.Items {
-		if p.Spec.Reserved == false && p.Spec.SolverID == "" {
+		if !p.Spec.Reserved && p.Spec.SolverID == "" {
 			filtered = append(filtered, p)
 		}
 	}
@@ -355,7 +369,7 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context, so
 
 	for _, pc := range pcList {
 		// Select the first PeeringCandidate that is not reserved
-		if pc.Spec.Reserved == false && pc.Spec.SolverID == "" {
+		if !pc.Spec.Reserved && pc.Spec.SolverID == "" {
 			// Book the PeeringCandidate
 			pc.Spec.Reserved = true
 			pc.Spec.SolverID = solver.Name
@@ -373,7 +387,7 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context, so
 			}
 
 			// Check if the PeeringCandidate has been reserved correctly
-			if pc.Spec.Reserved == false || pc.Spec.SolverID != solver.Name {
+			if !pc.Spec.Reserved || pc.Spec.SolverID != solver.Name {
 				klog.Errorf("Error when reserving PeeringCandidate %s. Trying with another one", selected.Name)
 				continue
 			}

@@ -24,11 +24,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
-	resourceforge "fluidos.eu/node/pkg/utils/resourceforge"
-	"fluidos.eu/node/pkg/utils/tools"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	resourceforge "github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
 // DiscoveryReconciler reconciles a Discovery object
@@ -38,6 +38,10 @@ type DiscoveryReconciler struct {
 	Gateway *gateway.Gateway
 }
 
+// clusterRole
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=peeringcandidates/finalizers,verbs=update
 //+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=advertisement.fluidos.eu,resources=discoveries/finalizers,verbs=update

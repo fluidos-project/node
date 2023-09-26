@@ -35,14 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	contractmanager "fluidos.eu/node/pkg/rear-controller/contract-manager"
-	discoverymanager "fluidos.eu/node/pkg/rear-controller/discovery-manager"
-	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
-	"fluidos.eu/node/pkg/utils/flags"
-	"fluidos.eu/node/pkg/utils/namings"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
+	contractmanager "github.com/fluidos-project/node/pkg/rear-controller/contract-manager"
+	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
+	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/namings"
 	//+kubebuilder:scaffold:imports
 )
 

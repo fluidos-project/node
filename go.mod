@@ -1,6 +1,6 @@
-module fluidos.eu/node
+module github.com/fluidos-project/node //node
 
-go 1.17
+go 1.20
 
 require (
 	github.com/gorilla/mux v1.8.0

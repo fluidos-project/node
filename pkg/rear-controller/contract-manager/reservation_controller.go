@@ -25,13 +25,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	"fluidos.eu/node/pkg/rear-controller/gateway"
-	"fluidos.eu/node/pkg/utils/namings"
-	"fluidos.eu/node/pkg/utils/resourceforge"
-	"fluidos.eu/node/pkg/utils/tools"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
+	"github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/namings"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
 // ReservationReconciler reconciles a Reservation object
@@ -41,9 +41,13 @@ type ReservationReconciler struct {
 	Gateway *gateway.Gateway
 }
 
+// clusterRole
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/finalizers,verbs=update
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

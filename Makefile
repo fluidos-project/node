@@ -1,9 +1,3 @@
-
-# Image URL to use all building/pushing image targets
-IMG ?= controller:latest
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -11,122 +5,106 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
+# generate: generate-controller generate-groups rbacs manifests fmt
+generate: generate-controller rbacs manifests fmt
 
-.PHONY: all
-all: build
+#generate helm documentation
+docs: helm-docs
+	$(HELM_DOCS) -t deployments/fluidos/README.gotmpl deployments/fluidos
 
-##@ General
+# Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen
+	rm -f deployments/fluidos/crds/*
+	$(CONTROLLER_GEN) paths="./apis/..." crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deployments/fluidos/crds
 
-# The help target prints out all targets with their descriptions organized
-# beneath their categories. The categories are represented by '##@' and the
-# target descriptions by '##'. The awk commands is responsible for reading the
-# entire set of makefiles included in this invocation, looking for lines of the
-# file as xyz: ## something, and then pretty-format the target and help. Then,
-# if there's a line with ##@ something, that gets pretty-printed as a category.
-# More info on the usage of ANSI control characters for terminal formatting:
-# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
-# More info on the awk command:
-# http://linuxcommand.org/lc3_adv_awk.php
+#Generate RBAC for each controller
+rbacs: controller-gen
+	rm -f deployments/fluidos/files/*
+	$(CONTROLLER_GEN) paths="./pkg/local-resource-manager" rbac:roleName=fluidos-local-resource-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-local-resource-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-local-resource-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-manager/" rbac:roleName=fluidos-rear-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-rear-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-rear-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-controller/..." rbac:roleName=fluidos-rear-controller output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-rear-controller-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-rear-controller-ClusterRole.yaml
 
-.PHONY: help
-help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-##@ Development
-
-.PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-.PHONY: vet
-vet: ## Run go vet against code.
-	go vet ./...
-
-.PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
-
-##@ Build
-
-.PHONY: build
-build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
-
-.PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
-.PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
-
-##@ Deployment
-
-ifndef ignore-not-found
-  ignore-not-found = false
+# Install gci if not available
+gci:
+ifeq (, $(shell which gci))
+	@go install github.com/daixiang0/gci@v0.11.0
+GCI=$(GOBIN)/gci
+else
+GCI=$(shell which gci)
 endif
 
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+# Install addlicense if not available
+addlicense:
+ifeq (, $(shell which addlicense))
+	@go install github.com/google/addlicense@v1.0.0
+ADDLICENSE=$(GOBIN)/addlicense
+else
+ADDLICENSE=$(shell which addlicense)
+endif
 
-.PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+# Run go fmt against code
+fmt: gci addlicense
+	go mod tidy
+	go fmt ./...
+	find . -type f -name '*.go' -a ! -name '*zz_generated*' -exec $(GCI) write -s standard -s default -s "prefix(github.com/fluidos-project/WP3_Node)" {} \;
+	find . -type f -name '*.go' -exec $(ADDLICENSE) -l apache -c "FLUIDOS Project" -y "2022-$(shell date +%Y)" {} \;
 
-.PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+# Install golangci-lint if not available
+golangci-lint:
+ifeq (, $(shell which golangci-lint))
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
+GOLANGCILINT=$(GOBIN)/golangci-lint
+else
+GOLANGCILINT=$(shell which golangci-lint)
+endif
 
-.PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+markdownlint:
+ifeq (, $(shell which markdownlint))
+	@echo "markdownlint is not installed. Please install it: https://github.com/igorshubovych/markdownlint-cli#installation"
+	@exit 1
+else
+MARKDOWNLINT=$(shell which markdownlint)
+endif
 
-##@ Build Dependencies
+md-lint: markdownlint
+	@find . -type f -name '*.md' -a -not -path "./.github/*" \
+		-not -path "./docs/_legacy/*" \
+		-not -path "./deployments/*" \
+		-not -path "./hack/code-generator/*" \
+		-exec $(MARKDOWNLINT) {} +
 
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+lint: golangci-lint
+	$(GOLANGCILINT) run --new
 
-## Tool Binaries
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
+generate-controller: controller-gen
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
 
-## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.8.0
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	@go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
 
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
-.PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
-
-.PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
-
-.PHONY: envtest
-envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
-$(ENVTEST): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+helm-docs:
+ifeq (, $(shell which helm-docs))
+	@{ \
+	set -e ;\
+	HELM_DOCS_TMP_DIR=$$(mktemp -d) ;\
+	cd $$HELM_DOCS_TMP_DIR ;\
+	version=1.11.0 ;\
+    arch=x86_64 ;\
+    echo  $$HELM_DOCS_PATH ;\
+    echo https://github.com/norwoodj/helm-docs/releases/download/v$${version}/helm-docs_$${version}_linux_$${arch}.tar.gz ;\
+    curl -LO https://github.com/norwoodj/helm-docs/releases/download/v$${version}/helm-docs_$${version}_linux_$${arch}.tar.gz ;\
+    tar -zxvf helm-docs_$${version}_linux_$${arch}.tar.gz ;\
+    mv helm-docs $(GOBIN)/helm-docs ;\
+	rm -rf $$HELM_DOCS_TMP_DIR ;\
+	}
+HELM_DOCS=$(GOBIN)/helm-docs
+else
+HELM_DOCS=$(shell which helm-docs)
+endif

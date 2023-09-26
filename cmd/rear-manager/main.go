@@ -32,12 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	//"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 
-	//"fluidos.eu/node/controllers"
-	rearmanager "fluidos.eu/node/pkg/rear-manager"
+	//"github.com/fluidos-project/node/controllers"
+	rearmanager "github.com/fluidos-project/node/pkg/rear-manager"
 	//+kubebuilder:scaffold:imports
 )
 
