@@ -1,4 +1,4 @@
-module github.com/fluidos-project //node
+module github.com/fluidos-project/node //node
 
 go 1.21.0
 

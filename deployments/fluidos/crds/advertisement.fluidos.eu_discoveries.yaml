@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: discoveries.advertisement.github.com/fluidos-project/
+  name: discoveries.advertisement.fluidos.eu
 spec:
-  group: advertisement.github.com/fluidos-project/
+  group: advertisement.fluidos.eu
   names:
     kind: Discovery
     listKind: DiscoveryList
@@ -14,221 +14,212 @@ spec:
     singular: discovery
   scope: Namespaced
   versions:
-    - additionalPrinterColumns:
-        - jsonPath: .spec.solverID
-          name: Solver ID
-          type: string
-        - jsonPath: .spec.subscribe
-          name: Subscribe
-          type: boolean
-        - jsonPath: .status.peeringCandidate.namespace
-          name: PC Namespace
-          type: string
-        - jsonPath: .status.peeringCandidate.name
-          name: PC Name
-          type: string
-        - jsonPath: .status.phase.phase
-          name: Status
-          type: string
-        - jsonPath: .status.phase.message
-          name: Message
-          type: string
-      name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          description: Discovery is the Schema for the discoveries API
-          properties:
-            apiVersion:
-              description:
-                "APIVersion defines the versioned schema of this representation
-                of an object. Servers should convert recognized schemas to the latest
-                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
-              type: string
-            kind:
-              description:
-                "Kind is a string value representing the REST resource this
-                object represents. Servers may infer this from the endpoint the client
-                submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
-              type: string
-            metadata:
-              type: object
-            spec:
-              description: DiscoverySpec defines the desired state of Discovery
-              properties:
-                selector:
-                  description:
-                    This is the FlavourSelector that describes the characteristics
-                    of the intent that the solver is looking to satisfy This pattern
-                    corresponds to what has been defined in the REAR Protocol to do
-                    a discovery with a selector
-                  properties:
-                    architecture:
-                      type: string
-                    matchSelector:
-                      description:
-                        MatchSelector represents the criteria for selecting
-                        Flavours through a strict match.
-                      properties:
-                        cpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        ephemeralStorage:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        gpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        memory:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        storage:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                      required:
-                        - cpu
-                        - memory
-                      type: object
-                    rangeSelector:
-                      description:
-                        RangeSelector represents the criteria for selecting
-                        Flavours through a range.
-                      properties:
-                        MaxCpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        MaxEph:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        MaxGpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        MaxMemory:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        MaxStorage:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        minCpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        minEph:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        minGpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        minMemory:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        minStorage:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                      type: object
-                    type:
-                      type: string
-                  required:
-                    - architecture
-                    - type
-                  type: object
-                solverID:
-                  description:
-                    This is the Solver ID of the solver that creates and
-                    so asks for the discovery. This is a reference to the Solver CRD
-                  type: string
-                subscribe:
-                  description:
-                    This flag indicates that needs to be enstablished a subscription
-                    to the provider in case a match is found. In order to have periodic
-                    updates of the status of the matching Flavour
-                  type: boolean
-              required:
-                - selector
-                - solverID
-                - subscribe
-              type: object
-            status:
-              description: DiscoveryStatus defines the observed state of Discovery
-              properties:
-                peeringCandidate:
-                  description:
-                    This is the reference to the PeeringCandidate CRD that
-                    is the result of the discovery if a match is found
-                  properties:
-                    name:
-                      description: The name of the resource to be referenced.
-                      type: string
-                    namespace:
-                      description:
-                        The namespace containing the resource to be referenced.
-                        It should be left empty in case of cluster-wide resources.
-                      type: string
-                  type: object
-                phase:
-                  description: This is the current phase of the discovery
-                  properties:
-                    endTime:
-                      type: string
-                    lastChangeTime:
-                      type: string
-                    message:
-                      type: string
-                    phase:
-                      type: string
-                    startTime:
-                      type: string
-                  required:
-                    - phase
-                  type: object
-              required:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.solverID
+      name: Solver ID
+      type: string
+    - jsonPath: .spec.subscribe
+      name: Subscribe
+      type: boolean
+    - jsonPath: .status.peeringCandidate.namespace
+      name: PC Namespace
+      type: string
+    - jsonPath: .status.peeringCandidate.name
+      name: PC Name
+      type: string
+    - jsonPath: .status.phase.phase
+      name: Status
+      type: string
+    - jsonPath: .status.phase.message
+      name: Message
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Discovery is the Schema for the discoveries API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DiscoverySpec defines the desired state of Discovery
+            properties:
+              selector:
+                description: This is the FlavourSelector that describes the characteristics
+                  of the intent that the solver is looking to satisfy This pattern
+                  corresponds to what has been defined in the REAR Protocol to do
+                  a discovery with a selector
+                properties:
+                  architecture:
+                    type: string
+                  matchSelector:
+                    description: MatchSelector represents the criteria for selecting
+                      Flavours through a strict match.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      ephemeralStorage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      gpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      storage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    required:
+                    - cpu
+                    - memory
+                    type: object
+                  rangeSelector:
+                    description: RangeSelector represents the criteria for selecting
+                      Flavours through a range.
+                    properties:
+                      MaxCpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      MaxEph:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      MaxGpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      MaxMemory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      MaxStorage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      minCpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      minEph:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      minGpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      minMemory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      minStorage:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  type:
+                    type: string
+                required:
+                - architecture
+                - type
+                type: object
+              solverID:
+                description: This is the Solver ID of the solver that creates and
+                  so asks for the discovery. This is a reference to the Solver CRD
+                type: string
+              subscribe:
+                description: This flag indicates that needs to be enstablished a subscription
+                  to the provider in case a match is found. In order to have periodic
+                  updates of the status of the matching Flavour
+                type: boolean
+            required:
+            - selector
+            - solverID
+            - subscribe
+            type: object
+          status:
+            description: DiscoveryStatus defines the observed state of Discovery
+            properties:
+              peeringCandidate:
+                description: This is the reference to the PeeringCandidate CRD that
+                  is the result of the discovery if a match is found
+                properties:
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: The namespace containing the resource to be referenced.
+                      It should be left empty in case of cluster-wide resources.
+                    type: string
+                type: object
+              phase:
+                description: This is the current phase of the discovery
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
                 - phase
-              type: object
-          type: object
-      served: true
-      storage: true
-      subresources:
-        status: {}
+                type: object
+            required:
+            - phase
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
