@@ -1,0 +1,76 @@
+{{- $resManagerConfig := (merge (dict "name" "local-resource-manager" "module" "local-resource-manager") .) -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "fluidos.labels" $resManagerConfig | nindent 4 }}
+  name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.localResourceManager.replicas }}
+  selector:
+    matchLabels:
+      {{- include "fluidos.labels" $resManagerConfig | nindent 6 }}
+  template:
+    metadata: 
+    {{ if .Values.localResourceManager.pod.annotations }}
+      annotations:
+        {{- toYaml .Values.localResourceManager.pod.annotations | nindent 8 }}
+    {{ end }}
+      labels:
+        {{- include "fluidos.labels" $resManagerConfig | nindent 8 }}
+      {{ if .Values.localResourceManager.pod.labels }}
+        {{ toYaml .Values.localResourceManager.pod.labels | nindent 8 }}
+      {{ end }}
+    spec:
+      {{- if gt .Values.localResourceManager.replicas 1.0 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "fluidos.labels" $resManagerConfig | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      securityContext:
+        {{- include "fluidos.podSecurityContext" $resManagerConfig | nindent 8 }}
+      serviceAccountName: {{ include "fluidos.prefixedName" $resManagerConfig }}
+      containers:
+      - image: {{ .Values.localResourceManager.imageName }}:{{ include "fluidos.version" $resManagerConfig }}
+        imagePullPolicy: {{ .Values.pullPolicy }}
+        securityContext:
+          {{- include "fluidos.containerSecurityContext" $resManagerConfig | nindent 10 }}
+        name: {{ $resManagerConfig.name }}
+        command: ["/usr/bin/local-resource-manager"]
+        args:
+          - --node-resource-label={{ .Values.localResourceManager.config.nodeResourceLabel }}
+          - --resources-types={{ .Values.localResourceManager.config.resourceType }}
+          - --cpu-min={{ .Values.localResourceManager.config.flavour.cpuMin }}
+          - --memory-min={{ .Values.localResourceManager.config.flavour.memoryMin }}
+          - --cpu-step={{ .Values.localResourceManager.config.flavour.cpuStep }}
+          - --memory-step={{ .Values.localResourceManager.config.flavour.memoryStep }}
+        resources: {{- toYaml .Values.localResourceManager.pod.resources | nindent 10 }}
+        ports:
+        - name: healthz
+          containerPort: 8081
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+      {{- if ((.Values.common).nodeSelector) }}
+      nodeSelector:
+      {{- toYaml .Values.common.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).tolerations) }}
+      tolerations:
+      {{- toYaml .Values.common.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).affinity) }}
+      affinity:
+      {{- toYaml .Values.common.affinity | nindent 8 }}
+      {{- end }}
+

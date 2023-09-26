@@ -38,6 +38,7 @@ import (
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/common"
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"github.com/fluidos-project/node/pkg/utils/tools"
@@ -68,6 +69,7 @@ type SolverReconciler struct {
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx, "solver", req.NamespacedName)
@@ -227,8 +229,11 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				// Forge the Partition
 				partition := resourceforge.ForgePartition(solver.Spec.Selector)
 
+				// Get the NodeIdentity
+				nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
+
 				// Forge the Reservation
-				reservation := resourceforge.ForgeReservation(pc, partition)
+				reservation := resourceforge.ForgeReservation(pc, partition, *nodeIdentity)
 				if err := r.Client.Create(ctx, reservation); err != nil {
 					klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
 					return ctrl.Result{}, err
@@ -257,7 +262,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				}
 
 				reservation := &reservationv1alpha1.Reservation{}
-				resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(solver.Name), Namespace: flags.RESERVATION_DEFAULT_NAMESPACE}
+				resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(solver.Name), Namespace: flags.FLUIDOS_NAMESPACE}
 
 				// Get the Reservation
 				err := r.Get(ctx, resNamespaceName, reservation)
@@ -409,7 +414,7 @@ func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nod
 	discovery := &advertisementv1alpha1.Discovery{}
 
 	// Get the Discovery
-	if err := r.Get(ctx, types.NamespacedName{Name: namings.ForgeDiscoveryName(solver.Name), Namespace: flags.DISCOVERY_DEFAULT_NAMESPACE}, discovery); client.IgnoreNotFound(err) != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: namings.ForgeDiscoveryName(solver.Name), Namespace: flags.FLUIDOS_NAMESPACE}, discovery); client.IgnoreNotFound(err) != nil {
 		klog.Errorf("Error when getting Discovery for Solver %s: %s", solver.Name, err)
 		return nil, err
 	} else if err != nil {
@@ -464,7 +469,7 @@ func (r *SolverReconciler) discoveryToSolver(ctx context.Context, o client.Objec
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      solverName,
-				Namespace: flags.SOLVER_DEFAULT_NAMESPACE,
+				Namespace: flags.FLUIDOS_NAMESPACE,
 			},
 		},
 	}
@@ -476,7 +481,7 @@ func (r *SolverReconciler) reservationToSolver(ctx context.Context, o client.Obj
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      solverName,
-				Namespace: flags.SOLVER_DEFAULT_NAMESPACE,
+				Namespace: flags.FLUIDOS_NAMESPACE,
 			},
 		},
 	}

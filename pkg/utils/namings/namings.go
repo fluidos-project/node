@@ -23,11 +23,12 @@ import (
 	"time"
 
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	"k8s.io/klog/v2"
 )
 
 // ForgeContractName creates a name for the Contract CR
 func ForgeContractName(flavourID string) string {
-	hash := ForgeUniqueString(flavourID, 4)
+	hash := ForgeHashString(flavourID, 4)
 	return fmt.Sprintf("contract-%s-%s", flavourID, hash)
 }
 
@@ -41,9 +42,14 @@ func ForgeReservationName(solverID string) string {
 	return fmt.Sprintf("reservation-%s", solverID)
 }
 
-// ForgeFlavourName returns the name of the flavour following the pattern nodeID-Type-rand(4)
-func ForgeFlavourName(nodeID string) string {
-	return flags.RESOURCE_TYPE + "-" + ForgeUniqueString(nodeID, 8)
+// ForgeFlavourName returns the name of the flavour following the pattern Domain-Type-rand(4)
+func ForgeFlavourName(WorkerID, domain string) string {
+	rand, err := ForgeRandomString()
+	if err != nil {
+		klog.Errorf("Error when generating random string: %s", err)
+	}
+
+	return domain + "-" + flags.RESOURCE_TYPE + "-" + ForgeHashString(WorkerID+rand, 8)
 }
 
 // ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery
@@ -61,15 +67,11 @@ func RetrieveSolverNameFromReservation(reservationName string) string {
 
 // ForgeTransactionID Generates a unique transaction ID using the current timestamp
 func ForgeTransactionID() (string, error) {
-	// Generate a random byte slice
-	randomBytes := make([]byte, 16)
-	_, err := rand.Read(randomBytes)
+	// Convert the random bytes to a hexadecimal string
+	transactionID, err := ForgeRandomString()
 	if err != nil {
 		return "", err
 	}
-
-	// Convert the random bytes to a hexadecimal string
-	transactionID := hex.EncodeToString(randomBytes)
 
 	// Add a timestamp to ensure uniqueness
 	transactionID = fmt.Sprintf("%s-%d", transactionID, time.Now().UnixNano())
@@ -83,19 +85,19 @@ func RetrieveFlavourNameFromPC(pcName string) string {
 }
 
 // ForgePrefixClientID generates a prefix for the client ID
-func ForgePrefixClientID() (string, error) {
-	randomBytes := make([]byte, 10)
+func ForgeRandomString() (string, error) {
+	randomBytes := make([]byte, 16)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
 		return "", err
 	}
-	prefixClientID := hex.EncodeToString(randomBytes)
+	randomString := hex.EncodeToString(randomBytes)
 
-	return prefixClientID + "fluidos.eu", nil
+	return randomString, nil
 }
 
-// ForgeUniqueString computes SHA-256 Hash of the NodeUID
-func ForgeUniqueString(input string, lenght int) string {
+// ForgeHashString computes SHA-256 Hash of the NodeUID
+func ForgeHashString(input string, lenght int) string {
 	hash := sha256.Sum256([]byte(input))
 	hashString := hex.EncodeToString(hash[:])
 	uniqueString := hashString[:lenght]

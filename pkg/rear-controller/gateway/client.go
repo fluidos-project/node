@@ -25,7 +25,7 @@ import (
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
-	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
 )
@@ -53,21 +53,33 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 	}
 
 	// TODO: this url should be taken from the nodeIdentity of the flavour
-	url := flags.SERVER_ADDR + "/reserveflavour/" + flavourID
+	bodyBytes := bytes.NewBuffer(selectorBytes)
+	url := fmt.Sprintf("http://%s%s%s", reservation.Spec.Seller.IP, RESERVE_FLAVOUR_PATH, flavourID)
+
 	klog.Infof("Sending POST request to %s", url)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(selectorBytes))
+
+	resp, err := makeRequest("POST", url, bodyBytes)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
 	if resp.StatusCode != http.StatusOK {
+		klog.Errorf("Received non-OK response status code: %v", resp)
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&transaction); err != nil {
 		return nil, err
+	}
+
+	// check if transaction is not correctly set
+	// This behaviuor is a possible bug of the rear-controller
+	// TODO: check it
+	if transaction.TransactionID == "" {
+		klog.Errorf("TransactionID received is empty")
+		return &transaction, fmt.Errorf("transactionID is empty")
 	}
 
 	klog.Infof("Flavour %s reserved: transaction %v", flavourID, transaction)
@@ -78,7 +90,7 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 }
 
 // PurchaseFlavour purchases a flavour with the given flavourID
-func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string) (*models.ResponsePurchase, error) {
+func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, seller nodecorev1alpha1.NodeIdentity) (*models.ResponsePurchase, error) {
 	var purchase models.ResponsePurchase
 
 	// Check if the transaction exists
@@ -96,13 +108,15 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string) (*m
 		return nil, err
 	}
 
+	bodyBytes := bytes.NewBuffer(selectorBytes)
 	// TODO: this url should be taken from the nodeIdentity of the flavour
-	// Send the POST request to the server
-	resp, err := http.Post(flags.SERVER_ADDR+"/purchaseflavour/"+transactionID, "application/json", bytes.NewBuffer(selectorBytes))
+	url := fmt.Sprintf("http://%s%s%s", seller.IP, PURCHASE_FLAVOUR_PATH, transactionID)
+
+	resp, err := makeRequest("POST", url, bodyBytes)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
 	if resp.StatusCode != http.StatusOK {
@@ -124,8 +138,10 @@ func (g *Gateway) DiscoverFlavours(selector nodecorev1alpha1.FlavourSelector) ([
 	// Create the Flavour CR from the first flavour in the array of Flavour
 	var flavoursCR []*nodecorev1alpha1.Flavour
 
+	providers := getters.GetLocalProviders(context.Background(), g.client)
+
 	// Send the POST request to all the servers in the list
-	for _, ADDRESS := range flags.SERVER_ADDRESSES {
+	for _, ADDRESS := range providers {
 		flavour, err := searchFlavour(s, ADDRESS)
 		if err != nil {
 			klog.Errorf("Error when searching Flavour: %s", err)
@@ -134,6 +150,6 @@ func (g *Gateway) DiscoverFlavours(selector nodecorev1alpha1.FlavourSelector) ([
 		flavoursCR = append(flavoursCR, flavour)
 	}
 
-	klog.Info("Flavours created", flavoursCR)
+	klog.Infof("Found %d flavours", len(flavoursCR))
 	return flavoursCR, nil
 }

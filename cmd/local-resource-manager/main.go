@@ -17,39 +17,80 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"net/http"
+	"os"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	localResourceManager "github.com/fluidos-project/node/pkg/local-resource-manager"
 	"github.com/fluidos-project/node/pkg/utils/flags"
-	"github.com/fluidos-project/node/pkg/utils/services"
-
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
+var (
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)
+
+func init() {
+	utilruntime.Must(metricsv1beta1.AddToScheme(scheme))
+	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
+	//+kubebuilder:scaffold:scheme
+}
+
 func main() {
-	done := make(chan bool)
-	flag.StringVar(&flags.DOMAIN, "domain", "fluidos.eu", "Domain name")
-	flag.StringVar(&flags.IP_ADDR, "ip", "", "IP address of the node")
+	var probeAddr string
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&flags.AMOUNT, "amount", "", "Amount of money set for the flavours of this node")
 	flag.StringVar(&flags.CURRENCY, "currency", "", "Currency of the money set for the flavours of this node")
 	flag.StringVar(&flags.PERIOD, "period", "", "Period set for the flavours of this node")
-	flag.StringVar(&flags.FLAVOUR_DEFAULT_NAMESPACE, "flavour-namespace", "default", "Namespace where the flavour CRs are created")
 	flag.StringVar(&flags.RESOURCE_TYPE, "resources-types", "k8s-fluidos", "Type of the Flavour related to k8s resources")
-	flag.Int64Var(&flags.CPU_MIN, "cpu-min", 0, "Minimum CPU value")
-	flag.Int64Var(&flags.MEMORY_MIN, "memory-min", 0, "Minimum memory value")
-	flag.Int64Var(&flags.CPU_STEP, "cpu-step", 0, "CPU step value")
-	flag.Int64Var(&flags.MEMORY_STEP, "memory-step", 0, "Memory step value")
+	flag.StringVar(&flags.CPU_MIN, "cpu-min", "0", "Minimum CPU value")
+	flag.StringVar(&flags.MEMORY_MIN, "memory-min", "0", "Minimum memory value")
+	flag.StringVar(&flags.CPU_STEP, "cpu-step", "0", "CPU step value")
+	flag.StringVar(&flags.MEMORY_STEP, "memory-step", "0", "Memory step value")
 	flag.Int64Var(&flags.MIN_COUNT, "min-count", 0, "Minimum number of flavours")
 	flag.Int64Var(&flags.MAX_COUNT, "max-count", 0, "Maximum number of flavours")
+	flag.StringVar(&flags.RESOURCE_NODE_LABEL, "node-resource-label", "node-role.fluidos.eu/resources", "Label used to filter the k8s nodes from which create flavours")
 
 	flag.Parse()
-	ctx := context.Background()
 
-	cl, err := services.GetKClient(ctx)
-	utilruntime.Must(err)
+	cfg := ctrl.GetConfigOrDie()
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "Unable to create client")
+		os.Exit(1)
+	}
 
-	localResourceManager.StartController(cl)
-	fmt.Println("Started controller for monitoring local resources")
+	err = localResourceManager.Start(context.Background(), cl)
+	if err != nil {
+		setupLog.Error(err, "Unable to start LocalResourceManager")
+		os.Exit(1)
+	}
 
-	<-done
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", healthHandler) // health check endpoint
+	mux.HandleFunc("/readyz", healthHandler)  // readiness check endpoint
+
+	server := &http.Server{
+		Addr:    probeAddr,
+		Handler: mux,
+	}
+
+	setupLog.Info("Starting server", "address", probeAddr)
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		setupLog.Error(err, "Server stopped unexpectedly")
+		os.Exit(1)
+	}
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }

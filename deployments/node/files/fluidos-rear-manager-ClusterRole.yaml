@@ -1,0 +1,191 @@
+rules:
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - discoveries
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - discoveries/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - discoveries/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - peeringcandidates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - peeringcandidates/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - advertisement.fluidos.eu
+  resources:
+  - peeringcandidates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - allocations/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - flavours
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - flavours/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - flavours/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - solvers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - solvers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - solvers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - contracts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - contracts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - contracts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - reservations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - reservations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - reservation.fluidos.eu
+  resources:
+  - reservations/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -118,6 +118,10 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 	cpu, _ := flavour.Spec.Characteristics.Cpu.AsInt64()
 	ram, _ := flavour.Spec.Characteristics.Memory.AsInt64()
+	cpuMin, _ := flavour.Spec.Policy.Partitionable.CpuMin.AsInt64()
+	memoryMin, _ := flavour.Spec.Policy.Partitionable.MemoryMin.AsInt64()
+	cpuStep, _ := flavour.Spec.Policy.Partitionable.CpuStep.AsInt64()
+	memoryStep, _ := flavour.Spec.Policy.Partitionable.MemoryStep.AsInt64()
 	obj := models.Flavour{
 		FlavourID:  flavour.Name,
 		Type:       string(flavour.Spec.Type),
@@ -131,10 +135,10 @@ func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 			Partitionable: func() *models.Partitionable {
 				if flavour.Spec.Policy.Partitionable != nil {
 					return &models.Partitionable{
-						CPUMinimum:    flavour.Spec.Policy.Partitionable.CpuMin,
-						MemoryMinimum: flavour.Spec.Policy.Partitionable.MemoryMin,
-						CPUStep:       flavour.Spec.Policy.Partitionable.CpuStep,
-						MemoryStep:    flavour.Spec.Policy.Partitionable.MemoryStep,
+						CPUMinimum:    int(cpuMin),
+						MemoryMinimum: int(memoryMin),
+						CPUStep:       int(cpuStep),
+						MemoryStep:    int(memoryStep),
 					}
 				}
 				return nil
@@ -182,66 +186,14 @@ func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 		Buyer:         ParseNodeIdentity(contract.Spec.Buyer),
 		TransactionID: contract.Spec.TransactionID,
 		Partition:     ParsePartition(contract.Spec.Partition),
+		Seller:        ParseNodeIdentity(contract.Spec.Seller),
 	}
 }
 
-// ParseFlavourSpecToFlavour converts a FlavourSpec to a Flavour struct
-/* func ParseCRToFlavour(flavourCR nodecorev1alpha1.Flavour) *models.Flavour {
-
-	// It is converted in int since REAR for now only supports int
-	cpuInt, _ := flavourCR.Spec.Characteristics.Cpu.AsInt64()
-	memoryInt, _ := flavourCR.Spec.Characteristics.Memory.AsInt64()
-	ephInt, _ := flavourCR.Spec.Characteristics.EphemeralStorage.AsInt64()
-	storageInt, _ := flavourCR.Spec.Characteristics.PersistentStorage.AsInt64()
-	gpuInt, _ := flavourCR.Spec.Characteristics.Gpu.AsInt64()
-
-	return &models.Flavour{
-		FlavourID:  flavourCR.Name,
-		ProviderID: flavourCR.Spec.ProviderID,
-		Type:       string(flavourCR.Spec.Type),
-		Characteristics: models.Characteristics{
-			CPU:               int(cpuInt),
-			Memory:            int(memoryInt),
-			EphemeralStorage:  int(ephInt),
-			PersistentStorage: int(storageInt),
-			GPU:               int(gpuInt),
-			Architecture:      flavourCR.Spec.Characteristics.Architecture,
-		},
-		Owner: models.Owner{
-			NodeID: flavourCR.Spec.Owner.NodeID,
-			IP:     flavourCR.Spec.Owner.IP,
-			Domain: flavourCR.Spec.Owner.Domain,
-		},
-		Policy: models.Policy{
-			Partitionable: func() *models.Partitionable {
-				if flavourCR.Spec.Policy.Partitionable != nil {
-					return &models.Partitionable{
-						CPUMinimum:    flavourCR.Spec.Policy.Partitionable.CpuMin,
-						MemoryMinimum: flavourCR.Spec.Policy.Partitionable.MemoryMin,
-						CPUStep:       flavourCR.Spec.Policy.Partitionable.CpuStep,
-						MemoryStep:    flavourCR.Spec.Policy.Partitionable.MemoryStep,
-					}
-				}
-				return nil
-			}(),
-			Aggregatable: func() *models.Aggregatable {
-				if flavourCR.Spec.Policy.Aggregatable != nil {
-					return &models.Aggregatable{
-						MinCount: flavourCR.Spec.Policy.Aggregatable.MinCount,
-						MaxCount: flavourCR.Spec.Policy.Aggregatable.MaxCount,
-					}
-				}
-				return nil
-			}(),
-		},
-		Price: models.Price{
-			Amount:   flavourCR.Spec.Price.Amount,
-			Currency: flavourCR.Spec.Price.Currency,
-			Period:   flavourCR.Spec.Price.Period,
-		},
-		OptionalFields: models.OptionalFields{
-			Availability: flavourCR.Spec.OptionalFields.Availability,
-		},
+func ParseQuantityFromString(s string) resource.Quantity {
+	i, err := resource.ParseQuantity(s)
+	if err != nil {
+		return *resource.NewQuantity(0, resource.DecimalSI)
 	}
+	return i
 }
-*/

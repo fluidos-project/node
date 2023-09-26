@@ -27,9 +27,9 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
+// TODO: This function does not work without a selector, it should do a GET request to the seller
 func searchFlavour(selector models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
 	var flavour models.Flavour
-	//var flavoursCR []*nodecorev1alpha1.Flavour
 
 	// Marshal the selector into JSON bytes
 	selectorBytes, err := json.Marshal(selector)
@@ -37,11 +37,13 @@ func searchFlavour(selector models.Selector, addr string) (*nodecorev1alpha1.Fla
 		return nil, err
 	}
 
-	resp, err := http.Post(addr+"/listflavours/selector", "application/json", bytes.NewBuffer(selectorBytes))
+	body := bytes.NewBuffer(selectorBytes)
+	url := fmt.Sprintf("http://%s%s", addr, LIST_FLAVOURS_BY_SELECTOR_PATH)
+
+	resp, err := makeRequest("POST", url, body)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
 	if resp.StatusCode != http.StatusOK {
@@ -56,4 +58,28 @@ func searchFlavour(selector models.Selector, addr string) (*nodecorev1alpha1.Fla
 	flavourCR := resourceforge.ForgeFlavourFromObj(flavour)
 
 	return flavourCR, nil
+}
+
+func makeRequest(method, url string, body *bytes.Buffer) (*http.Response, error) {
+
+	httpClient := &http.Client{}
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		klog.Errorf("Error creating the request: %s", err)
+		return nil, err
+	}
+	req.Close = true
+
+	if method == "POST" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		klog.Errorf("Error sending the request: %s", err.Error())
+		return nil, err
+	}
+
+	return resp, nil
 }

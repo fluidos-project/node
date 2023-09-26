@@ -1,0 +1,53 @@
+{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}-grpc
+  annotations:
+    {{- if .Values.rearController.service.grpc.annotations }}
+      {{- toYaml .Values.rearController.service.grpc.annotations | nindent 4 }}
+    {{- end}}
+  labels:
+    {{- include "fluidos.labels" $rearControllerConfig | nindent 4 }}
+    {{- if .Values.rearController.service.grpc.labels }}
+      {{- toYaml .Values.rearController.service.grpc.labels | nindent 4 }}
+    {{- end}}
+spec:
+  selector:
+    {{- include "fluidos.selectorLabels" $rearControllerConfig | nindent 4 }}
+  type: {{ .Values.rearController.service.grpc.type }}
+  ports:
+    - name: {{ .Values.rearController.service.grpc.name }}
+      port: {{ .Values.rearController.service.grpc.port }}
+      targetPort: {{ .Values.rearController.service.grpc.targetPort }}
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}-gateway
+  annotations:
+    {{- if .Values.rearController.service.gateway.annotations }}
+      {{- toYaml .Values.rearController.service.gateway.annotations | nindent 4 }}
+    {{- end}}
+  labels:
+    {{- include "fluidos.labels" $rearControllerConfig | nindent 4 }}
+    {{- if .Values.rearController.service.gateway.labels }}
+      {{- toYaml .Values.rearController.service.gateway.labels | nindent 4 }}
+    {{- end}}
+spec:
+  selector:
+    {{- include "fluidos.selectorLabels" $rearControllerConfig | nindent 4 }}
+  type: {{ .Values.rearController.service.gateway.type }}
+  {{- if and (eq .Values.rearController.service.gateway.type "LoadBalancer") (.Values.rearController.service.gateway.loadBalancer.ip) }}
+  loadBalancerIP: {{ .Values.rearController.service.gateway.loadBalancer.ip }}
+  {{- end }}
+  ports:
+    - name: {{ .Values.rearController.service.gateway.name }}
+      {{- if and (eq .Values.rearController.service.gateway.type "NodePort") ( .Values.rearController.service.gateway.nodePort.port ) }}
+      nodePort: {{ .Values.rearController.service.gateway.nodePort.port }}
+      {{- end }}
+      port: {{ .Values.rearController.service.gateway.port }}
+      targetPort: {{ .Values.rearController.service.gateway.targetPort }}
+      protocol: TCP

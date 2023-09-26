@@ -42,7 +42,6 @@ import (
 	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
 	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
 	"github.com/fluidos-project/node/pkg/utils/flags"
-	"github.com/fluidos-project/node/pkg/utils/namings"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -63,29 +62,11 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	clientID, _ := namings.ForgePrefixClientID()
-	// TODO: after the demo recover correct addresses (8080 and 8081)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9081", "The address the probe endpoint binds to.")
-	// NodeIdentity Flags: these flags should be set by the user and probably thay will be related to Liqo
-	flag.StringVar(&flags.DOMAIN, "domain", "fluidos.eu", "Domain name of rhw FLUIDOS node")
-	flag.StringVar(&flags.IP_ADDR, "ip", "", "IP address of the FLUIDOS node")
-	flag.StringVar(&flags.CLIENT_ID, "client-id", clientID, "Client ID related to the FLUIDOS node")
-	// Namespace Flags: these flags represent the namespaces where the CRs will be created
-	flag.StringVar(&flags.RESERVATION_DEFAULT_NAMESPACE, "reservation-namespace", "default", "Namespace where the Reservation Custom Resources are created")
-	flag.StringVar(&flags.FLAVOUR_DEFAULT_NAMESPACE, "flavour-namespace", "default", "Namespace where the flavour CRs are created")
-	flag.StringVar(&flags.CONTRACT_DEFAULT_NAMESPACE, "contract-namespace", "default", "Namespace where the contract CRs are created")
-	flag.StringVar(&flags.TRANSACTION_DEFAULT_NAMESPACE, "transaction-namespace", "default", "Namespace where the transaction CRs are created")
-	flag.StringVar(&flags.DEFAULT_NAMESPACE, "default-namespace", "default", "Default namespace used by the FLUIDOS node")
-	flag.StringVar(&flags.PC_DEFAULT_NAMESPACE, "pc-namespace", "default", "Default Namespace where the peering candidate CRs are created")
-	// Other Flags
-	flag.StringVar(&flags.RESOURCE_TYPE, "resources-types", "k8s-fluidos", "Type of the Flavour (for now we consider only k8s resources)")
-	flag.StringVar(&flags.SERVER_ADDR, "server-addr", "http://localhost:1414/api", "Address of neighbour server used to discover other FLUIDOS nodes")
-	flag.StringVar(&flags.SERVER_ADDRESSES[0], "server-address", flags.SERVER_ADDR, "Array of addresses of neighbour servers used to discover other FLUIDOS nodes")
-	flag.StringVar(&flags.HTTP_PORT, "http-port", ":14144", "Port of the HTTP server")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&flags.GRPC_PORT, "grpc-port", "2710", "Port of the HTTP server")
+	flag.StringVar(&flags.HTTP_PORT, "http-port", "3004", "Port of the HTTP server")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
 	}

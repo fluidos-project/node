@@ -58,16 +58,16 @@ type Policy struct {
 // Partitionable represents the partitioning properties of a Flavour, such as the minimum and incremental values of CPU and RAM.
 type Partitionable struct {
 	// CpuMin is the minimum requirable number of CPU cores of the Flavour.
-	CpuMin int `json:"cpuMin"`
+	CpuMin resource.Quantity `json:"cpuMin"`
 
 	// MemoryMin is the minimum requirable amount of RAM of the Flavour.
-	MemoryMin int `json:"memoryMin"`
+	MemoryMin resource.Quantity `json:"memoryMin"`
 
 	// CpuStep is the incremental value of CPU cores of the Flavour.
-	CpuStep int `json:"cpuStep"`
+	CpuStep resource.Quantity `json:"cpuStep"`
 
 	// MemoryStep is the incremental value of RAM of the Flavour.
-	MemoryStep int `json:"memoryStep"`
+	MemoryStep resource.Quantity `json:"memoryStep"`
 }
 
 // Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.

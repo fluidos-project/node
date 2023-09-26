@@ -35,7 +35,7 @@ func ForgeDiscovery(selector nodecorev1alpha1.FlavourSelector, solverID string) 
 	return &advertisementv1alpha1.Discovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeDiscoveryName(solverID),
-			Namespace: flags.DISCOVERY_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: advertisementv1alpha1.DiscoverySpec{
 			Selector:  selector,
@@ -50,7 +50,7 @@ func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, so
 	pc = &advertisementv1alpha1.PeeringCandidate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgePeeringCandidateName(flavourPeeringCandidate.Name),
-			Namespace: flags.PC_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: advertisementv1alpha1.PeeringCandidateSpec{
 			Flavour: nodecorev1alpha1.Flavour{
@@ -72,20 +72,16 @@ func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, so
 }
 
 // ForgeReservation creates a Reservation CR from a PeeringCandidate
-func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition reservationv1alpha1.Partition) *reservationv1alpha1.Reservation {
+func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition reservationv1alpha1.Partition, ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
 	solverID := peeringCandidate.Spec.SolverID
 	return &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeReservationName(solverID),
-			Namespace: flags.RESERVATION_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.ReservationSpec{
 			SolverID: solverID,
-			Buyer: nodecorev1alpha1.NodeIdentity{
-				Domain: flags.DOMAIN,
-				NodeID: flags.CLIENT_ID,
-				IP:     flags.IP_ADDR,
-			},
+			Buyer:    ni,
 			Seller: nodecorev1alpha1.NodeIdentity{
 				Domain: peeringCandidate.Spec.Flavour.Spec.Owner.Domain,
 				NodeID: peeringCandidate.Spec.Flavour.Spec.Owner.NodeID,
@@ -107,7 +103,7 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavour.Name),
-			Namespace: flags.CONTRACT_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.ContractSpec{
 			Flavour: flavour,
@@ -131,14 +127,15 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 }
 
 // ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node
-func ForgeFlavourFromMetrics(node models.NodeInfo) (flavour *nodecorev1alpha1.Flavour) {
+func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
+
 	return &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgeFlavourName(node.UID),
-			Namespace: flags.FLAVOUR_DEFAULT_NAMESPACE,
+			Name:      namings.ForgeFlavourName(node.UID, ni.Domain),
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
-			ProviderID: node.UID,
+			ProviderID: ni.NodeID,
 			Type:       nodecorev1alpha1.K8S,
 			Characteristics: nodecorev1alpha1.Characteristics{
 				Architecture:     node.Architecture,
@@ -148,21 +145,17 @@ func ForgeFlavourFromMetrics(node models.NodeInfo) (flavour *nodecorev1alpha1.Fl
 			},
 			Policy: nodecorev1alpha1.Policy{
 				Partitionable: &nodecorev1alpha1.Partitionable{
-					CpuMin:     int(flags.CPU_MIN),
-					MemoryMin:  int(flags.MEMORY_MIN),
-					CpuStep:    int(flags.CPU_STEP),
-					MemoryStep: int(flags.MEMORY_STEP),
+					CpuMin:     parseutil.ParseQuantityFromString(flags.CPU_MIN),
+					MemoryMin:  parseutil.ParseQuantityFromString(flags.MEMORY_MIN),
+					CpuStep:    parseutil.ParseQuantityFromString(flags.CPU_STEP),
+					MemoryStep: parseutil.ParseQuantityFromString(flags.MEMORY_STEP),
 				},
 				Aggregatable: &nodecorev1alpha1.Aggregatable{
 					MinCount: int(flags.MIN_COUNT),
 					MaxCount: int(flags.MAX_COUNT),
 				},
 			},
-			Owner: nodecorev1alpha1.NodeIdentity{
-				Domain: flags.DOMAIN,
-				IP:     flags.IP_ADDR,
-				NodeID: flags.CLIENT_ID,
-			},
+			Owner: ni,
 			Price: nodecorev1alpha1.Price{
 				Amount:   flags.AMOUNT,
 				Currency: flags.CURRENCY,
@@ -214,7 +207,7 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      contract.ContractID,
-			Namespace: flags.CONTRACT_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.ContractSpec{
 			Flavour: *ForgeFlavourFromObj(contract.Flavour),
@@ -246,7 +239,7 @@ func ForgeTransactionFromObj(reservation *models.Transaction) *reservationv1alph
 	return &reservationv1alpha1.Transaction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      reservation.TransactionID,
-			Namespace: flags.TRANSACTION_DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.TransactionSpec{
 			FlavourID: reservation.FlavourID,
@@ -266,7 +259,7 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 	f := &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      flavour.FlavourID,
-			Namespace: flags.DEFAULT_NAMESPACE,
+			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
 			ProviderID: flavour.Owner.NodeID,
@@ -280,10 +273,10 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 				Partitionable: func() *nodecorev1alpha1.Partitionable {
 					if flavour.Policy.Partitionable != nil {
 						return &nodecorev1alpha1.Partitionable{
-							CpuMin:     flavour.Policy.Partitionable.CPUMinimum,
-							MemoryMin:  flavour.Policy.Partitionable.MemoryMinimum,
-							CpuStep:    flavour.Policy.Partitionable.CPUStep,
-							MemoryStep: flavour.Policy.Partitionable.MemoryStep,
+							CpuMin:     *resource.NewQuantity(int64(flavour.Policy.Partitionable.CPUMinimum), resource.DecimalSI),
+							MemoryMin:  *resource.NewQuantity(int64(flavour.Policy.Partitionable.MemoryMinimum), resource.BinarySI),
+							CpuStep:    *resource.NewQuantity(int64(flavour.Policy.Partitionable.CPUStep), resource.DecimalSI),
+							MemoryStep: *resource.NewQuantity(int64(flavour.Policy.Partitionable.MemoryStep), resource.BinarySI),
 						}
 					}
 					return nil
