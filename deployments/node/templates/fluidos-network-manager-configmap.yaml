@@ -1,0 +1,51 @@
+{{- $networkManagerConfig := (merge (dict "name" "network-manager" "module" "network-manager") .) -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- if .Values.networkManager.pod.annotations }}
+  annotations:
+    {{- toYaml .Values.networkManager.pod.annotations | nindent 4 }}
+  {{- end}}
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+  name: {{ .Values.networkManager.configMaps.providers.name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ if .Values.networkManager.configMaps.providers.local }}
+  local: {{ .Values.networkManager.configMaps.providers.local }}
+  {{- end }}
+  {{ if .Values.networkManager.configMaps.providers.remote }}
+  remote: {{ .Values.networkManager.configMaps.providers.remote }}
+  {{- end }}
+  {{ if .Values.networkManager.configMaps.providers.default }}
+  default: {{ .Values.networkManager.configMaps.providers.default }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- if .Values.networkManager.pod.annotations }}
+  annotations:
+    {{- toYaml .Values.networkManager.pod.annotations | nindent 4 }}
+  {{- end}}
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+  name: {{ .Values.networkManager.configMaps.nodeIdentity.name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ if .Values.networkManager.configMaps.nodeIdentity.domain }}
+  domain: {{ .Values.networkManager.configMaps.nodeIdentity.domain }}
+  {{- else }}
+  {{- fail "The FLUIDOS Node domain (.Values.networkManager.configMaps.nodeIdentity.domain) must be set." }}
+  {{- end }}
+  {{- if .Values.networkManager.configMaps.nodeIdentity.ip }}
+  ip: {{ .Values.networkManager.configMaps.nodeIdentity.ip }}
+  {{- end }}
+  {{- if .Values.networkManager.configMaps.nodeIdentity.nodeID }}
+  nodeID: {{ .Values.networkManager.configMaps.nodeIdentity.nodeID }}
+  {{- else }}
+  nodeID: {{ randAlphaNum 10 | lower }}
+  {{- end }}
+  
+

@@ -48,6 +48,10 @@ type ReservationReconciler struct {
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts/finalizers,verbs=update
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -111,6 +115,10 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			flavourID := namings.RetrieveFlavourNameFromPC(reservation.Spec.PeeringCandidate.Name)
 			res, err := r.Gateway.ReserveFlavour(ctx, &reservation, flavourID)
 			if err != nil {
+				if res != nil {
+					klog.Infof("Transaction is non correctly set, Retrying...")
+					return ctrl.Result{Requeue: true}, nil
+				}
 				klog.Errorf("Error when reserving flavour for Reservation %s: %s", req.NamespacedName, err)
 				reservation.SetReserveStatus(nodecorev1alpha1.PhaseFailed)
 				reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavour")
@@ -165,7 +173,6 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 			return ctrl.Result{}, nil
 		}
-
 	}
 
 	if reservation.Spec.Purchase && reservation.Status.ReservePhase == nodecorev1alpha1.PhaseSolved {
@@ -192,7 +199,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 
 			transactionID := reservation.Status.TransactionID
-			resPurchase, err := r.Gateway.PurchaseFlavour(ctx, transactionID)
+			resPurchase, err := r.Gateway.PurchaseFlavour(ctx, transactionID, reservation.Spec.Seller)
 			if err != nil {
 				klog.Errorf("Error when purchasing flavour for Reservation %s: %s", req.NamespacedName, err)
 				reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseFailed)

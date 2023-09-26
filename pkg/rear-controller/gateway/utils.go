@@ -69,9 +69,13 @@ func handleError(w http.ResponseWriter, err error, statusCode int) {
 
 // encodeResponse encodes the response as JSON and writes it to the response writer
 func encodeResponse(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(data)
+
+	resp, err := json.Marshal(data)
 	if err != nil {
 		handleError(w, err, http.StatusInternalServerError)
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
 }

@@ -60,7 +60,6 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 
 	// Encode the FlavourList as JSON and write it to the response writer
 	encodeResponse(w, flavoursParsed)
-
 }
 
 // getFlavourByID gets the flavour CR from the cluster that matches the flavourID
@@ -112,8 +111,6 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	klog.Infof("Selector is: %s", selector)
 
 	flavours, err := services.GetAllFlavours(g.client)
 	if err != nil {
@@ -173,6 +170,8 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 	klog.Infof("Flavour %s selected - Parsing...", selected.Name)
 	parsed := parseutil.ParseFlavour(selected)
 
+	klog.Infof("Flavour parsed: %v", parsed)
+
 	// Encode the FlavourList as JSON and write it to the response writer
 	encodeResponse(w, parsed)
 }
@@ -186,11 +185,13 @@ func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 	var request models.ReserveRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		klog.Errorf("Error decoding the ReserveRequest: %s", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if flavourID != request.FlavourID {
+		klog.Infof("Mismatch body & param: %s != %s", flavourID, request.FlavourID)
 		http.Error(w, "Mismatch body & param", http.StatusConflict)
 		return
 	}
@@ -225,6 +226,8 @@ func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 		// Add the transaction to the transactions map
 		g.addNewTransacion(transaction)
 	}
+
+	klog.Infof("Transaction %s reserved", transaction.TransactionID)
 
 	encodeResponse(w, transaction)
 }

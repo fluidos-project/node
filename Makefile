@@ -5,24 +5,31 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+ifeq ($(shell uname),Darwin)
+SED_COMMAND=sed -i '' -n '/rules/,$$p'
+else
+SED_COMMAND=sed -i -n '/rules/,$$p'
+endif
+
 # generate: generate-controller generate-groups rbacs manifests fmt
 generate: generate-controller rbacs manifests fmt
 
 #generate helm documentation
 docs: helm-docs
-	$(HELM_DOCS) -t deployments/fluidos/README.gotmpl deployments/fluidos
+	$(HELM_DOCS) -t deployments/node/README.gotmpl deployments/node
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	rm -f deployments/fluidos/crds/*
-	$(CONTROLLER_GEN) paths="./apis/..." crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deployments/fluidos/crds
+	rm -f deployments/node/crds/*
+	$(CONTROLLER_GEN) paths="./apis/..." crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deployments/node/crds
 
 #Generate RBAC for each controller
 rbacs: controller-gen
-	rm -f deployments/fluidos/files/*
-	$(CONTROLLER_GEN) paths="./pkg/local-resource-manager" rbac:roleName=fluidos-local-resource-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-local-resource-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-local-resource-manager-ClusterRole.yaml
-	$(CONTROLLER_GEN) paths="./pkg/rear-manager/" rbac:roleName=fluidos-rear-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-rear-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-rear-manager-ClusterRole.yaml
-	$(CONTROLLER_GEN) paths="./pkg/rear-controller/..." rbac:roleName=fluidos-rear-controller output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/fluidos/files/fluidos-rear-controller-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  sed -i -n '/rules/,$$p' deployments/fluidos/files/fluidos-rear-controller-ClusterRole.yaml
+	rm -f deployments/node/files/*
+
+	$(CONTROLLER_GEN) paths="./pkg/local-resource-manager" rbac:roleName=fluidos-local-resource-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-local-resource-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/fluidos-local-resource-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-manager/" rbac:roleName=fluidos-rear-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-rear-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/fluidos-rear-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-controller/..." rbac:roleName=fluidos-rear-controller output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-rear-controller-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  $(SED_COMMAND) deployments/node/files/fluidos-rear-controller-ClusterRole.yaml
 
 # Install gci if not available
 gci:
@@ -46,7 +53,7 @@ endif
 fmt: gci addlicense
 	go mod tidy
 	go fmt ./...
-	find . -type f -name '*.go' -a ! -name '*zz_generated*' -exec $(GCI) write -s standard -s default -s "prefix(github.com/fluidos-project/WP3_Node)" {} \;
+	find . -type f -name '*.go' -a ! -name '*zz_generated*' -exec $(GCI) write -s standard -s default -s "prefix(github.com/fluidos-project/node)" {} \;
 	find . -type f -name '*.go' -exec $(ADDLICENSE) -l apache -c "FLUIDOS Project" -y "2022-$(shell date +%Y)" {} \;
 
 # Install golangci-lint if not available
