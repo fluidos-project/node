@@ -1,34 +1,34 @@
-domain: fluidos.eu
+domain: github.com/fluidos-project/
 layout:
 - go.kubebuilder.io/v3
 projectName: node
-repo: fluidos.eu/node
+repo: github.com/fluidos-project/node
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: fluidos.eu
+  domain: github.com/fluidos-project/
   group: nodecore
   kind: Solver
-  path: fluidos.eu/node/api/v1alpha1
+  path: github.com/fluidos-project/node/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: fluidos.eu
+  domain: github.com/fluidos-project/
   group: nodecore
   kind: Flavour
-  path: fluidos.eu/node/api/v1alpha1
+  path: github.com/fluidos-project/node/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: fluidos.eu
+  domain: github.com/fluidos-project/
   group: nodecore
   kind: Allocation
-  path: fluidos.eu/node/api/v1alpha1
+  path: github.com/fluidos-project/node/api/v1alpha1
   version: v1alpha1
 version: "3"

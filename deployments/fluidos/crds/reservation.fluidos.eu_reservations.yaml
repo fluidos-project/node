@@ -1,0 +1,219 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: reservations.reservation.fluidos.eu
+spec:
+  group: reservation.fluidos.eu
+  names:
+    kind: Reservation
+    listKind: ReservationList
+    plural: reservations
+    singular: reservation
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.solverID
+      name: Solver ID
+      type: string
+    - jsonPath: .spec.reserve
+      name: Reserve
+      type: boolean
+    - jsonPath: .spec.purchase
+      name: Purchase
+      type: boolean
+    - jsonPath: .spec.seller.name
+      name: Seller
+      type: string
+    - jsonPath: .spec.peeringCandidate.name
+      name: Peering Candidate
+      priority: 1
+      type: string
+    - jsonPath: .status.transactionID
+      name: Transaction ID
+      type: string
+    - jsonPath: .status.reservePhase.phase
+      name: Reserve Phase
+      priority: 1
+      type: string
+    - jsonPath: .status.purchasePhase.phase
+      name: Purchase Phase
+      priority: 1
+      type: string
+    - jsonPath: .status.contract.name
+      name: Contract Name
+      type: string
+    - jsonPath: .status.phase.phase
+      name: Status
+      type: string
+    - jsonPath: .status.phase.message
+      name: Message
+      priority: 1
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Reservation is the Schema for the reservations API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ReservationSpec defines the desired state of Reservation
+            properties:
+              buyer:
+                description: This is the Node identity of the buyer FLUIDOS Node.
+                properties:
+                  domain:
+                    type: string
+                  ip:
+                    type: string
+                  nodeID:
+                    type: string
+                required:
+                - domain
+                - ip
+                - nodeID
+                type: object
+              partition:
+                description: Parition is the partition of the flavour that is being
+                  reserved
+                properties:
+                  architecture:
+                    type: string
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  ephemeral-storage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  gpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  memory:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  storage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                required:
+                - architecture
+                - cpu
+                - memory
+                type: object
+              peeringCandidate:
+                description: PeeringCandidate is the reference to the PeeringCandidate
+                  of the Reservation
+                properties:
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: The namespace containing the resource to be referenced.
+                      It should be left empty in case of cluster-wide resources.
+                    type: string
+                type: object
+              purchase:
+                description: Purchase indicates if the reservation is an purchase
+                  or not
+                type: boolean
+              reserve:
+                description: Reserve indicates if the reservation is a reserve or
+                  not
+                type: boolean
+              seller:
+                description: This is the Node identity of the seller FLUIDOS Node.
+                properties:
+                  domain:
+                    type: string
+                  ip:
+                    type: string
+                  nodeID:
+                    type: string
+                required:
+                - domain
+                - ip
+                - nodeID
+                type: object
+              solverID:
+                description: SolverID is the ID of the solver that asks for the reservation
+                type: string
+            required:
+            - buyer
+            - seller
+            - solverID
+            type: object
+          status:
+            description: ReservationStatus defines the observed state of Reservation
+            properties:
+              contract:
+                description: Contract is the reference to the Contract of the Reservation
+                properties:
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: The namespace containing the resource to be referenced.
+                      It should be left empty in case of cluster-wide resources.
+                    type: string
+                type: object
+              phase:
+                description: This is the current phase of the reservation
+                properties:
+                  endTime:
+                    type: string
+                  lastChangeTime:
+                    type: string
+                  message:
+                    type: string
+                  phase:
+                    type: string
+                  startTime:
+                    type: string
+                required:
+                - phase
+                type: object
+              purchasePhase:
+                description: PurchasePhase is the current phase of the reservation
+                type: string
+              reservePhase:
+                description: ReservePhase is the current phase of the reservation
+                type: string
+              transactionID:
+                description: TransactionID is the ID of the transaction that this
+                  reservation is part of
+                type: string
+            required:
+            - phase
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

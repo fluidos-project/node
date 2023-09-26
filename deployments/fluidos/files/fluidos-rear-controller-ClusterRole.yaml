@@ -1,0 +1,214 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluidos-rear-controller
+rules:
+rules:
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - discoveries
+  - discoveries
+  verbs:
+  verbs:
+  - create
+  - create
+  - delete
+  - delete
+  - get
+  - get
+  - list
+  - list
+  - patch
+  - patch
+  - update
+  - update
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - discoveries/finalizers
+  - discoveries/finalizers
+  verbs:
+  verbs:
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - discoveries/status
+  - discoveries/status
+  verbs:
+  verbs:
+  - get
+  - get
+  - patch
+  - patch
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - peeringcandidates
+  - peeringcandidates
+  verbs:
+  verbs:
+  - create
+  - create
+  - delete
+  - delete
+  - get
+  - get
+  - list
+  - list
+  - patch
+  - patch
+  - update
+  - update
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - peeringcandidates/finalizers
+  - peeringcandidates/finalizers
+  verbs:
+  verbs:
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  - advertisement.github.com/fluidos-project/
+  resources:
+  resources:
+  - peeringcandidates/status
+  - peeringcandidates/status
+  verbs:
+  verbs:
+  - get
+  - get
+  - patch
+  - patch
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - contracts
+  - contracts
+  verbs:
+  verbs:
+  - create
+  - create
+  - delete
+  - delete
+  - get
+  - get
+  - list
+  - list
+  - patch
+  - patch
+  - update
+  - update
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - contracts/finalizers
+  - contracts/finalizers
+  verbs:
+  verbs:
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - contracts/status
+  - contracts/status
+  verbs:
+  verbs:
+  - get
+  - get
+  - patch
+  - patch
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - reservations
+  - reservations
+  verbs:
+  verbs:
+  - create
+  - create
+  - delete
+  - delete
+  - get
+  - get
+  - list
+  - list
+  - patch
+  - patch
+  - update
+  - update
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - reservations/finalizers
+  - reservations/finalizers
+  verbs:
+  verbs:
+  - update
+  - update
+- apiGroups:
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  - reservation.github.com/fluidos-project/
+  resources:
+  resources:
+  - reservations/status
+  - reservations/status
+  verbs:
+  verbs:
+  - get
+  - get
+  - patch
+  - patch
+  - update
+  - update

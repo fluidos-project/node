@@ -1,6 +1,0 @@
-apiVersion: nodecore.fluidos.eu/v1alpha1
-kind: Allocation
-metadata:
-  name: allocation-sample
-spec:
-  # TODO(user): Add fields here

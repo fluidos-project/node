@@ -1,0 +1,62 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluidos-local-resource-manager
+rules:
+rules:
+- apiGroups:
+- apiGroups:
+  - ""
+  - ""
+  resources:
+  resources:
+  - nodes
+  - nodes
+  verbs:
+  verbs:
+  - get
+  - get
+  - list
+  - list
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - metrics.k8s.io
+  - metrics.k8s.io
+  resources:
+  resources:
+  - pods
+  - pods
+  verbs:
+  verbs:
+  - get
+  - get
+  - list
+  - list
+  - watch
+  - watch
+- apiGroups:
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  - nodecore.github.com/fluidos-project/
+  resources:
+  resources:
+  - flavours
+  - flavours
+  verbs:
+  verbs:
+  - create
+  - create
+  - delete
+  - delete
+  - get
+  - get
+  - list
+  - list
+  - patch
+  - patch
+  - update
+  - update
+  - watch
+  - watch
