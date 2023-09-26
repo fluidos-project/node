@@ -1,0 +1,187 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluidos-rear-manager
+rules:
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - discoveries
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - discoveries/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - discoveries/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - peeringcandidates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - peeringcandidates/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - advertisement.github.com/fluidos-project/
+  resources:
+  - peeringcandidates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - allocations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - allocations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - allocations/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - flavours
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - flavours/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - flavours/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - solvers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - solvers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nodecore.github.com/fluidos-project/
+  resources:
+  - solvers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - contracts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - contracts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - contracts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - reservations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - reservations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - reservation.github.com/fluidos-project/
+  resources:
+  - reservations/status
+  verbs:
+  - get
+  - patch
+  - update

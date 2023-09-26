@@ -35,14 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	advertisementv1alpha1 "fluidos.eu/node/api/advertisement/v1alpha1"
-	nodecorev1alpha1 "fluidos.eu/node/api/nodecore/v1alpha1"
-	reservationv1alpha1 "fluidos.eu/node/api/reservation/v1alpha1"
-	contractmanager "fluidos.eu/node/pkg/rear-controller/contract-manager"
-	discoverymanager "fluidos.eu/node/pkg/rear-controller/discovery-manager"
-	gateway "fluidos.eu/node/pkg/rear-controller/gateway"
-	"fluidos.eu/node/pkg/utils/flags"
-	"fluidos.eu/node/pkg/utils/namings"
+	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
+	contractmanager "github.com/fluidos-project/node/pkg/rear-controller/contract-manager"
+	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
+	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/namings"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -68,7 +68,7 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9081", "The address the probe endpoint binds to.")
 	// NodeIdentity Flags: these flags should be set by the user and probably thay will be related to Liqo
-	flag.StringVar(&flags.DOMAIN, "domain", "fluidos.eu", "Domain name of rhw FLUIDOS node")
+	flag.StringVar(&flags.DOMAIN, "domain", "github.com/fluidos-project/", "Domain name of rhw FLUIDOS node")
 	flag.StringVar(&flags.IP_ADDR, "ip", "", "IP address of the FLUIDOS node")
 	flag.StringVar(&flags.CLIENT_ID, "client-id", clientID, "Client ID related to the FLUIDOS node")
 	// Namespace Flags: these flags represent the namespaces where the CRs will be created
@@ -100,7 +100,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "efa8b828.fluidos.eu",
+		LeaderElectionID:       "efa8b828.github.com/fluidos-project/",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
