@@ -8,7 +8,7 @@ Implementation is divided into three main parts:
 - **REAR Controller**, that contains the implementation of the Discovery Manager, Gateway and Contract Manager components with the Discovery and Reservation controllers.
 
 <p align="center">
-<img src="../images/FLUIDOSNodeImplementation.png" width="700">
+<img src="../images/FLUIDOSNodeImplementation.svg" width="700">
 </p>
 
 See the different implementation for: 
