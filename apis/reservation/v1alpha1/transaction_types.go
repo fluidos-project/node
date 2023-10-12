@@ -27,6 +27,9 @@ type TransactionSpec struct {
 	// Buyer is the buyer Identity of the Fluidos Node that is reserving the Flavour
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
 
+	// ClusterID is the Liqo ClusterID of the Fluidos Node that is reserving the Flavour
+	ClusterID string `json:"clusterID"`
+
 	// Partition is the partition of the flavour that is being reserved
 	Partition Partition `json:"partition,omitempty"`
 

@@ -99,7 +99,7 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, p
 }
 
 // ForgeContract creates a Contract CR
-func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transaction) *reservationv1alpha1.Contract {
+func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transaction, lc *reservationv1alpha1.LiqoCredentials) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavour.Name),
@@ -112,10 +112,12 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 				IP:     transaction.Buyer.IP,
 				NodeID: transaction.Buyer.NodeID,
 			},
-			Seller:         flavour.Spec.Owner,
-			TransactionID:  transaction.TransactionID,
-			Partition:      parseutil.ParsePartitionFromObj(transaction.Partition),
-			ExpirationTime: time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
+			BuyerClusterID:    transaction.ClusterID,
+			Seller:            flavour.Spec.Owner,
+			SellerCredentials: *lc,
+			TransactionID:     transaction.TransactionID,
+			Partition:         parseutil.ParsePartitionFromObj(transaction.Partition),
+			ExpirationTime:    time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -128,7 +130,6 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 
 // ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node
 func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
-
 	return &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeFlavourName(node.UID, ni.Domain),
@@ -176,6 +177,7 @@ func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transactio
 	return models.Transaction{
 		TransactionID: ID,
 		Buyer:         req.Buyer,
+		ClusterID:     req.ClusterID,
 		FlavourID:     req.FlavourID,
 		Partition:     req.Partition,
 		StartTime:     tools.GetTimeNow(),
@@ -187,10 +189,23 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 		ContractID:     contract.Name,
 		Flavour:        parseutil.ParseFlavour(contract.Spec.Flavour),
 		Buyer:          parseutil.ParseNodeIdentity(contract.Spec.Buyer),
+		BuyerClusterID: contract.Spec.BuyerClusterID,
 		Seller:         parseutil.ParseNodeIdentity(contract.Spec.Seller),
+		SellerCredentials: models.LiqoCredentials{
+			ClusterID:   contract.Spec.SellerCredentials.ClusterID,
+			ClusterName: contract.Spec.SellerCredentials.ClusterName,
+			Token:       contract.Spec.SellerCredentials.Token,
+			Endpoint:    contract.Spec.SellerCredentials.Endpoint,
+		},
 		Partition:      parseutil.ParsePartition(contract.Spec.Partition),
 		TransactionID:  contract.Spec.TransactionID,
 		ExpirationTime: contract.Spec.ExpirationTime,
+		ExtraInformation: func() map[string]string {
+			if contract.Spec.ExtraInformation != nil {
+				return contract.Spec.ExtraInformation
+			}
+			return nil
+		}(),
 	}
 }
 
@@ -216,14 +231,27 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 				IP:     contract.Buyer.IP,
 				NodeID: contract.Buyer.NodeID,
 			},
+			BuyerClusterID: contract.BuyerClusterID,
 			Seller: nodecorev1alpha1.NodeIdentity{
 				NodeID: contract.Seller.NodeID,
 				IP:     contract.Seller.IP,
 				Domain: contract.Seller.Domain,
 			},
+			SellerCredentials: reservationv1alpha1.LiqoCredentials{
+				ClusterID:   contract.SellerCredentials.ClusterID,
+				ClusterName: contract.SellerCredentials.ClusterName,
+				Token:       contract.SellerCredentials.Token,
+				Endpoint:    contract.SellerCredentials.Endpoint,
+			},
 			TransactionID:  contract.TransactionID,
 			Partition:      parseutil.ParsePartitionFromObj(contract.Partition),
 			ExpirationTime: contract.ExpirationTime,
+			ExtraInformation: func() map[string]string {
+				if contract.ExtraInformation != nil {
+					return contract.ExtraInformation
+				}
+				return nil
+			}(),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -249,6 +277,7 @@ func ForgeTransactionFromObj(reservation *models.Transaction) *reservationv1alph
 				IP:     reservation.Buyer.IP,
 				NodeID: reservation.Buyer.NodeID,
 			},
+			ClusterID: reservation.ClusterID,
 			Partition: parseutil.ParsePartitionFromObj(reservation.Partition),
 		},
 	}

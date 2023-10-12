@@ -41,6 +41,7 @@ import (
 	contractmanager "github.com/fluidos-project/node/pkg/rear-controller/contract-manager"
 	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
 	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/rear-controller/grpc"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 	//+kubebuilder:scaffold:imports
 )
@@ -90,17 +91,30 @@ func main() {
 
 	cache := mgr.GetCache()
 
-	indexFunc := func(obj client.Object) []string {
+	// Index the TransactionID field of the Contract CRD
+	indexFuncTransaction := func(obj client.Object) []string {
 		contract := obj.(*reservationv1alpha1.Contract)
 		return []string{contract.Spec.TransactionID}
 	}
 
-	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.transactionID", indexFunc); err != nil {
+	// Index the ClusterID field of the Contract CRD
+	indexFuncClusterID := func(obj client.Object) []string {
+		contract := obj.(*reservationv1alpha1.Contract)
+		return []string{contract.Spec.BuyerClusterID}
+	}
+
+	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.transactionID", indexFuncTransaction); err != nil {
 		setupLog.Error(err, "unable to create index for field", "field", "spec.transactionID")
 		os.Exit(1)
 	}
 
+	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.buyerClusterID", indexFuncClusterID); err != nil {
+		setupLog.Error(err, "unable to create index for field", "field", "spec.buyerClusterID")
+		os.Exit(1)
+	}
+
 	gw := gateway.NewGateway(mgr.GetClient())
+	grpcServer := grpc.NewGrpcServer(mgr.GetClient())
 
 	if err = (&discoverymanager.DiscoveryReconciler{
 		Client:  mgr.GetClient(),
@@ -138,6 +152,11 @@ func main() {
 	// Start the REAR Gateway HTTP server
 	go func() {
 		gw.StartHttpServer()
+	}()
+
+	// Start the REAR GRPC server
+	go func() {
+		grpcServer.Start()
 	}()
 
 	// TODO: Uncomment this when the webhook is ready. For now it does not work (Ale)

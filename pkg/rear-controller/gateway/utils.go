@@ -15,11 +15,19 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	reservationsv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/models"
+
+	"github.com/liqotech/liqo/pkg/auth"
+	"github.com/liqotech/liqo/pkg/utils"
+	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 )
 
 // buildSelector builds a selector from a request body
@@ -78,4 +86,42 @@ func encodeResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+}
+
+const (
+	authTokenSecretNamePrefix = "remote-token-"
+
+	tokenKey = "token"
+
+	liqoNamespace = "liqo"
+)
+
+func GetLiqoCredentials(ctx context.Context, cl client.Client) (*reservationsv1alpha1.LiqoCredentials, error) {
+	localToken, err := auth.GetToken(ctx, cl, liqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterIdentity, err := utils.GetClusterIdentityWithControllerClient(ctx, cl, liqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	authEP, err := foreigncluster.GetHomeAuthURL(ctx, cl, liqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the local cluster has not a cluster name, we print the use the local clusterID to not leave this field empty.
+	// This can be changed by the user when pasting this value in a remote cluster.
+	if clusterIdentity.ClusterName == "" {
+		clusterIdentity.ClusterName = clusterIdentity.ClusterID
+	}
+
+	return &reservationsv1alpha1.LiqoCredentials{
+		ClusterName: clusterIdentity.ClusterName,
+		ClusterID:   clusterIdentity.ClusterID,
+		Endpoint:    authEP,
+		Token:       localToken,
+	}, nil
 }

@@ -88,11 +88,7 @@ func (in *ContractSpec) DeepCopyInto(out *ContractSpec) {
 	in.Partition.DeepCopyInto(&out.Partition)
 	out.Buyer = in.Buyer
 	out.Seller = in.Seller
-	if in.Credentials != nil {
-		in, out := &in.Credentials, &out.Credentials
-		*out = new(LiqoCredentials)
-		**out = **in
-	}
+	out.SellerCredentials = in.SellerCredentials
 	if in.ExtraInformation != nil {
 		in, out := &in.ExtraInformation, &out.ExtraInformation
 		*out = make(map[string]string, len(*in))
