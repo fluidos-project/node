@@ -308,9 +308,16 @@ func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	liqoCredentials, err := GetLiqoCredentials(context.Background(), g.client)
+	if err != nil {
+		klog.Errorf("Error getting Liqo Credentials: %s", err)
+		http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)
+		return
+	}
+
 	// Create a new contract
 	klog.Infof("Creating a new contract...")
-	contract = *resourceforge.ForgeContract(*flavourSold, transaction)
+	contract = *resourceforge.ForgeContract(*flavourSold, transaction, liqoCredentials)
 	err = g.client.Create(context.Background(), &contract)
 	if err != nil {
 		klog.Errorf("Error creating the Contract: %s", err)

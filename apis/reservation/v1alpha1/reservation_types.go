@@ -39,6 +39,9 @@ type ReservationSpec struct {
 	// This is the Node identity of the buyer FLUIDOS Node.
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
 
+	// BuyerClusterID is the Liqo ClusterID used by the seller to search a contract and the related resources during the peering phase.
+	BuyerClusterID string `json:"buyerClusterID"`
+
 	// This is the Node identity of the seller FLUIDOS Node.
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 

@@ -181,12 +181,19 @@ func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 // ForgeContractObject creates a Contract Object
 func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 	return models.Contract{
-		ContractID:    contract.Name,
-		Flavour:       ParseFlavour(contract.Spec.Flavour),
-		Buyer:         ParseNodeIdentity(contract.Spec.Buyer),
-		TransactionID: contract.Spec.TransactionID,
-		Partition:     ParsePartition(contract.Spec.Partition),
-		Seller:        ParseNodeIdentity(contract.Spec.Seller),
+		ContractID:     contract.Name,
+		Flavour:        ParseFlavour(contract.Spec.Flavour),
+		Buyer:          ParseNodeIdentity(contract.Spec.Buyer),
+		BuyerClusterID: contract.Spec.BuyerClusterID,
+		TransactionID:  contract.Spec.TransactionID,
+		Partition:      ParsePartition(contract.Spec.Partition),
+		Seller:         ParseNodeIdentity(contract.Spec.Seller),
+		SellerCredentials: models.LiqoCredentials{
+			ClusterID:   contract.Spec.SellerCredentials.ClusterID,
+			ClusterName: contract.Spec.SellerCredentials.ClusterName,
+			Token:       contract.Spec.SellerCredentials.Token,
+			Endpoint:    contract.Spec.SellerCredentials.Endpoint,
+		},
 	}
 }
 

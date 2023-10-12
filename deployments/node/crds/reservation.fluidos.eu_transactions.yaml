@@ -49,6 +49,10 @@ spec:
                 - ip
                 - nodeID
                 type: object
+              clusterID:
+                description: ClusterID is the Liqo ClusterID of the Fluidos Node that
+                  is reserving the Flavour
+                type: string
               flavourID:
                 description: FlavourID is the ID of the flavour that is being reserved
                 type: string
@@ -99,6 +103,7 @@ spec:
                 type: string
             required:
             - buyer
+            - clusterID
             - flavourID
             type: object
           status:

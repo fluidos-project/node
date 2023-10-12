@@ -30,17 +30,28 @@ type Transaction struct {
 	FlavourID     string       `json:"flavourID"`
 	Partition     Partition    `json:"partition"`
 	Buyer         NodeIdentity `json:"buyer"`
-	StartTime     string       `json:"startTime,omitempty"`
+	ClusterID     string       `json:"clusterID"`
+	StartTime     string       `json:"startTime"`
 }
 
 // Contract represents a Contract object with its characteristics
 type Contract struct {
-	ContractID       string            `json:"contractID"`
-	TransactionID    string            `json:"transactionID"`
-	Flavour          Flavour           `json:"flavour"`
-	Buyer            NodeIdentity      `json:"buyerID"`
-	Seller           NodeIdentity      `json:"seller"`
-	ExpirationTime   string            `json:"expirationTime,omitempty"`
-	ExtraInformation map[string]string `json:"extraInformation,omitempty"`
-	Partition        Partition         `json:"partition,omitempty"`
+	ContractID        string            `json:"contractID"`
+	TransactionID     string            `json:"transactionID"`
+	Flavour           Flavour           `json:"flavour"`
+	Buyer             NodeIdentity      `json:"buyerID"`
+	BuyerClusterID    string            `json:"buyerClusterID"`
+	Seller            NodeIdentity      `json:"seller"`
+	SellerCredentials LiqoCredentials   `json:"sellerCredentials"`
+	ExpirationTime    string            `json:"expirationTime,omitempty"`
+	ExtraInformation  map[string]string `json:"extraInformation,omitempty"`
+	Partition         Partition         `json:"partition,omitempty"`
+}
+
+// LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
+type LiqoCredentials struct {
+	ClusterID   string `json:"clusterID"`
+	ClusterName string `json:"clusterName"`
+	Token       string `json:"token"`
+	Endpoint    string `json:"endpoint"`
 }
