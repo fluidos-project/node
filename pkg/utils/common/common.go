@@ -28,7 +28,7 @@ import (
 )
 
 // FilterFlavoursBySelector returns the Flavour CRs in the cluster that match the selector
-func FilterFlavoursBySelector(flavours []nodecorev1alpha1.Flavour, selector models.Selector) ([]nodecorev1alpha1.Flavour, error) {
+func FilterFlavoursBySelector(flavours []nodecorev1alpha1.Flavour, selector *models.Selector) ([]nodecorev1alpha1.Flavour, error) {
 	var flavoursSelected []nodecorev1alpha1.Flavour
 
 	// Get the Flavours that match the selector
@@ -46,7 +46,7 @@ func FilterFlavoursBySelector(flavours []nodecorev1alpha1.Flavour, selector mode
 }
 
 // filterFlavour filters the Flavour CRs in the cluster that match the selector
-func FilterFlavour(selector models.Selector, f nodecorev1alpha1.Flavour) bool {
+func FilterFlavour(selector *models.Selector, f nodecorev1alpha1.Flavour) bool {
 
 	if f.Spec.Characteristics.Architecture != selector.Architecture {
 		klog.Infof("Flavour %s has different architecture: %s - Selector: %s", f.Name, f.Spec.Characteristics.Architecture, selector.Architecture)
@@ -54,27 +54,27 @@ func FilterFlavour(selector models.Selector, f nodecorev1alpha1.Flavour) bool {
 	}
 
 	if selector.MatchSelector != nil {
-		if selector.MatchSelector.Cpu == 0 && f.Spec.Characteristics.Cpu.CmpInt64(int64(selector.MatchSelector.Cpu)) != 0 {
+		if selector.MatchSelector.Cpu.CmpInt64(0) == 0 && f.Spec.Characteristics.Cpu.Cmp(selector.MatchSelector.Cpu) != 0 {
 			klog.Infof("MatchSelector Cpu: %d - Flavour Cpu: %d", selector.MatchSelector.Cpu, f.Spec.Characteristics.Cpu)
 			return false
 		}
 
-		if selector.MatchSelector.Memory == 0 && f.Spec.Characteristics.Memory.CmpInt64(int64(selector.MatchSelector.Memory)) != 0 {
+		if selector.MatchSelector.Memory.CmpInt64(0) == 0 && f.Spec.Characteristics.Memory.Cmp(selector.MatchSelector.Memory) != 0 {
 			klog.Infof("MatchSelector Memory: %d - Flavour Memory: %d", selector.MatchSelector.Memory, f.Spec.Characteristics.Memory)
 			return false
 		}
 
-		if selector.MatchSelector.EphemeralStorage == 0 && f.Spec.Characteristics.EphemeralStorage.CmpInt64(int64(selector.MatchSelector.EphemeralStorage)) < 0 {
+		if selector.MatchSelector.EphemeralStorage.CmpInt64(0) == 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.MatchSelector.EphemeralStorage) != 0 {
 			klog.Infof("MatchSelector EphemeralStorage: %d - Flavour EphemeralStorage: %d", selector.MatchSelector.EphemeralStorage, f.Spec.Characteristics.EphemeralStorage)
 			return false
 		}
 
-		if selector.MatchSelector.Storage == 0 && f.Spec.Characteristics.PersistentStorage.CmpInt64(int64(selector.MatchSelector.Storage)) < 0 {
+		if selector.MatchSelector.Storage.CmpInt64(0) == 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.MatchSelector.Storage) != 0 {
 			klog.Infof("MatchSelector Storage: %d - Flavour Storage: %d", selector.MatchSelector.Storage, f.Spec.Characteristics.PersistentStorage)
 			return false
 		}
 
-		if selector.MatchSelector.Gpu == 0 && f.Spec.Characteristics.Gpu.CmpInt64(int64(selector.MatchSelector.Gpu)) < 0 {
+		if selector.MatchSelector.Gpu.CmpInt64(0) == 0 && f.Spec.Characteristics.Gpu.Cmp(selector.MatchSelector.Gpu) != 0 {
 			klog.Infof("MatchSelector GPU: %d - Flavour GPU: %d", selector.MatchSelector.Gpu, f.Spec.Characteristics.Gpu)
 			return false
 		}
@@ -82,47 +82,47 @@ func FilterFlavour(selector models.Selector, f nodecorev1alpha1.Flavour) bool {
 
 	if selector.RangeSelector != nil && selector.MatchSelector == nil {
 
-		if selector.RangeSelector.MinCpu != 0 && f.Spec.Characteristics.Cpu.CmpInt64(int64(selector.RangeSelector.MinCpu)) < 0 {
+		if selector.RangeSelector.MinCpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Cpu.Cmp(selector.RangeSelector.MinCpu) < 0 {
 			klog.Infof("RangeSelector MinCpu: %d - Flavour Cpu: %d", selector.RangeSelector.MinCpu, f.Spec.Characteristics.Cpu)
 			return false
 		}
 
-		if selector.RangeSelector.MinMemory != 0 && f.Spec.Characteristics.Memory.CmpInt64(int64(selector.RangeSelector.MinMemory)) < 0 {
+		if selector.RangeSelector.MinMemory.CmpInt64(0) != 0 && f.Spec.Characteristics.Memory.Cmp(selector.RangeSelector.MinMemory) < 0 {
 			klog.Infof("RangeSelector MinMemory: %d - Flavour Memory: %d", selector.RangeSelector.MinMemory, f.Spec.Characteristics.Memory)
 			return false
 		}
 
-		if selector.RangeSelector.MinEph != 0 && f.Spec.Characteristics.EphemeralStorage.CmpInt64(int64(selector.RangeSelector.MinEph)) < 0 {
+		if selector.RangeSelector.MinEph.CmpInt64(0) != 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.RangeSelector.MinEph) < 0 {
 			klog.Infof("RangeSelector MinEph: %d - Flavour EphemeralStorage: %d", selector.RangeSelector.MinEph, f.Spec.Characteristics.EphemeralStorage)
 			return false
 		}
 
-		if selector.RangeSelector.MinStorage != 0 && f.Spec.Characteristics.PersistentStorage.CmpInt64(int64(selector.RangeSelector.MinStorage)) < 0 {
+		if selector.RangeSelector.MinStorage.CmpInt64(0) != 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.RangeSelector.MinStorage) < 0 {
 			klog.Infof("RangeSelector MinStorage: %d - Flavour Storage: %d", selector.RangeSelector.MinStorage, f.Spec.Characteristics.PersistentStorage)
 			return false
 		}
 
-		if selector.RangeSelector.MinGpu != 0 && f.Spec.Characteristics.Gpu.CmpInt64(int64(selector.RangeSelector.MinGpu)) < 0 {
+		if selector.RangeSelector.MinGpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Gpu.Cmp(selector.RangeSelector.MinGpu) < 0 {
 			return false
 		}
 
-		if selector.RangeSelector.MaxCpu != 0 && f.Spec.Characteristics.Cpu.CmpInt64(int64(selector.RangeSelector.MaxCpu)) > 0 {
+		if selector.RangeSelector.MaxCpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Cpu.Cmp(selector.RangeSelector.MaxCpu) > 0 {
 			return false
 		}
 
-		if selector.RangeSelector.MaxMemory != 0 && f.Spec.Characteristics.Memory.CmpInt64(int64(selector.RangeSelector.MaxMemory)) > 0 {
+		if selector.RangeSelector.MaxMemory.CmpInt64(0) != 0 && f.Spec.Characteristics.Memory.Cmp(selector.RangeSelector.MaxMemory) > 0 {
 			return false
 		}
 
-		if selector.RangeSelector.MaxEph != 0 && f.Spec.Characteristics.EphemeralStorage.CmpInt64(int64(selector.RangeSelector.MaxEph)) > 0 {
+		if selector.RangeSelector.MaxEph.CmpInt64(0) != 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.RangeSelector.MaxEph) > 0 {
 			return false
 		}
 
-		if selector.RangeSelector.MaxStorage != 0 && f.Spec.Characteristics.PersistentStorage.CmpInt64(int64(selector.RangeSelector.MaxStorage)) > 0 {
+		if selector.RangeSelector.MaxStorage.CmpInt64(0) != 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.RangeSelector.MaxStorage) > 0 {
 			return false
 		}
 
-		if selector.RangeSelector.MaxGpu != 0 && f.Spec.Characteristics.Gpu.CmpInt64(int64(selector.RangeSelector.MaxGpu)) > 0 {
+		if selector.RangeSelector.MaxGpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Gpu.Cmp(selector.RangeSelector.MaxGpu) > 0 {
 			return false
 		}
 	}
@@ -132,13 +132,13 @@ func FilterFlavour(selector models.Selector, f nodecorev1alpha1.Flavour) bool {
 
 // FilterPeeringCandidate filters the peering candidate based on the solver's flavour selector
 func FilterPeeringCandidate(selector *nodecorev1alpha1.FlavourSelector, pc *advertisementv1alpha1.PeeringCandidate) bool {
-	s := parseutil.ParseFlavourSelector(*selector)
+	s := parseutil.ParseFlavourSelector(selector)
 	return FilterFlavour(s, pc.Spec.Flavour)
 }
 
 // CheckSelector ia a func to check if the syntax of the Selector is right.
 // Strict and range syntax cannot be used together
-func CheckSelector(selector models.Selector) error {
+func CheckSelector(selector *models.Selector) error {
 
 	if selector.MatchSelector != nil && selector.RangeSelector != nil {
 		return fmt.Errorf("selector syntax error: strict and range syntax cannot be used together")

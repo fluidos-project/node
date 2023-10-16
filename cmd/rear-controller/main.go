@@ -144,20 +144,39 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Periodically clear the transaction cache
 	if err := mgr.Add(manager.RunnableFunc(gw.CacheRefresher(flags.REFRESH_CACHE_INTERVAL))); err != nil {
 		klog.Errorf("Unable to set up transaction cache refresher: %s", err)
 		os.Exit(1)
 	}
 
+	// Periodically check if Liqo is ready
+	if err := mgr.Add(manager.RunnableFunc(gw.LiqoChecker(flags.LIQO_CHECK_INTERVAL))); err != nil {
+		klog.Errorf("Unable to set up Liqo checker: %s", err)
+		os.Exit(1)
+	}
+
 	// Start the REAR Gateway HTTP server
-	go func() {
-		gw.StartHttpServer()
-	}()
+	if err := mgr.Add(manager.RunnableFunc(gw.Start)); err != nil {
+		klog.Errorf("Unable to set up Gateway HTTP server: %s", err)
+		os.Exit(1)
+	}
 
 	// Start the REAR GRPC server
-	go func() {
+	if err := mgr.Add(manager.RunnableFunc(grpcServer.Start)); err != nil {
+		klog.Errorf("Unable to set up Gateway GRPC server: %s", err)
+		os.Exit(1)
+	}
+
+	// Start the REAR Gateway HTTP server
+	/* go func() {
+		gw.Start()
+	}() */
+
+	// Start the REAR GRPC server
+	/* go func() {
 		grpcServer.Start()
-	}()
+	}() */
 
 	// TODO: Uncomment this when the webhook is ready. For now it does not work (Ale)
 	// pcv := discoverymanager.NewPCValidator(mgr.GetClient())

@@ -32,6 +32,8 @@ helm install node ../../deployments/node -n fluidos \
   --set networkManager.configMaps.nodeIdentity.ip=$consumer_controlplane_ip:$consumer_node_port \
   --set networkManager.configMaps.providers.local=$provider_controlplane_ip:$provider_node_port     
 
+liqoctl install kind --cluster-name fluidos-consumer
+
 export KUBECONFIG=$PWD/provider/config
 
 kubectl apply -f ../../deployments/node/crds
@@ -48,5 +50,7 @@ helm install node ../../deployments/node -n fluidos \
   --create-namespace -f provider/values.yaml \
   --set networkManager.configMaps.nodeIdentity.ip=$provider_controlplane_ip:$provider_node_port \
   --set networkManager.configMaps.providers.local=$consumer_controlplane_ip:$consumer_node_port
+
+liqoctl install kind --cluster-name fluidos-provider
 
 

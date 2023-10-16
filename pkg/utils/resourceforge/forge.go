@@ -17,7 +17,6 @@ package resourceforge
 import (
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
@@ -31,14 +30,19 @@ import (
 )
 
 // ForgeDiscovery creates a Discovery CR from a FlavourSelector and a solverID
-func ForgeDiscovery(selector nodecorev1alpha1.FlavourSelector, solverID string) *advertisementv1alpha1.Discovery {
+func ForgeDiscovery(selector *nodecorev1alpha1.FlavourSelector, solverID string) *advertisementv1alpha1.Discovery {
 	return &advertisementv1alpha1.Discovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeDiscoveryName(solverID),
 			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: advertisementv1alpha1.DiscoverySpec{
-			Selector:  selector,
+			Selector: func() *nodecorev1alpha1.FlavourSelector {
+				if selector != nil {
+					return selector
+				}
+				return nil
+			}(),
 			SolverID:  solverID,
 			Subscribe: false,
 		},
@@ -72,9 +76,9 @@ func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, so
 }
 
 // ForgeReservation creates a Reservation CR from a PeeringCandidate
-func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition reservationv1alpha1.Partition, ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
+func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition *reservationv1alpha1.Partition, ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
 	solverID := peeringCandidate.Spec.SolverID
-	return &reservationv1alpha1.Reservation{
+	reservation := &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeReservationName(solverID),
 			Namespace: flags.FLUIDOS_NAMESPACE,
@@ -91,11 +95,14 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, p
 				Name:      peeringCandidate.Name,
 				Namespace: peeringCandidate.Namespace,
 			},
-			Reserve:   true,
-			Purchase:  true,
-			Partition: partition,
+			Reserve:  true,
+			Purchase: true,
 		},
 	}
+	if partition != nil {
+		reservation.Spec.Partition = partition
+	}
+	return reservation
 }
 
 // ForgeContract creates a Contract CR
@@ -116,8 +123,13 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 			Seller:            flavour.Spec.Owner,
 			SellerCredentials: *lc,
 			TransactionID:     transaction.TransactionID,
-			Partition:         parseutil.ParsePartitionFromObj(transaction.Partition),
-			ExpirationTime:    time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
+			Partition: func() *reservationv1alpha1.Partition {
+				if transaction.Partition != nil {
+					return parseutil.ParsePartitionFromObj(transaction.Partition)
+				}
+				return nil
+			}(),
+			ExpirationTime: time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -139,10 +151,12 @@ func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 			ProviderID: ni.NodeID,
 			Type:       nodecorev1alpha1.K8S,
 			Characteristics: nodecorev1alpha1.Characteristics{
-				Architecture:     node.Architecture,
-				Cpu:              node.ResourceMetrics.CPUAvailable,
-				Memory:           node.ResourceMetrics.MemoryAvailable,
-				EphemeralStorage: node.ResourceMetrics.EphemeralStorage,
+				Architecture:      node.Architecture,
+				Cpu:               node.ResourceMetrics.CPUAvailable,
+				Memory:            node.ResourceMetrics.MemoryAvailable,
+				EphemeralStorage:  node.ResourceMetrics.EphemeralStorage,
+				PersistentStorage: parseutil.ParseQuantityFromString("0"),
+				Gpu:               parseutil.ParseQuantityFromString("0"),
 			},
 			Policy: nodecorev1alpha1.Policy{
 				Partitionable: &nodecorev1alpha1.Partitionable{
@@ -197,7 +211,12 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 			Token:       contract.Spec.SellerCredentials.Token,
 			Endpoint:    contract.Spec.SellerCredentials.Endpoint,
 		},
-		Partition:      parseutil.ParsePartition(contract.Spec.Partition),
+		Partition: func() *models.Partition {
+			if contract.Spec.Partition != nil {
+				return parseutil.ParsePartition(contract.Spec.Partition)
+			}
+			return nil
+		}(),
 		TransactionID:  contract.Spec.TransactionID,
 		ExpirationTime: contract.Spec.ExpirationTime,
 		ExtraInformation: func() map[string]string {
@@ -243,8 +262,13 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 				Token:       contract.SellerCredentials.Token,
 				Endpoint:    contract.SellerCredentials.Endpoint,
 			},
-			TransactionID:  contract.TransactionID,
-			Partition:      parseutil.ParsePartitionFromObj(contract.Partition),
+			TransactionID: contract.TransactionID,
+			Partition: func() *reservationv1alpha1.Partition {
+				if contract.Partition != nil {
+					return parseutil.ParsePartitionFromObj(contract.Partition)
+				}
+				return nil
+			}(),
 			ExpirationTime: contract.ExpirationTime,
 			ExtraInformation: func() map[string]string {
 				if contract.ExtraInformation != nil {
@@ -278,7 +302,12 @@ func ForgeTransactionFromObj(reservation *models.Transaction) *reservationv1alph
 				NodeID: reservation.Buyer.NodeID,
 			},
 			ClusterID: reservation.ClusterID,
-			Partition: parseutil.ParsePartitionFromObj(reservation.Partition),
+			Partition: func() *reservationv1alpha1.Partition {
+				if reservation.Partition != nil {
+					return parseutil.ParsePartitionFromObj(reservation.Partition)
+				}
+				return nil
+			}(),
 		},
 	}
 }
@@ -294,18 +323,22 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 			ProviderID: flavour.Owner.NodeID,
 			Type:       nodecorev1alpha1.K8S,
 			Characteristics: nodecorev1alpha1.Characteristics{
-				Cpu:    *resource.NewQuantity(int64(flavour.Characteristics.CPU), resource.DecimalSI),
-				Memory: *resource.NewQuantity(int64(flavour.Characteristics.Memory), resource.BinarySI),
+				Cpu:               flavour.Characteristics.CPU,
+				Memory:            flavour.Characteristics.Memory,
+				Architecture:      flavour.Characteristics.Architecture,
+				EphemeralStorage:  flavour.Characteristics.EphemeralStorage,
+				PersistentStorage: flavour.Characteristics.PersistentStorage,
+				Gpu:               flavour.Characteristics.Gpu,
 			},
 			Policy: nodecorev1alpha1.Policy{
 				// Check if flavour.Partitionable is not nil before setting Partitionable
 				Partitionable: func() *nodecorev1alpha1.Partitionable {
 					if flavour.Policy.Partitionable != nil {
 						return &nodecorev1alpha1.Partitionable{
-							CpuMin:     *resource.NewQuantity(int64(flavour.Policy.Partitionable.CPUMinimum), resource.DecimalSI),
-							MemoryMin:  *resource.NewQuantity(int64(flavour.Policy.Partitionable.MemoryMinimum), resource.BinarySI),
-							CpuStep:    *resource.NewQuantity(int64(flavour.Policy.Partitionable.CPUStep), resource.DecimalSI),
-							MemoryStep: *resource.NewQuantity(int64(flavour.Policy.Partitionable.MemoryStep), resource.BinarySI),
+							CpuMin:     flavour.Policy.Partitionable.CPUMinimum,
+							MemoryMin:  flavour.Policy.Partitionable.MemoryMinimum,
+							CpuStep:    flavour.Policy.Partitionable.CPUStep,
+							MemoryStep: flavour.Policy.Partitionable.MemoryStep,
 						}
 					}
 					return nil
@@ -332,24 +365,11 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 			},
 		},
 	}
-
-	if flavour.Characteristics.EphemeralStorage != 0 {
-		f.Spec.Characteristics.EphemeralStorage = *resource.NewQuantity(int64(flavour.Characteristics.EphemeralStorage), resource.BinarySI)
-	}
-	if flavour.Characteristics.PersistentStorage != 0 {
-		f.Spec.Characteristics.PersistentStorage = *resource.NewQuantity(int64(flavour.Characteristics.PersistentStorage), resource.BinarySI)
-	}
-	if flavour.Characteristics.GPU != 0 {
-		f.Spec.Characteristics.Gpu = *resource.NewQuantity(int64(flavour.Characteristics.GPU), resource.DecimalSI)
-	}
-	if flavour.Characteristics.Architecture != "" {
-		f.Spec.Characteristics.Architecture = flavour.Characteristics.Architecture
-	}
 	return f
 }
 
-func ForgePartition(selector nodecorev1alpha1.FlavourSelector) reservationv1alpha1.Partition {
-	return reservationv1alpha1.Partition{
+func ForgePartition(selector *nodecorev1alpha1.FlavourSelector) *reservationv1alpha1.Partition {
+	return &reservationv1alpha1.Partition{
 		Architecture:     selector.Architecture,
 		Cpu:              selector.RangeSelector.MinCpu,
 		Memory:           selector.RangeSelector.MinMemory,

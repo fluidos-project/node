@@ -1,4 +1,3 @@
----
 {{- $rearManagerConfig := (merge (dict "name" "rear-manager" "module" "rear-manager") .) -}}
 
 apiVersion: v1

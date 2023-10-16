@@ -27,8 +27,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
-// TODO: This function does not work without a selector, it should do a GET request to the seller
-func searchFlavour(selector models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
+func searchFlavourWithSelector(selector *models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
 	var flavour models.Flavour
 
 	// Marshal the selector into JSON bytes
@@ -60,9 +59,38 @@ func searchFlavour(selector models.Selector, addr string) (*nodecorev1alpha1.Fla
 	return flavourCR, nil
 }
 
+func searchFlavour(addr string) (*nodecorev1alpha1.Flavour, error) {
+	var flavour models.Flavour
+
+	url := fmt.Sprintf("http://%s%s", addr, LIST_FLAVOURS_PATH)
+
+	resp, err := makeRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the response status code is 200 (OK)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&flavour); err != nil {
+		klog.Errorf("Error decoding the response body: %s", err)
+		return nil, err
+	}
+
+	flavourCR := resourceforge.ForgeFlavourFromObj(flavour)
+
+	return flavourCR, nil
+}
+
 func makeRequest(method, url string, body *bytes.Buffer) (*http.Response, error) {
 
 	httpClient := &http.Client{}
+
+	if body == nil {
+		body = bytes.NewBuffer([]byte{})
+	}
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {

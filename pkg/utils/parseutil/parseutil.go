@@ -22,88 +22,58 @@ import (
 )
 
 // ParseFlavourSelector parses FlavourSelector into a Selector
-func ParseFlavourSelector(selector nodecorev1alpha1.FlavourSelector) (s models.Selector) {
+func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models.Selector) {
 
 	s.Architecture = selector.Architecture
 	s.FlavourType = string(selector.FlavourType)
 
 	if selector.MatchSelector != nil {
-		cpu, _ := selector.MatchSelector.Cpu.AsInt64()
-		memory, _ := selector.MatchSelector.Memory.AsInt64()
-		ephStorage, _ := selector.MatchSelector.EphemeralStorage.AsInt64()
-		storage, _ := selector.MatchSelector.Storage.AsInt64()
-		gpu, _ := selector.MatchSelector.Gpu.AsInt64()
-
 		s.MatchSelector = &models.MatchSelector{
-			Cpu:              int(cpu),
-			Memory:           int(memory),
-			EphemeralStorage: int(ephStorage),
-			Storage:          int(storage),
-			Gpu:              int(gpu),
+			Cpu:              selector.MatchSelector.Cpu,
+			Memory:           selector.MatchSelector.Memory,
+			EphemeralStorage: selector.MatchSelector.EphemeralStorage,
+			Storage:          selector.MatchSelector.Storage,
+			Gpu:              selector.MatchSelector.Gpu,
 		}
 	}
 
 	if selector.RangeSelector != nil {
-		minCpu, _ := selector.RangeSelector.MinCpu.AsInt64()
-		minMemory, _ := selector.RangeSelector.MinMemory.AsInt64()
-		minEph, _ := selector.RangeSelector.MinEph.AsInt64()
-		minStorage, _ := selector.RangeSelector.MinStorage.AsInt64()
-		minGpu, _ := selector.RangeSelector.MinGpu.AsInt64()
-		maxCpu, _ := selector.RangeSelector.MaxCpu.AsInt64()
-		maxMemory, _ := selector.RangeSelector.MaxMemory.AsInt64()
-		maxEph, _ := selector.RangeSelector.MaxEph.AsInt64()
-		maxStorage, _ := selector.RangeSelector.MaxStorage.AsInt64()
-		maxGpu, _ := selector.RangeSelector.MaxGpu.AsInt64()
-
 		s.RangeSelector = &models.RangeSelector{
-			MinCpu:     int(minCpu),
-			MinMemory:  int(minMemory),
-			MinEph:     int(minEph),
-			MinStorage: int(minStorage),
-			MinGpu:     int(minGpu),
-			MaxCpu:     int(maxCpu),
-			MaxMemory:  int(maxMemory),
-			MaxEph:     int(maxEph),
-			MaxStorage: int(maxStorage),
-			MaxGpu:     int(maxGpu),
+			MinCpu:     selector.RangeSelector.MinCpu,
+			MinMemory:  selector.RangeSelector.MinMemory,
+			MinEph:     selector.RangeSelector.MinEph,
+			MinStorage: selector.RangeSelector.MinStorage,
+			MinGpu:     selector.RangeSelector.MinGpu,
+			MaxCpu:     selector.RangeSelector.MaxCpu,
+			MaxMemory:  selector.RangeSelector.MaxMemory,
+			MaxEph:     selector.RangeSelector.MaxEph,
+			MaxStorage: selector.RangeSelector.MaxStorage,
+			MaxGpu:     selector.RangeSelector.MaxGpu,
 		}
 	}
 
 	return
 }
 
-func ParsePartition(partition reservationv1alpha1.Partition) models.Partition {
-	cpu, _ := partition.Cpu.AsInt64()
-	memory, _ := partition.Memory.AsInt64()
-	ephStorage, _ := partition.EphemeralStorage.AsInt64()
-	storage, _ := partition.Storage.AsInt64()
-	gpu, _ := partition.Gpu.AsInt64()
-
-	return models.Partition{
-		Cpu:              int(cpu),
-		Memory:           int(memory),
-		EphemeralStorage: int(ephStorage),
-		Storage:          int(storage),
-		Gpu:              int(gpu),
+func ParsePartition(partition *reservationv1alpha1.Partition) *models.Partition {
+	return &models.Partition{
+		Cpu:              partition.Cpu,
+		Memory:           partition.Memory,
+		EphemeralStorage: partition.EphemeralStorage,
+		Storage:          partition.Storage,
+		Gpu:              partition.Gpu,
 	}
 }
 
-func ParsePartitionFromObj(partition models.Partition) reservationv1alpha1.Partition {
-	p := reservationv1alpha1.Partition{
-		Architecture: partition.Architecture,
-		Cpu:          *resource.NewQuantity(int64(partition.Cpu), resource.DecimalSI),
-		Memory:       *resource.NewQuantity(int64(partition.Memory), resource.BinarySI),
+func ParsePartitionFromObj(partition *models.Partition) *reservationv1alpha1.Partition {
+	return &reservationv1alpha1.Partition{
+		Architecture:     partition.Architecture,
+		Cpu:              partition.Cpu,
+		Memory:           partition.Memory,
+		Gpu:              partition.Gpu,
+		Storage:          partition.Storage,
+		EphemeralStorage: partition.EphemeralStorage,
 	}
-	if partition.EphemeralStorage != 0 {
-		p.EphemeralStorage = *resource.NewQuantity(int64(partition.EphemeralStorage), resource.BinarySI)
-	}
-	if partition.Storage != 0 {
-		p.Storage = *resource.NewQuantity(int64(partition.Storage), resource.BinarySI)
-	}
-	if partition.Gpu != 0 {
-		p.Gpu = *resource.NewQuantity(int64(partition.Gpu), resource.DecimalSI)
-	}
-	return p
 }
 
 func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
@@ -116,29 +86,26 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 
 // ParseFlavourObject creates a Flavour Object from a Flavour CR
 func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
-	cpu, _ := flavour.Spec.Characteristics.Cpu.AsInt64()
-	ram, _ := flavour.Spec.Characteristics.Memory.AsInt64()
-	cpuMin, _ := flavour.Spec.Policy.Partitionable.CpuMin.AsInt64()
-	memoryMin, _ := flavour.Spec.Policy.Partitionable.MemoryMin.AsInt64()
-	cpuStep, _ := flavour.Spec.Policy.Partitionable.CpuStep.AsInt64()
-	memoryStep, _ := flavour.Spec.Policy.Partitionable.MemoryStep.AsInt64()
-	obj := models.Flavour{
+	return models.Flavour{
 		FlavourID:  flavour.Name,
 		Type:       string(flavour.Spec.Type),
 		ProviderID: flavour.Spec.ProviderID,
 		Characteristics: models.Characteristics{
-			CPU:    int(cpu),
-			Memory: int(ram),
+			CPU:               flavour.Spec.Characteristics.Cpu,
+			Memory:            flavour.Spec.Characteristics.Memory,
+			PersistentStorage: flavour.Spec.Characteristics.PersistentStorage,
+			EphemeralStorage:  flavour.Spec.Characteristics.EphemeralStorage,
+			Gpu:               flavour.Spec.Characteristics.Gpu,
 		},
 		Owner: ParseNodeIdentity(flavour.Spec.Owner),
 		Policy: models.Policy{
 			Partitionable: func() *models.Partitionable {
 				if flavour.Spec.Policy.Partitionable != nil {
 					return &models.Partitionable{
-						CPUMinimum:    int(cpuMin),
-						MemoryMinimum: int(memoryMin),
-						CPUStep:       int(cpuStep),
-						MemoryStep:    int(memoryStep),
+						CPUMinimum:    flavour.Spec.Policy.Partitionable.CpuMin,
+						MemoryMinimum: flavour.Spec.Policy.Partitionable.MemoryMin,
+						CPUStep:       flavour.Spec.Policy.Partitionable.CpuStep,
+						MemoryStep:    flavour.Spec.Policy.Partitionable.MemoryStep,
 					}
 				}
 				return nil
@@ -163,19 +130,6 @@ func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 			WorkerID:     flavour.Spec.OptionalFields.WorkerID,
 		},
 	}
-	if ephStorage, ok := flavour.Spec.Characteristics.EphemeralStorage.AsInt64(); ok == true && ephStorage != 0 {
-		obj.Characteristics.EphemeralStorage = int(ephStorage)
-	}
-	if storage, ok := flavour.Spec.Characteristics.PersistentStorage.AsInt64(); ok == true && storage != 0 {
-		obj.Characteristics.PersistentStorage = int(storage)
-	}
-	if gpu, ok := flavour.Spec.Characteristics.Gpu.AsInt64(); ok == true && gpu != 0 {
-		obj.Characteristics.GPU = int(gpu)
-	}
-	if flavour.Spec.Characteristics.Architecture != "" {
-		obj.Characteristics.Architecture = flavour.Spec.Characteristics.Architecture
-	}
-	return obj
 }
 
 // ForgeContractObject creates a Contract Object

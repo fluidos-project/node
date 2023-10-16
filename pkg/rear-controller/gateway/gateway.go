@@ -16,16 +16,21 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
@@ -36,6 +41,7 @@ import (
 //+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 const (
 	LIST_FLAVOURS_PATH             = "/api/listflavours"
@@ -54,25 +60,46 @@ type Gateway struct {
 
 	// client is the Kubernetes client
 	client client.Client
+
+	// Readyness of the Gateway. It is set when liqo is installed
+	LiqoReady bool
+
+	// The Liqo ClusterID
+	ClusterID string
 }
 
 func NewGateway(c client.Client) *Gateway {
 	return &Gateway{
 		client:       c,
 		Transactions: make(map[string]models.Transaction),
+		LiqoReady:    false,
+		ClusterID:    "",
 	}
 }
 
-// StartHttpServer starts a new HTTP server
-func (g *Gateway) StartHttpServer() {
+// Start starts a new HTTP server
+func (g *Gateway) Start(ctx context.Context) error {
+	klog.Info("Getting FLUIDOS Node identity...")
+
+	nodeIdentity := getters.GetNodeIdentity(ctx, g.client)
+	if nodeIdentity == nil {
+		klog.Info("Error getting FLUIDOS Node identity")
+		return fmt.Errorf("Error getting FLUIDOS Node identity")
+	}
+
+	g.RegisterNodeIdentity(nodeIdentity)
+
 	router := mux.NewRouter()
 
 	// middleware for debugging purposes
 	// router.Use(loggingMiddleware)
 
+	// middleware for readiness
+	router.Use(g.readinessMiddleware)
+
 	// Gateway endpoints
 	router.HandleFunc(LIST_FLAVOURS_PATH, g.getFlavours).Methods("GET")
-	router.HandleFunc(LIST_FLAVOUR_BY_ID_PATH+"{flavourID}", g.getFlavourByID).Methods("GET")
+	//router.HandleFunc(LIST_FLAVOUR_BY_ID_PATH+"{flavourID}", g.getFlavourByID).Methods("GET")
 	router.HandleFunc(LIST_FLAVOURS_BY_SELECTOR_PATH, g.getFlavoursBySelector).Methods("POST")
 	router.HandleFunc(RESERVE_FLAVOUR_PATH+"{flavourID}", g.reserveFlavour).Methods("POST")
 	router.HandleFunc(PURCHASE_FLAVOUR_PATH+"{transactionID}", g.purchaseFlavour).Methods("POST")
@@ -85,8 +112,11 @@ func (g *Gateway) StartHttpServer() {
 
 	// Start server HTTP
 	klog.Infof("Starting HTTP server on port %s", flags.HTTP_PORT)
-	klog.Fatal(srv.ListenAndServe())
+	return srv.ListenAndServe()
+}
 
+func (g *Gateway) RegisterNodeIdentity(nodeIdentity *nodecorev1alpha1.NodeIdentity) {
+	g.ID = nodeIdentity
 }
 
 // Only for debugging purposes
@@ -96,6 +126,17 @@ func (g *Gateway) StartHttpServer() {
 		next.ServeHTTP(w, r)
 	})
 } */
+
+func (g *Gateway) readinessMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !g.LiqoReady {
+			klog.Infof("Liqo not ready yet")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 func (g *Gateway) CacheRefresher(interval time.Duration) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
@@ -113,5 +154,38 @@ func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 	}
+	return false, nil
+}
+
+func (g *Gateway) LiqoChecker(interval time.Duration) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		return wait.PollUntilContextCancel(ctx, interval, false, g.checkLiqoReadiness)
+	}
+}
+
+func (g *Gateway) checkLiqoReadiness(ctx context.Context) (bool, error) {
+	klog.Infof("Checking Liqo readiness")
+	if g.LiqoReady && g.ClusterID != "" {
+		return true, nil
+	}
+
+	var cm corev1.ConfigMap
+	err := g.client.Get(ctx, types.NamespacedName{Name: consts.LIQO_CLUSTERID_CONFIGMAP_NAME, Namespace: consts.LIQO_NAMESPACE}, &cm)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			klog.Errorf("Error when retrieving Liqo ConfigMap: %s", err)
+		}
+		klog.Infof("Liqo not ready yet. ConfigMap not found")
+		return false, nil
+	}
+
+	if cm.Data["CLUSTER_ID"] != "" && cm.Data["CLUSTER_NAME"] != "" {
+		klog.Infof("Liqo is ready")
+		g.LiqoReady = true
+		g.ClusterID = cm.Data["CLUSTER_ID"]
+		return true, nil
+	}
+
+	klog.Infof("Liqo not ready yet")
 	return false, nil
 }

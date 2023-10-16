@@ -1,4 +1,3 @@
----
 {{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
 
 apiVersion: v1
