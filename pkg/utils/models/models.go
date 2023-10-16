@@ -16,6 +16,8 @@ package models
 
 import (
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Flavour represents a Flavour object with its characteristics and policies.
@@ -33,12 +35,12 @@ type Flavour struct {
 
 // Characteristics represents the characteristics of a Flavour, such as CPU and RAM.
 type Characteristics struct {
-	CPU               int    `json:"cpu,omitempty"`
-	Memory            int    `json:"memory,omitempty"`
-	PersistentStorage int    `json:"storage,omitempty"`
-	EphemeralStorage  int    `json:"ephemeralStorage,omitempty"`
-	GPU               int    `json:"gpu,omitempty"`
-	Architecture      string `json:"architecture,omitempty"`
+	CPU               resource.Quantity `json:"cpu,omitempty"`
+	Memory            resource.Quantity `json:"memory,omitempty"`
+	PersistentStorage resource.Quantity `json:"storage,omitempty"`
+	EphemeralStorage  resource.Quantity `json:"ephemeralStorage,omitempty"`
+	Gpu               resource.Quantity `json:"gpu,omitempty"`
+	Architecture      string            `json:"architecture,omitempty"`
 }
 
 // Policy represents the policy associated with a Flavour, which can be either Partitionable or Aggregatable.
@@ -49,10 +51,10 @@ type Policy struct {
 
 // Partitionable represents the partitioning properties of a Flavour, such as the minimum and incremental values of CPU and RAM.
 type Partitionable struct {
-	CPUMinimum    int `json:"cpuMinimum"`
-	MemoryMinimum int `json:"memoryMinimum"`
-	CPUStep       int `json:"cpuStep"`
-	MemoryStep    int `json:"memoryStep"`
+	CPUMinimum    resource.Quantity `json:"cpuMinimum"`
+	MemoryMinimum resource.Quantity `json:"memoryMinimum"`
+	CPUStep       resource.Quantity `json:"cpuStep"`
+	MemoryStep    resource.Quantity `json:"memoryStep"`
 }
 
 // Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.
@@ -90,23 +92,23 @@ type Selector struct {
 
 // MatchSelector represents the criteria for selecting Flavours through a strict match.
 type MatchSelector struct {
-	Cpu              int `json:"cpu,omitempty"`
-	Memory           int `json:"memory,omitempty"`
-	Storage          int `json:"storage,omitempty"`
-	EphemeralStorage int `json:"ephemeralStorage,omitempty"`
-	Gpu              int `json:"gpu,omitempty"`
+	Cpu              resource.Quantity `json:"cpu,omitempty"`
+	Memory           resource.Quantity `json:"memory,omitempty"`
+	Storage          resource.Quantity `json:"storage,omitempty"`
+	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
+	Gpu              resource.Quantity `json:"gpu,omitempty"`
 }
 
 // RangeSelector represents the criteria for selecting Flavours through a range.
 type RangeSelector struct {
-	MinCpu     int `json:"minCpu,omitempty"`
-	MinMemory  int `json:"minMemory,omitempty"`
-	MinStorage int `json:"minStorage,omitempty"`
-	MinEph     int `json:"minEph,omitempty"`
-	MinGpu     int `json:"minGpu,omitempty"`
-	MaxCpu     int `json:"maxCpu,omitempty"`
-	MaxMemory  int `json:"maxMemory,omitempty"`
-	MaxStorage int `json:"maxStorage,omitempty"`
-	MaxEph     int `json:"maxEph,omitempty"`
-	MaxGpu     int `json:"maxGpu,omitempty"`
+	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
+	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
+	MinStorage resource.Quantity `json:"minStorage,omitempty"`
+	MinEph     resource.Quantity `json:"minEph,omitempty"`
+	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
+	MaxCpu     resource.Quantity `json:"maxCpu,omitempty"`
+	MaxMemory  resource.Quantity `json:"maxMemory,omitempty"`
+	MaxStorage resource.Quantity `json:"maxStorage,omitempty"`
+	MaxEph     resource.Quantity `json:"maxEph,omitempty"`
+	MaxGpu     resource.Quantity `json:"maxGpu,omitempty"`
 }

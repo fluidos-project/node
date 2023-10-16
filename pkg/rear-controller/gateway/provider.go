@@ -43,6 +43,8 @@ import (
 func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	klog.Infof("Processing request for getting all Flavours...")
+
 	flavours, err := services.GetAllFlavours(g.client)
 	if err != nil {
 		klog.Errorf("Error getting all the Flavour CRs: %s", err)
@@ -50,20 +52,43 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	klog.Infof("Listing all the Flavour CRs: %d", len(flavours))
+	klog.Infof("Found %d Flavours in the cluster", len(flavours))
 
-	// Export the result as a list of Flavour struct (no CRs)
-	var flavoursParsed []models.Flavour
-	for _, f := range flavours {
-		flavoursParsed = append(flavoursParsed, parseutil.ParseFlavour(f))
+	// Filtering only the available flavours
+	for i, f := range flavours {
+		if !f.Spec.OptionalFields.Availability {
+			flavours = append(flavours[:i], flavours[i+1:]...)
+		}
 	}
 
-	// Encode the FlavourList as JSON and write it to the response writer
-	encodeResponse(w, flavoursParsed)
+	klog.Infof("Available Flavours: %d", len(flavours))
+	if len(flavours) == 0 {
+		klog.Infof("No available Flavours found")
+		http.Error(w, "No Flavours found", http.StatusNotFound)
+		return
+	}
+
+	// Select the flavour with the max CPU
+	max := resource.MustParse("0")
+	var selected nodecorev1alpha1.Flavour
+	for _, f := range flavours {
+		if f.Spec.Characteristics.Cpu.Cmp(max) == 1 {
+			max = f.Spec.Characteristics.Cpu
+			selected = f
+		}
+	}
+
+	klog.Infof("Flavour %s selected - Parsing...", selected.Name)
+	parsed := parseutil.ParseFlavour(selected)
+
+	klog.Infof("Flavour parsed: %v", parsed)
+
+	// Encode the Flavour as JSON and write it to the response writer
+	encodeResponse(w, parsed)
 }
 
 // getFlavourByID gets the flavour CR from the cluster that matches the flavourID
-func (g *Gateway) getFlavourByID(w http.ResponseWriter, r *http.Request) {
+/* func (g *Gateway) getFlavourByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get the flavourID from the URL
@@ -89,13 +114,13 @@ func (g *Gateway) getFlavourByID(w http.ResponseWriter, r *http.Request) {
 	// Encode the FlavourList as JSON and write it to the response writer
 	encodeResponse(w, flavourParsed)
 
-}
+} */
 
 // getFlavourBySelectorHandler gets the flavour CRs from the cluster that match the selector
 func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	klog.Infof("Getting Flavours by selector...")
+	klog.Infof("Processing request for getting Flavours by selector...")
 
 	// Read the request body
 	body, err := io.ReadAll(r.Body)
@@ -119,9 +144,9 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	klog.Infof("Listing all the Flavour CRs: %d", len(flavours))
+	klog.Infof("Found %d Flavours in the cluster", len(flavours))
 
-	// Filter flavours from array maintaining only the Spec.Available == true
+	// Filtering only the available flavours
 	for i, f := range flavours {
 		if !f.Spec.OptionalFields.Availability {
 			flavours = append(flavours[:i], flavours[i+1:]...)
@@ -172,7 +197,7 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 
 	klog.Infof("Flavour parsed: %v", parsed)
 
-	// Encode the FlavourList as JSON and write it to the response writer
+	// Encode the Flavour as JSON and write it to the response writer
 	encodeResponse(w, parsed)
 }
 

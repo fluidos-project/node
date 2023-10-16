@@ -46,21 +46,20 @@ func NewGrpcServer(cl client.Client) *grpcServer {
 	}
 }
 
-func (s *grpcServer) Start() {
+func (s *grpcServer) Start(ctx context.Context) error {
 	grpcUrl := ":" + flags.GRPC_PORT
 
 	// gRPC Configuration
 	klog.Info("Configuring gRPC Server")
 	lis, err := net.Listen("tcp", grpcUrl)
 	if err != nil {
-		log.Fatalf("gRPC failed to listen: %v", err)
+		klog.Infof("gRPC failed to listen: %v", err)
+		return fmt.Errorf("gRPC failed to listen: %v", err)
 	}
 
 	klog.Infof("gRPC Server Listening on %s", grpcUrl)
 	// gRPC Server start listener
-	if err := s.Server.Serve(lis); err != nil {
-		log.Fatalf("gRPC failed to serve: %v", err)
-	}
+	return s.Server.Serve(lis)
 }
 
 /* func (s *grpcServer) RegisterContractHandler(ch connector.ContractHandler) {
@@ -92,7 +91,7 @@ func (s *grpcServer) Subscribe(req *resourcemonitors.Empty, srv resourcemonitors
 
 	fmt.Println("Subscribe")
 
-	s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: resourcemonitors.AllClusterIDs})
+	_ = s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: resourcemonitors.AllClusterIDs})
 
 	for {
 		select {
@@ -101,6 +100,7 @@ func (s *grpcServer) Subscribe(req *resourcemonitors.Empty, srv resourcemonitors
 			return nil
 		}
 	}
+
 }
 
 func (s *grpcServer) NotifyChange(ctx context.Context, req *resourcemonitors.ClusterIdentity) error {
@@ -108,7 +108,7 @@ func (s *grpcServer) NotifyChange(ctx context.Context, req *resourcemonitors.Clu
 	if s.stream == nil {
 		return fmt.Errorf("you must first subscribe a controller manager to notify a change")
 	} else {
-		s.stream.Send(req)
+		_ = s.stream.Send(req)
 	}
 	return nil
 }
@@ -128,5 +128,5 @@ func (s *grpcServer) GetOfferResourcesByClusterID(clusterID string) (*corev1.Res
 }
 
 func (s *grpcServer) UpdatePeeringOffer(clusterID string) {
-	s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: clusterID})
+	_ = s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: clusterID})
 }

@@ -59,7 +59,7 @@ func multipleContractLogic(contracts []reservationv1alpha1.Contract) *corev1.Res
 }
 
 // This function adds the resources of a contract to the existing resourceList
-func addResources(resources corev1.ResourceList, partition reservationv1alpha1.Partition) *corev1.ResourceList {
+func addResources(resources corev1.ResourceList, partition *reservationv1alpha1.Partition) *corev1.ResourceList {
 	for key, value := range *mapQuantityToResourceList(partition) {
 		if prevRes, ok := resources[key]; !ok {
 			resources[key] = value
@@ -71,7 +71,7 @@ func addResources(resources corev1.ResourceList, partition reservationv1alpha1.P
 	return &resources
 }
 
-func mapQuantityToResourceList(partition reservationv1alpha1.Partition) *corev1.ResourceList {
+func mapQuantityToResourceList(partition *reservationv1alpha1.Partition) *corev1.ResourceList {
 	return &corev1.ResourceList{
 		corev1.ResourceCPU:              partition.Cpu,
 		corev1.ResourceMemory:           partition.Memory,

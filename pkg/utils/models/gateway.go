@@ -30,5 +30,5 @@ type ReserveRequest struct {
 	FlavourID string       `json:"flavourID"`
 	Buyer     NodeIdentity `json:"buyerID"`
 	ClusterID string       `json:"clusterID"`
-	Partition Partition    `json:"partition"`
+	Partition *Partition   `json:"partition,omitempty"`
 }

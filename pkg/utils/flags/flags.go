@@ -28,6 +28,7 @@ var (
 	EXPIRATION_TRANSACTION   = 20 * time.Second
 	EXPIRATION_CONTRACT      = 365 * 24 * time.Hour
 	REFRESH_CACHE_INTERVAL   = 20 * time.Second
+	LIQO_CHECK_INTERVAL      = 20 * time.Second
 )
 
 var (

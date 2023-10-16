@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # -- Images' tag to select a development version of fluidos-node instead of a release
-tag: "v0.1"
+tag: ""
 # -- The pullPolicy for fluidos-node pods.
 pullPolicy: "IfNotPresent"
 
@@ -31,7 +31,7 @@ localResourceManager:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/local-resource-manager"
+  imageName: "ghcr.io/fluidos-project/local-resource-manager"
   config:
     # -- Label used to identify the nodes from which resources are collected.
     nodeResourceLabel: "node-role.fluidos.eu/resources"
@@ -61,7 +61,7 @@ rearManager:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/rear-manager"
+  imageName: "ghcr.io/fluidos-project/rear-manager"
 
 rearController:
   # -- The number of REAR Controller, which can be increased for active/passive high availability.
@@ -77,7 +77,7 @@ rearController:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/rear-controller"
+  imageName: "ghcr.io/fluidos-project/rear-controller"
   service:
     grpc:
       name: "grpc"
@@ -127,13 +127,13 @@ networkManager:
       limits: {}
       requests: {}
     # -- The resource image to be used by the network-manager pod.
-  imageName: "ghcr.io/fluidos/network-manager"
+  imageName: "ghcr.io/fluidos-project/network-manager"
   configMaps:
     providers:
       # -- The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue).
       name: "fluidos-network-manager-config"
       # -- The IP List of Local knwon FLUIDOS Nodes separated by commas.
-      local: "192.168.0.1,192.168.0.2,192.168.0.3"
+      local: ""
       # -- The IP List of Remote known FLUIDOS Nodes separated by commas.
       remote: 
       # -- The IP List of SuperNodes separated by commas.
@@ -142,7 +142,7 @@ networkManager:
       # -- The name of the ConfigMap containing the FLUIDOS Node identity info.
       name: "fluidos-network-manager-identity"
       # -- The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes
-      domain: "fluidos.eu"
+      domain: ""
       # -- The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster.
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
