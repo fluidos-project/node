@@ -1,4 +1,3 @@
----
 {{- $resManagerConfig := (merge (dict "name" "local-resource-manager" "module" "local-resource-manager") .) -}}
 
 apiVersion: v1

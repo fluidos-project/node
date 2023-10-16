@@ -14,21 +14,23 @@
 
 package models
 
+import "k8s.io/apimachinery/pkg/api/resource"
+
 // Partition represents the partitioning properties of a Flavour
 type Partition struct {
-	Architecture     string `json:"architecture"`
-	Cpu              int    `json:"cpu"`
-	Memory           int    `json:"memory"`
-	EphemeralStorage int    `json:"ephemeral-storage,omitempty"`
-	Gpu              int    `json:"gpu,omitempty"`
-	Storage          int    `json:"storage,omitempty"`
+	Architecture     string            `json:"architecture"`
+	Cpu              resource.Quantity `json:"cpu"`
+	Memory           resource.Quantity `json:"memory"`
+	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
+	Gpu              resource.Quantity `json:"gpu,omitempty"`
+	Storage          resource.Quantity `json:"storage,omitempty"`
 }
 
 // Transaction contains information regarding the transaction for a flavour
 type Transaction struct {
 	TransactionID string       `json:"transactionID"`
 	FlavourID     string       `json:"flavourID"`
-	Partition     Partition    `json:"partition"`
+	Partition     *Partition   `json:"partition,omitempty"`
 	Buyer         NodeIdentity `json:"buyer"`
 	ClusterID     string       `json:"clusterID"`
 	StartTime     string       `json:"startTime"`
@@ -45,7 +47,7 @@ type Contract struct {
 	SellerCredentials LiqoCredentials   `json:"sellerCredentials"`
 	ExpirationTime    string            `json:"expirationTime,omitempty"`
 	ExtraInformation  map[string]string `json:"extraInformation,omitempty"`
-	Partition         Partition         `json:"partition,omitempty"`
+	Partition         *Partition        `json:"partition,omitempty"`
 }
 
 // LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.

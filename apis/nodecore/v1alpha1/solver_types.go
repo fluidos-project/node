@@ -80,7 +80,7 @@ type RangeSelector struct {
 type SolverSpec struct {
 
 	// Selector contains the flavour requirements for the solver.
-	Selector FlavourSelector `json:"selector"`
+	Selector *FlavourSelector `json:"selector,omitempty"`
 
 	// IntentID is the ID of the intent that the Node Orchestrator is trying to solve.
 	// It is used to link the solver with the intent.

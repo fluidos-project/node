@@ -31,14 +31,14 @@ import (
 )
 
 // buildSelector builds a selector from a request body
-func buildSelector(body []byte) (models.Selector, error) {
+func buildSelector(body []byte) (*models.Selector, error) {
 	// Parse the request body into the APIRequest struct
 	var selector models.Selector
 	err := json.Unmarshal(body, &selector)
 	if err != nil {
-		return models.Selector{}, err
+		return &models.Selector{}, err
 	}
-	return selector, nil
+	return &selector, nil
 }
 
 // getTransaction returns a transaction from the transactions map
@@ -89,9 +89,9 @@ func encodeResponse(w http.ResponseWriter, data interface{}) {
 }
 
 const (
-	authTokenSecretNamePrefix = "remote-token-"
+	//authTokenSecretNamePrefix = "remote-token-"
 
-	tokenKey = "token"
+	//tokenKey = "token"
 
 	liqoNamespace = "liqo"
 )

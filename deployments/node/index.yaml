@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  fluidos:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2023-10-17T13:15:04.539121+02:00"
+    description: A Helm chart for Fluidos Node
+    digest: 9c0ec940a302f9798a95ab5000c49964319724e0c914de3b259981f2fa35e235
+    name: fluidos
+    type: application
+    urls:
+    - https://github.com/fluidos-project/node/deployments/node/fluidos-0.1.0.tgz
+    version: 0.1.0
+generated: "2023-10-17T13:15:04.537963+02:00"

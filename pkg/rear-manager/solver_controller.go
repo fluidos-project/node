@@ -215,6 +215,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			klog.Infof("ReserveAndBuy %s", reserveAndBuyStatus)
 			switch reserveAndBuyStatus {
 			case nodecorev1alpha1.PhaseIdle:
+				var partition *reservationv1alpha1.Partition
 				klog.Infof("Creating the Reservation %s", req.NamespacedName.Name)
 				// Create the Reservation
 				var pc advertisementv1alpha1.PeeringCandidate
@@ -226,8 +227,10 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					return ctrl.Result{}, err
 				}
 
-				// Forge the Partition
-				partition := resourceforge.ForgePartition(solver.Spec.Selector)
+				if solver.Spec.Selector == nil {
+					// Forge the Partition
+					partition = resourceforge.ForgePartition(solver.Spec.Selector)
+				}
 
 				// Get the NodeIdentity
 				nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
@@ -313,6 +316,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if solver.Spec.EnstablishPeering {
 		if reserveAndBuyStatus == nodecorev1alpha1.PhaseSolved {
 			// Peering phase to be implemented
+			klog.Infof("Solver %s Solved : Peering phase to be implemented", req.NamespacedName.Name)
 		}
 	} else {
 		klog.Infof("Solver %s Solved : No need to enstablish a peering", req.NamespacedName.Name)
@@ -357,7 +361,7 @@ func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context, solver *
 
 	// Filter the list of PeeringCandidates based on the Flavour Selector
 	for _, p := range filtered {
-		res := common.FilterPeeringCandidate(&selector, &p)
+		res := common.FilterPeeringCandidate(selector, &p)
 		if res {
 			result = append(result, p)
 		}
