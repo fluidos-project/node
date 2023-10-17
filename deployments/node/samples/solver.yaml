@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     type: k8s-fluidos
-    architecture: arm64
+    architecture: amd64
     rangeSelector:
       minCpu: 1
       minMemory: 1
