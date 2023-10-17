@@ -76,4 +76,4 @@ kubectl get solver -n fluidos
 ```
 
 1. The output should be something like
-``
+`FLAVOUR_ID `
