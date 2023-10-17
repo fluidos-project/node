@@ -141,8 +141,13 @@ func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 		Buyer:          ParseNodeIdentity(contract.Spec.Buyer),
 		BuyerClusterID: contract.Spec.BuyerClusterID,
 		TransactionID:  contract.Spec.TransactionID,
-		Partition:      ParsePartition(contract.Spec.Partition),
-		Seller:         ParseNodeIdentity(contract.Spec.Seller),
+		Partition: func() *models.Partition {
+			if contract.Spec.Partition != nil {
+				return ParsePartition(contract.Spec.Partition)
+			}
+			return nil
+		}(),
+		Seller: ParseNodeIdentity(contract.Spec.Seller),
 		SellerCredentials: models.LiqoCredentials{
 			ClusterID:   contract.Spec.SellerCredentials.ClusterID,
 			ClusterName: contract.Spec.SellerCredentials.ClusterName,

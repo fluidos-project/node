@@ -54,7 +54,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps
+  - '*'
   verbs:
   - get
   - list
@@ -62,7 +62,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
+  - configmaps
   verbs:
   - get
   - list

@@ -29,6 +29,14 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/models"
 )
 
+const (
+	// authTokenSecretNamePrefix = "remote-token-".
+
+	// tokenKey = "token".
+
+	liqoNamespace = "liqo"
+)
+
 // buildSelector builds a selector from a request body
 func buildSelector(body []byte) (*models.Selector, error) {
 	// Parse the request body into the APIRequest struct
@@ -86,14 +94,6 @@ func encodeResponse(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }
-
-const (
-	//authTokenSecretNamePrefix = "remote-token-"
-
-	//tokenKey = "token"
-
-	liqoNamespace = "liqo"
-)
 
 func GetLiqoCredentials(ctx context.Context, cl client.Client) (*reservationsv1alpha1.LiqoCredentials, error) {
 	localToken, err := auth.GetToken(ctx, cl, liqoNamespace)

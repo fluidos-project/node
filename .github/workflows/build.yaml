@@ -57,19 +57,6 @@ jobs:
             echo "repo-name=${{ github.event.client_payload.github.payload.repository.full_name }}" >> $GITHUB_OUTPUT
           fi
 
-        # Since we are using a repository-dispatch event, we have to explicitly set a run check. We initialize it to a "pending" state.
-  #    - uses: octokit/request-action@v2.x
-  #      name: "Initialize run check to 'pending (For PR-only)"
-  #      with:
-  #        route: POST /repos/${{ github.repository }}/statuses/${{ steps.configure.outputs.commit-ref }}
-  #        state: "pending"
-  #        description: "Component build status"
-  #        context:  "Components building"
-  #        target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-  #      env:
-  #        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #      if: ${{ github.event_name == 'repository_dispatch' }}
-
   build:
     permissions:
       contents: write

@@ -1,4 +1,4 @@
-name: Check Generated Artifacts
+name: Check Generated Helm documentation
 on:
   pull_request:
     types:
@@ -7,8 +7,8 @@ on:
       - synchronize
 
 jobs:
-  generated-artifacts:
-    name: Check Artifacts
+  generated-helm-documentation:
+    name: Check Helm Documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,23 +17,24 @@ jobs:
           ref: "${{ github.event.pull_request.head.sha }}"
           persist-credentials: false
 
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-
-      - name: Run the automatic generation
-        working-directory: ./
+      - name: Setup helm-docs
         run: |
-          make generate
+          version=1.11.0
+          arch=x86_64
+          curl -LO https://github.com/norwoodj/helm-docs/releases/download/v${version}/helm-docs_${version}_linux_${arch}.tar.gz
+          tar -zxvf helm-docs_${version}_linux_${arch}.tar.gz
+          sudo mv helm-docs /usr/local
 
-      - name: Gather the differences
-        id: git-diff
+      - name: Run the automatic generation of helm-docs
+        working-directory: ./deployments/node
         run: |
-          # Ensure new files are also considered in the diff
-          git add --intent-to-add .
+          /usr/local/helm-docs -o new_README.md -t README.gotmpl
 
-          output=$(git diff | head -n 100)
+      - name: Gather the helm-docs differences
+        id: helm-docs-diff
+        working-directory: ./deployments/node
+        run: |
+          output=$(diff README.md new_README.md | head -n 100 )
           exit_code=$([ "${output}" ] && echo 1 || echo 0)
 
           # Required to correctly manage multi-line outputs
@@ -49,10 +50,10 @@ jobs:
 
       - name: Log the error if the diff is not empty (in case the comment cannot be generated)
         run: |
-          echo "The generated artifacts appear to be out-of-date."
+          echo "The Helm README.md appear to be out-of-date."
           echo
           echo "Here it is an excerpt of the diff:"
-          echo "${{ steps.git-diff.outputs.diff }}"
+          echo "${{ steps.helm-docs-diff.outputs.diff }}"
         if: failure()
 
       - name: Issue a comment in case the diff is not empty
@@ -61,18 +62,18 @@ jobs:
           token: ${{ secrets.CI_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            The generated artifacts appear to be out-of-date.
+            The Helm README.md appears to be out-of-date.
 
-            Please, ensure you are using the correct version of the generators (eg. `controller-gen`) and re-run:
+            Please, run
             ```
-            make generate
+            make docs
             ```
 
             <details>
               <summary>Here it is an excerpt of the diff:</summary>
 
               ```diff
-              ${{ steps.git-diff.outputs.diff }}
+              ${{ steps.helm-docs-diff.outputs.diff }}
               ```
             </details>
           reactions: confused

@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # -- Images' tag to select a development version of fluidos-node instead of a release
-tag: "v0.1"
+tag: ""
 # -- The pullPolicy for fluidos-node pods.
 pullPolicy: "IfNotPresent"
 
@@ -33,7 +33,7 @@ localResourceManager:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/local-resource-manager"
+  imageName: "ghcr.io/fluidos-project/local-resource-manager"
   config:
     # -- Label used to identify the nodes from which resources are collected.
     nodeResourceLabel: "node-role.fluidos.eu/resources"
@@ -63,7 +63,7 @@ rearManager:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/rear-manager"
+  imageName: "ghcr.io/fluidos-project/rear-manager"
 
 rearController:
   # -- The number of REAR Controller, which can be increased for active/passive high availability.
@@ -79,7 +79,7 @@ rearController:
     resources:
       limits: {}
       requests: {}
-  imageName: "cannarelladev/rear-controller"
+  imageName: "ghcr.io/fluidos-project/rear-controller"
   service:
     grpc:
       name: "grpc"
