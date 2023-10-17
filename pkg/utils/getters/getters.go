@@ -19,13 +19,13 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.NodeIdentity {

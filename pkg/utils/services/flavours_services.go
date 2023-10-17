@@ -17,10 +17,11 @@ package services
 import (
 	"context"
 
-	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
-	"github.com/fluidos-project/node/pkg/utils/flags"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
 // GetAllFlavours returns all the Flavours in the cluster

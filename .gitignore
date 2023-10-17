@@ -21,7 +21,7 @@ config
 *.swp
 *.swo
 *~
-#*.tgz
+*.tgz
 .vscode
 .devcontainer
 .DS_Store

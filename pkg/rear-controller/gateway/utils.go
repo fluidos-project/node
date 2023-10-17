@@ -20,14 +20,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/liqotech/liqo/pkg/auth"
+	"github.com/liqotech/liqo/pkg/utils"
+	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	reservationsv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/models"
-
-	"github.com/liqotech/liqo/pkg/auth"
-	"github.com/liqotech/liqo/pkg/utils"
-	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 )
 
 // buildSelector builds a selector from a request body

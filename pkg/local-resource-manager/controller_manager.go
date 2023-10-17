@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/fluidos-project/node/pkg/utils/getters"
-	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/fluidos-project/node/pkg/utils/getters"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
 // clusterRole

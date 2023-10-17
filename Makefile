@@ -27,9 +27,9 @@ manifests: controller-gen
 rbacs: controller-gen
 	rm -f deployments/node/files/*
 
-	$(CONTROLLER_GEN) paths="./pkg/local-resource-manager" rbac:roleName=fluidos-local-resource-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-local-resource-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/fluidos-local-resource-manager-ClusterRole.yaml
-	$(CONTROLLER_GEN) paths="./pkg/rear-manager/" rbac:roleName=fluidos-rear-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-rear-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/fluidos-rear-manager-ClusterRole.yaml
-	$(CONTROLLER_GEN) paths="./pkg/rear-controller/..." rbac:roleName=fluidos-rear-controller output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/fluidos-rear-controller-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  $(SED_COMMAND) deployments/node/files/fluidos-rear-controller-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/local-resource-manager" rbac:roleName=node-local-resource-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/node-local-resource-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/node-local-resource-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-manager/" rbac:roleName=node-rear-manager output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/node-rear-manager-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' && $(SED_COMMAND) deployments/node/files/node-rear-manager-ClusterRole.yaml
+	$(CONTROLLER_GEN) paths="./pkg/rear-controller/..." rbac:roleName=node-rear-controller output:rbac:stdout | awk -v RS="---\n" 'NR>1{f="./deployments/node/files/node-rear-controller-" $$4 ".yaml";printf "%s",$$0 > f; close(f)}' &&  $(SED_COMMAND) deployments/node/files/node-rear-controller-ClusterRole.yaml
 
 # Install gci if not available
 gci:

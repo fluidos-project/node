@@ -15,10 +15,11 @@
 package parseutil
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/models"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // ParseFlavourSelector parses FlavourSelector into a Selector

@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
 
 // TransactionSpec defines the desired state of Transaction

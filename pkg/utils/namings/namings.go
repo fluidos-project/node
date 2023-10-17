@@ -22,8 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluidos-project/node/pkg/utils/flags"
 	"k8s.io/klog/v2"
+
+	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
 // ForgeContractName creates a name for the Contract CR
