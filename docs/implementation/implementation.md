@@ -1,4 +1,5 @@
 # Implementation
+
 Regarding the implementation part, the components have been developed using **Kubernetes controllers** with Kubebuilder, making extensive use of the *Kubernetes API* and *Custom Resource Definitions (CRDs)*.
 
 Implementation is divided into three main parts:
@@ -11,7 +12,7 @@ Implementation is divided into three main parts:
 <img src="../images/FLUIDOSNodeImplementation.svg" width="700">
 </p>
 
-See the different implementation for: 
+See the different implementation for:
 
 - [**Components**](./components.md#components)
 - [**Controllers**](./controllers.md#controllers)

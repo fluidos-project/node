@@ -1,4 +1,5 @@
-## Custom Resources
+# Custom Resources
+
 The following custom resources have been developed for the FLUIDOS Node:
 
 - [**Discovery**](./customresources.md#discovery)
@@ -10,7 +11,8 @@ The following custom resources have been developed for the FLUIDOS Node:
 - [**Solver**](./customresources.md#solver)
 - [**Transaction**](./customresources.md#transaction)
 
-### Discovery
+## Discovery
+
 Here is a `Discovery` sample:
 
 ```yaml
@@ -29,7 +31,8 @@ spec:
   subscribe: true
 ```
 
-### Reservation
+## Reservation
+
 Here is a `Reservation` sample:
 
 ```yaml
@@ -54,11 +57,13 @@ spec:
     nodeID: 91cbd32s0q1
 ```
 
-### Allocation
+## Allocation
+
 To be implemented.
 
-### Flavour
-Here is a `Flavour` sample: 
+## Flavour
+
+Here is a `Flavour` sample:
 
 ```yaml
 apiVersion: nodecore.fluidos.eu/v1alpha1
@@ -89,7 +94,8 @@ spec:
   type: k8s-fluidos
 ```
 
-### Contract
+## Contract
+
 Here is a `Contract` sample:
 
 ```yaml
@@ -147,7 +153,8 @@ Spec:
     nodeID: 91cbd32s0q1
 ```
 
-### PeeringCandidate
+## PeeringCandidate
+
 Here is a `PeeringCandidate` sample:
 
 ```yaml
@@ -188,7 +195,8 @@ Spec:
   Solver ID:             solver1
 ```
 
-### Solver
+## Solver
+
 Here is a `Solver` sample:
 
 ```yaml
@@ -208,7 +216,8 @@ spec:
   enstablishPeering: false
 ```
 
-### Transaction
+## Transaction
+
 Here is a `Transaction` sample:
 
 ```yaml
