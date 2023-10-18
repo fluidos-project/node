@@ -38,6 +38,12 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 		return nil, err
 	}
 
+	liqoCredentials, err := GetLiqoCredentials(ctx, g.client)
+	if err != nil {
+		klog.Errorf("Error when getting Liqo credentials: %s", err)
+		return nil, err
+	}
+
 	var transaction models.Transaction
 
 	body := models.ReserveRequest{
@@ -47,6 +53,13 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 			IP:     g.ID.IP,
 			Domain: g.ID.Domain,
 		},
+		ClusterID: liqoCredentials.ClusterID,
+		Partition: func() *models.Partition {
+			if reservation.Spec.Partition != nil {
+				return parseutil.ParsePartition(reservation.Spec.Partition)
+			}
+			return nil
+		}(),
 	}
 
 	klog.Infof("Reservation %s for flavour %s", reservation.Name, flavourID)

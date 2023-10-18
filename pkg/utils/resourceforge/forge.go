@@ -97,6 +97,12 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, p
 			},
 			Reserve:  true,
 			Purchase: true,
+			Partition: func() *reservationv1alpha1.Partition {
+				if partition != nil {
+					return partition
+				}
+				return nil
+			}(),
 		},
 	}
 	if partition != nil {
@@ -193,8 +199,13 @@ func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transactio
 		Buyer:         req.Buyer,
 		ClusterID:     req.ClusterID,
 		FlavourID:     req.FlavourID,
-		Partition:     req.Partition,
-		StartTime:     tools.GetTimeNow(),
+		Partition: func() *models.Partition {
+			if req.Partition != nil {
+				return req.Partition
+			}
+			return nil
+		}(),
+		StartTime: tools.GetTimeNow(),
 	}
 }
 
@@ -362,6 +373,10 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 				Amount:   flavour.Price.Amount,
 				Currency: flavour.Price.Currency,
 				Period:   flavour.Price.Period,
+			},
+			OptionalFields: nodecorev1alpha1.OptionalFields{
+				Availability: flavour.OptionalFields.Availability,
+				WorkerID:     flavour.OptionalFields.WorkerID,
 			},
 		},
 	}

@@ -86,11 +86,6 @@ spec:
                 - ip
                 - nodeID
                 type: object
-              buyerClusterID:
-                description: BuyerClusterID is the Liqo ClusterID used by the seller
-                  to search a contract and the related resources during the peering
-                  phase.
-                type: string
               partition:
                 description: Parition is the partition of the flavour that is being
                   reserved
@@ -171,7 +166,6 @@ spec:
                 type: string
             required:
             - buyer
-            - buyerClusterID
             - seller
             - solverID
             type: object

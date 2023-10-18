@@ -154,6 +154,8 @@ func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 			Token:       contract.Spec.SellerCredentials.Token,
 			Endpoint:    contract.Spec.SellerCredentials.Endpoint,
 		},
+		ExpirationTime:   contract.Spec.ExpirationTime,
+		ExtraInformation: contract.Spec.ExtraInformation,
 	}
 }
 
