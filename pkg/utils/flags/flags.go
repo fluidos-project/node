@@ -16,36 +16,38 @@ package flags
 
 import "time"
 
-// NAMESPACES flags
+// Namespace flags.
 var (
-	FLUIDOS_NAMESPACE string = "fluidos"
+	FluidoNamespace = "fluidos"
 )
 
-// EXPIRATION flags
+// Expiration/Time flags.
 var (
-	EXPIRATION_PHASE_RUNNING = 2 * time.Minute
-	EXPIRATION_SOLVER        = 5 * time.Minute
-	EXPIRATION_TRANSACTION   = 20 * time.Second
-	EXPIRATION_CONTRACT      = 365 * 24 * time.Hour
-	REFRESH_CACHE_INTERVAL   = 20 * time.Second
-	LIQO_CHECK_INTERVAL      = 20 * time.Second
+	ExpirationPhaseRunning = 2 * time.Minute
+	ExpirationSolver       = 5 * time.Minute
+	ExpirationTransaction  = 20 * time.Second
+	ExpirationContract     = 365 * 24 * time.Hour
+	RefreshCacheInterval   = 20 * time.Second
+	LiqoCheckInterval      = 20 * time.Second
 )
 
+// Configs flags.
 var (
-	HTTP_PORT           string
-	GRPC_PORT           string
-	RESOURCE_NODE_LABEL string
+	HTTPPort          string
+	GRPCPort          string
+	ResourceNodeLabel string
 )
 
+// Customization flags.
 var (
-	RESOURCE_TYPE string
-	AMOUNT        string
-	CURRENCY      string
-	PERIOD        string
-	CPU_MIN       string
-	MEMORY_MIN    string
-	CPU_STEP      string
-	MEMORY_STEP   string
-	MIN_COUNT     int64
-	MAX_COUNT     int64
+	ResourceType string
+	AMOUNT       string
+	CURRENCY     string
+	PERIOD       string
+	CPUMin       string
+	MemoryMin    string
+	CPUStep      string
+	MemoryStep   string
+	MinCount     int64
+	MaxCount     int64
 )

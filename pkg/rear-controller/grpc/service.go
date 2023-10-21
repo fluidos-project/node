@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -26,10 +27,10 @@ import (
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 )
 
-func getContractResourcesByClusterID(cl client.Client, clusterID string) (*corev1.ResourceList, error) {
+func getContractResourcesByClusterID(cl client.Client, clusterID string) (map[string]*resource.Quantity, error) {
 	var contracts reservationv1alpha1.ContractList
 
-	if err := cl.List(context.Background(), &contracts, client.MatchingFields{"spec.clusterID": clusterID}); err != nil {
+	if err := cl.List(context.Background(), &contracts, client.MatchingFields{"spec.buyerClusterID": clusterID}); err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			klog.Errorf("Error when listing Contracts: %s", err)
 			return nil, err
@@ -38,7 +39,7 @@ func getContractResourcesByClusterID(cl client.Client, clusterID string) (*corev
 
 	if len(contracts.Items) == 0 {
 		klog.Errorf("No contracts found for cluster %s", clusterID)
-		return nil, fmt.Errorf("No contracts found for cluster %s", clusterID)
+		return nil, fmt.Errorf("no contracts found for cluster %s", clusterID)
 	}
 
 	if len(contracts.Items) > 1 {
@@ -51,32 +52,32 @@ func getContractResourcesByClusterID(cl client.Client, clusterID string) (*corev
 	return mapQuantityToResourceList(contract.Spec.Partition), nil
 }
 
-func multipleContractLogic(contracts []reservationv1alpha1.Contract) *corev1.ResourceList {
-	resources := &corev1.ResourceList{}
-	for _, contract := range contracts {
-		resources = addResources(*resources, contract.Spec.Partition)
+func multipleContractLogic(contracts []reservationv1alpha1.Contract) map[string]*resource.Quantity {
+	resources := make(map[string]*resource.Quantity)
+	for i := range contracts {
+		resources = addResources(resources, contracts[i].Spec.Partition)
 	}
 	return resources
 }
 
-// This function adds the resources of a contract to the existing resourceList
-func addResources(resources corev1.ResourceList, partition *nodecorev1alpha1.Partition) *corev1.ResourceList {
-	for key, value := range *mapQuantityToResourceList(partition) {
+// This function adds the resources of a contract to the existing resourceList.
+func addResources(resources map[string]*resource.Quantity, partition *nodecorev1alpha1.Partition) map[string]*resource.Quantity {
+	for key, value := range mapQuantityToResourceList(partition) {
 		if prevRes, ok := resources[key]; !ok {
 			resources[key] = value
 		} else {
-			prevRes.Add(value)
+			prevRes.Add(*value)
 			resources[key] = prevRes
 		}
 	}
-	return &resources
+	return resources
 }
 
-func mapQuantityToResourceList(partition *nodecorev1alpha1.Partition) *corev1.ResourceList {
-	return &corev1.ResourceList{
-		corev1.ResourceCPU:              partition.CPU,
-		corev1.ResourceMemory:           partition.Memory,
-		corev1.ResourceEphemeralStorage: partition.EphemeralStorage,
-		corev1.ResourceStorage:          partition.Storage,
-	}
+func mapQuantityToResourceList(partition *nodecorev1alpha1.Partition) map[string]*resource.Quantity {
+	resources := make(map[string]*resource.Quantity)
+	resources[corev1.ResourceCPU.String()] = &partition.CPU
+	resources[corev1.ResourceMemory.String()] = &partition.Memory
+	resources[corev1.ResourceStorage.String()] = &partition.Storage
+	resources[corev1.ResourceEphemeralStorage.String()] = &partition.EphemeralStorage
+	return resources
 }

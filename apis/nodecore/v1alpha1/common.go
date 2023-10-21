@@ -16,17 +16,17 @@ package v1alpha1
 
 import "k8s.io/apimachinery/pkg/api/resource"
 
+// Set of constants for the phases of the FLUIDOS Node modules.
 const (
-	//PhaseReady   Phase = "Ready"
-	PhaseSolved   Phase = "Solved"
-	PhaseFailed   Phase = "Failed"
-	PhaseRunning  Phase = "Running"
-	PhaseIdle     Phase = "Idle"
-	PhaseTimeout  Phase = "Timed Out"
-	PhaseBackoff  Phase = "Backoff"
-	PhaseActive   Phase = "Active"
-	PhasePending  Phase = "Pending"
-	PhaseInactive Phase = "Inactive"
+	PhaseSolved     Phase = "Solved"
+	PhaseFailed     Phase = "Failed"
+	PhaseRunning    Phase = "Running"
+	PhaseAllocating Phase = "Allocating"
+	PhaseIdle       Phase = "Idle"
+	PhaseTimeout    Phase = "Timed Out"
+	PhaseActive     Phase = "Active"
+	PhasePending    Phase = "Pending"
+	PhaseInactive   Phase = "Inactive"
 )
 
 // GenericRef represents a reference to a generic Kubernetes resource,
@@ -55,6 +55,14 @@ type Partition struct {
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
+}
+
+// LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
+type LiqoCredentials struct {
+	ClusterID   string `json:"clusterID"`
+	ClusterName string `json:"clusterName"`
+	Token       string `json:"token"`
+	Endpoint    string `json:"endpoint"`
 }
 
 // toString() returns a string representation of the GenericRef.

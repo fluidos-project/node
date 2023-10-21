@@ -133,6 +133,12 @@ type SolverStatus struct {
 	// It can correspond to a virtual node
 	// The Node Orchestrator will use this allocation to fullfill the intent.
 	Allocation GenericRef `json:"allocation,omitempty"`
+
+	// Contract contains the Contract that the Contract Manager has eventually created with the candidate.
+	Contract GenericRef `json:"contract,omitempty"`
+
+	// Credentials contains the LiqoCredentials found in the Contract.
+	Credentials LiqoCredentials `json:"credentials,omitempty"`
 }
 
 //+kubebuilder:object:root=true

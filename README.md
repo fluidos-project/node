@@ -1,5 +1,4 @@
-#
-
+<!-- markdownlint-disable first-line-h1 -->
 <p align="center">
 <a href="https://www.fluidos.eu/"> <img src="./docs/images/fluidoslogo.png" width="150"/> </a>
 <h3 align="center">WP3 - FLUIDOS Node</h3>

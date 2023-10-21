@@ -46,7 +46,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Flavour is the Schema for the flavours API
+        description: Flavour is the Schema for the flavours API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -245,7 +245,7 @@ spec:
             - type
             type: object
           status:
-            description: FlavourStatus defines the observed state of Flavour
+            description: FlavourStatus defines the observed state of Flavour.
             properties:
               creationTime:
                 description: This field represents the creation time of the Flavour.

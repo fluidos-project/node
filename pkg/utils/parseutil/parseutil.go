@@ -23,14 +23,15 @@ import (
 )
 
 // ParseFlavourSelector parses FlavourSelector into a Selector.
-func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models.Selector) {
-
-	s.Architecture = selector.Architecture
-	s.FlavourType = string(selector.FlavourType)
+func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) *models.Selector {
+	s := &models.Selector{
+		Architecture: selector.Architecture,
+		FlavourType:  selector.FlavourType,
+	}
 
 	if selector.MatchSelector != nil {
 		s.MatchSelector = &models.MatchSelector{
-			Cpu:              selector.MatchSelector.Cpu,
+			CPU:              selector.MatchSelector.Cpu,
 			Memory:           selector.MatchSelector.Memory,
 			EphemeralStorage: selector.MatchSelector.EphemeralStorage,
 			Storage:          selector.MatchSelector.Storage,
@@ -40,12 +41,12 @@ func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models
 
 	if selector.RangeSelector != nil {
 		s.RangeSelector = &models.RangeSelector{
-			MinCpu:     selector.RangeSelector.MinCpu,
+			MinCPU:     selector.RangeSelector.MinCpu,
 			MinMemory:  selector.RangeSelector.MinMemory,
 			MinEph:     selector.RangeSelector.MinEph,
 			MinStorage: selector.RangeSelector.MinStorage,
 			MinGpu:     selector.RangeSelector.MinGpu,
-			MaxCpu:     selector.RangeSelector.MaxCpu,
+			MaxCPU:     selector.RangeSelector.MaxCpu,
 			MaxMemory:  selector.RangeSelector.MaxMemory,
 			MaxEph:     selector.RangeSelector.MaxEph,
 			MaxStorage: selector.RangeSelector.MaxStorage,
@@ -53,13 +54,13 @@ func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models
 		}
 	}
 
-	return
+	return s
 }
 
 // ParsePartition creates a Partition Object from a Partition CR.
 func ParsePartition(partition *nodecorev1alpha1.Partition) *models.Partition {
 	return &models.Partition{
-		Cpu:              partition.CPU,
+		CPU:              partition.CPU,
 		Memory:           partition.Memory,
 		EphemeralStorage: partition.EphemeralStorage,
 		Storage:          partition.Storage,
@@ -71,7 +72,7 @@ func ParsePartition(partition *nodecorev1alpha1.Partition) *models.Partition {
 func ParsePartitionFromObj(partition *models.Partition) *nodecorev1alpha1.Partition {
 	return &nodecorev1alpha1.Partition{
 		Architecture:     partition.Architecture,
-		CPU:              partition.Cpu,
+		CPU:              partition.CPU,
 		Memory:           partition.Memory,
 		Gpu:              partition.Gpu,
 		Storage:          partition.Storage,
@@ -89,8 +90,8 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 }
 
 // ParseFlavour creates a Flavour Object from a Flavour CR.
-func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
-	return models.Flavour{
+func ParseFlavour(flavour *nodecorev1alpha1.Flavour) *models.Flavour {
+	return &models.Flavour{
 		FlavourID:  flavour.Name,
 		Type:       string(flavour.Spec.Type),
 		ProviderID: flavour.Spec.ProviderID,
@@ -137,10 +138,10 @@ func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 }
 
 // ParseContract creates a Contract Object.
-func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
-	return models.Contract{
+func ParseContract(contract *reservationv1alpha1.Contract) *models.Contract {
+	return &models.Contract{
 		ContractID:     contract.Name,
-		Flavour:        ParseFlavour(contract.Spec.Flavour),
+		Flavour:        *ParseFlavour(&contract.Spec.Flavour),
 		Buyer:          ParseNodeIdentity(contract.Spec.Buyer),
 		BuyerClusterID: contract.Spec.BuyerClusterID,
 		TransactionID:  contract.Spec.TransactionID,

@@ -31,7 +31,8 @@ import (
 )
 
 // TODO: move this function into the REAR Gateway package
-// reserveFlavour reserves a flavour with the given flavourID
+
+// ReserveFlavour reserves a flavour with the given flavourID.
 func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1alpha1.Reservation, flavourID string) (*models.Transaction, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
@@ -75,11 +76,11 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 
 	// TODO: this url should be taken from the nodeIdentity of the flavour
 	bodyBytes := bytes.NewBuffer(selectorBytes)
-	url := fmt.Sprintf("http://%s%s%s", reservation.Spec.Seller.IP, RESERVE_FLAVOUR_PATH, flavourID)
+	url := fmt.Sprintf("http://%s%s%s", reservation.Spec.Seller.IP, ReserveFlavourPath, flavourID)
 
 	klog.Infof("Sending request to %s", url)
 
-	resp, err := makeRequest("POST", url, bodyBytes)
+	resp, err := makeRequest(ctx, "POST", url, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +106,12 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 
 	klog.Infof("Flavour %s reserved: transaction ID %s", flavourID, transaction.TransactionID)
 
-	g.addNewTransacion(transaction)
+	g.addNewTransacion(&transaction)
 
 	return &transaction, nil
 }
 
-// PurchaseFlavour purchases a flavour with the given flavourID
+// PurchaseFlavour purchases a flavour with the given flavourID.
 func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, seller nodecorev1alpha1.NodeIdentity) (*models.ResponsePurchase, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
@@ -136,9 +137,9 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, sel
 
 	bodyBytes := bytes.NewBuffer(selectorBytes)
 	// TODO: this url should be taken from the nodeIdentity of the flavour
-	url := fmt.Sprintf("http://%s%s%s", seller.IP, PURCHASE_FLAVOUR_PATH, transactionID)
+	url := fmt.Sprintf("http://%s%s%s", seller.IP, PurchaseFlavourPath, transactionID)
 
-	resp, err := makeRequest("POST", url, bodyBytes)
+	resp, err := makeRequest(ctx, "POST", url, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +157,8 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, sel
 	return &purchase, nil
 }
 
-// SearchFlavour is a function that returns an array of Flavour that fit the Selector by performing a get request to an http server
-func (g *Gateway) DiscoverFlavours(selector *nodecorev1alpha1.FlavourSelector) ([]*nodecorev1alpha1.Flavour, error) {
+// DiscoverFlavours is a function that returns an array of Flavour that fit the Selector by performing a get request to an http server.
+func (g *Gateway) DiscoverFlavours(ctx context.Context, selector *nodecorev1alpha1.FlavourSelector) ([]*nodecorev1alpha1.Flavour, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
@@ -166,7 +167,7 @@ func (g *Gateway) DiscoverFlavours(selector *nodecorev1alpha1.FlavourSelector) (
 	var s *models.Selector
 	var flavoursCR []*nodecorev1alpha1.Flavour
 
-	if selector == nil {
+	if selector != nil {
 		s = parseutil.ParseFlavourSelector(selector)
 	}
 
@@ -174,7 +175,7 @@ func (g *Gateway) DiscoverFlavours(selector *nodecorev1alpha1.FlavourSelector) (
 
 	// Send the POST request to all the servers in the list
 	for _, provider := range providers {
-		flavour, err := discover(s, provider)
+		flavour, err := discover(ctx, s, provider)
 		if err != nil {
 			klog.Errorf("Error when searching Flavour: %s", err)
 			return nil, err
@@ -186,17 +187,19 @@ func (g *Gateway) DiscoverFlavours(selector *nodecorev1alpha1.FlavourSelector) (
 	return flavoursCR, nil
 }
 
-func discover(s *models.Selector, provider string) (*nodecorev1alpha1.Flavour, error) {
+func discover(ctx context.Context, s *models.Selector, provider string) (*nodecorev1alpha1.Flavour, error) {
 	if s != nil {
-		return searchFlavourWithSelector(s, provider)
+		klog.Infof("Searching Flavour with selector %v", s)
+		return searchFlavourWithSelector(ctx, s, provider)
 	}
-	return searchFlavour(provider)
+	klog.Infof("Searching Flavour with no selector")
+	return searchFlavour(ctx, provider)
 }
 
 func checkLiqoReadiness(b bool) error {
 	if !b {
 		klog.Errorf("Liqo is not ready, please check or wait for the Liqo installation")
-		return fmt.Errorf("Liqo is not ready, please check or wait for the Liqo installation")
+		return fmt.Errorf("liqo is not ready, please check or wait for the Liqo installation")
 	}
 	return nil
 }

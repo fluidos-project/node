@@ -14,44 +14,37 @@
 
 package v1alpha1
 
-import (
-	"github.com/fluidos-project/node/pkg/utils/tools"
-)
+import "github.com/fluidos-project/node/pkg/utils/tools"
 
-func (solver *Solver) SetPhase(phase Phase, msg string) {
-	t := tools.GetTimeNow()
-	solver.Status.SolverPhase.Phase = phase
-	solver.Status.SolverPhase.LastChangeTime = t
-	solver.Status.SolverPhase.Message = msg
-	solver.Status.SolverPhase.EndTime = t
+// SetStatus sets the status of the allocation.
+func (allocation *Allocation) SetStatus(status Status, msg string) {
+	allocation.Status.Status = status
+	allocation.Status.LastUpdateTime = tools.GetTimeNow()
+	allocation.Status.Message = msg
 }
 
-// SetPeeringStatus sets the Peering phase of the solver.
-func (solver *Solver) SetPeeringStatus(phase Phase) {
-	solver.Status.Peering = phase
-	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
-}
-
+/*
 // SetPurchasePhase sets the ReserveAndBuy phase of the solver
-func (solver *Solver) SetReserveAndBuyStatus(phase Phase) {
+func (allocation *Allocation) SetReserveAndBuyStatus(phase Phase) {
 	solver.Status.ReserveAndBuy = phase
 	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
 }
 
 // SetFindCandidateStatus sets the FindCandidate phase of the solver
-func (solver *Solver) SetFindCandidateStatus(phase Phase) {
+func (allocation *Allocation) SetFindCandidateStatus(phase Phase) {
 	solver.Status.FindCandidate = phase
 	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
 }
 
 // SetDiscoveryStatus sets the discovery phase of the solver
-func (solver *Solver) SetDiscoveryStatus(phase Phase) {
+func (allocation *Allocation) SetDiscoveryStatus(phase Phase) {
 	solver.Status.DiscoveryPhase = phase
 	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
 }
 
 // SetReservationStatus sets the reservation phase of the solver
-func (solver *Solver) SetReservationStatus(phase Phase) {
+func (allocation *Allocation) SetReservationStatus(phase Phase) {
 	solver.Status.ReservationPhase = phase
 	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
 }
+*/

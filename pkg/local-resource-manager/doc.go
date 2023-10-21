@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package localResourceManager implements the utility functions for the local resource manager controller
-package localResourceManager
+// Package localresourcemanager implements the utility functions for the local resource manager controller
+package localresourcemanager

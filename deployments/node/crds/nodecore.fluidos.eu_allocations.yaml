@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Allocation is the Schema for the allocations API
+        description: Allocation is the Schema for the allocations API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,6 +34,11 @@ spec:
           spec:
             description: AllocationSpec defines the desired state of Allocation
             properties:
+              destination:
+                description: This specifies if the destination of the allocation is
+                  local or remote so if the allocation will be used locally or from
+                  a remote cluster
+                type: string
               flavour:
                 description: This Flavour describes the characteristics of the allocation,
                   it is based on the Flavour CRD from which it was created
@@ -256,7 +261,7 @@ spec:
                     - type
                     type: object
                   status:
-                    description: FlavourStatus defines the observed state of Flavour
+                    description: FlavourStatus defines the observed state of Flavour.
                     properties:
                       creationTime:
                         description: This field represents the creation time of the
@@ -279,7 +284,7 @@ spec:
                 type: object
               forwarding:
                 description: This flag indicates if the allocation is a forwarding
-                  allocation, if true it represents only a placeholder to undertand
+                  allocation if true it represents only a placeholder to undertand
                   that the cluster is just a proxy to another cluster
                 type: boolean
               intentID:
@@ -288,42 +293,56 @@ spec:
                   correct allocation for a given intent
                 type: string
               nodeName:
-                description: This is the corresponding Node or VirtualNode name
+                description: This is the corresponding Node or VirtualNode local name
                 type: string
-              partition:
-                description: This is the dimension of the allocation, it is based
-                  on the Flavour CRD from which it was created
+              partitioned:
+                description: This flags indicates if the Flavour from which the allocation
+                  was created was partitioned or not
+                type: boolean
+              remoteClusterID:
+                description: This is the ID of the cluster that owns the allocation.
+                type: string
+              resources:
+                description: This is the dimension of the allocation
                 properties:
                   architecture:
+                    description: Architecture is the architecture of the Flavour.
                     type: string
                   cpu:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: CPU is the number of CPU cores of the Flavour.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   ephemeral-storage:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: EphemeralStorage is the amount of ephemeral storage
+                      of the Flavour.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   gpu:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: GPU is the number of GPU cores of the Flavour.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   memory:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: Memory is the amount of RAM of the Flavour.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
-                  storage:
+                  persistent-storage:
                     anyOf:
                     - type: integer
                     - type: string
+                    description: PersistentStorage is the amount of persistent storage
+                      of the Flavour.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                 required:
@@ -337,29 +356,25 @@ spec:
                   cluster)'
                 type: string
             required:
+            - destination
             - flavour
             - intentID
             - nodeName
+            - partitioned
             - type
             type: object
           status:
-            description: AllocationStatus defines the observed state of Allocation
+            description: AllocationStatus defines the observed state of Allocation.
             properties:
-              creationTime:
-                description: The creation time of the allocation object
-                format: date-time
-                type: string
               lastUpdateTime:
                 description: The last time the allocation was updated
-                format: date-time
+                type: string
+              message:
+                description: Message contains the last message of the allocation
                 type: string
               status:
                 description: This allow to know the current status of the allocation
                 type: string
-            required:
-            - creationTime
-            - lastUpdateTime
-            - status
             type: object
         type: object
     served: true

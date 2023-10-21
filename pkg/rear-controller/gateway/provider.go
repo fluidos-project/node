@@ -38,10 +38,8 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
-// TODO: all these functions should be moved into the REAR Gateway package
-
-// getFlavours gets all the flavours CRs from the cluster
-func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
+// getFlavours gets all the flavours CRs from the cluster.
+func (g *Gateway) getFlavours(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	klog.Infof("Processing request for getting all Flavours...")
@@ -56,8 +54,8 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Found %d Flavours in the cluster", len(flavours))
 
 	// Filtering only the available flavours
-	for i, f := range flavours {
-		if !f.Spec.OptionalFields.Availability {
+	for i := range flavours {
+		if !flavours[i].Spec.OptionalFields.Availability {
 			flavours = append(flavours[:i], flavours[i+1:]...)
 		}
 	}
@@ -71,16 +69,18 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 
 	// Select the flavour with the max CPU
 	max := resource.MustParse("0")
-	var selected nodecorev1alpha1.Flavour
-	for _, f := range flavours {
-		if f.Spec.Characteristics.Cpu.Cmp(max) == 1 {
-			max = f.Spec.Characteristics.Cpu
-			selected = f
+	index := 0
+	for i := range flavours {
+		if flavours[i].Spec.Characteristics.Cpu.Cmp(max) == 1 {
+			max = flavours[i].Spec.Characteristics.Cpu
+			index = i
 		}
 	}
 
+	selected := *flavours[index].DeepCopy()
+
 	klog.Infof("Flavour %s selected - Parsing...", selected.Name)
-	parsed := parseutil.ParseFlavour(selected)
+	parsed := parseutil.ParseFlavour(&selected)
 
 	klog.Infof("Flavour parsed: %v", parsed)
 
@@ -117,7 +117,7 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, r *http.Request) {
 
 } */
 
-// getFlavourBySelectorHandler gets the flavour CRs from the cluster that match the selector
+// getFlavourBySelectorHandler gets the flavour CRs from the cluster that match the selector.
 func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -148,8 +148,8 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 	klog.Infof("Found %d Flavours in the cluster", len(flavours))
 
 	// Filtering only the available flavours
-	for i, f := range flavours {
-		if !f.Spec.OptionalFields.Availability {
+	for i := range flavours {
+		if !flavours[i].Spec.OptionalFields.Availability {
 			flavours = append(flavours[:i], flavours[i+1:]...)
 		}
 	}
@@ -185,16 +185,19 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 
 	// Select the flavour with the max CPU
 	max := resource.MustParse("0")
-	var selected nodecorev1alpha1.Flavour
-	for _, f := range flavoursSelected {
-		if f.Spec.Characteristics.Cpu.Cmp(max) == 1 {
-			max = f.Spec.Characteristics.Cpu
-			selected = f
+	index := 0
+
+	for i := range flavoursSelected {
+		if flavours[i].Spec.Characteristics.Cpu.Cmp(max) == 1 {
+			max = flavours[i].Spec.Characteristics.Cpu
+			index = i
 		}
 	}
 
+	selected := *flavoursSelected[index].DeepCopy()
+
 	klog.Infof("Flavour %s selected - Parsing...", selected.Name)
-	parsed := parseutil.ParseFlavour(selected)
+	parsed := parseutil.ParseFlavour(&selected)
 
 	klog.Infof("Flavour parsed: %v", parsed)
 
@@ -202,12 +205,12 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 	encodeResponse(w, parsed)
 }
 
-// reserveFlavour reserves a Flavour by its flavourID
+// reserveFlavour reserves a Flavour by its flavourID.
 func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 	// Get the flavourID value from the URL parameters
 	params := mux.Vars(r)
 	flavourID := params["flavourID"]
-	var transaction models.Transaction
+	var transaction *models.Transaction
 	var request models.ReserveRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -215,6 +218,8 @@ func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	klog.Infof("Partition: %v", *request.Partition)
 
 	if flavourID != request.FlavourID {
 		klog.Infof("Mismatch body & param: %s != %s", flavourID, request.FlavourID)
@@ -247,7 +252,7 @@ func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Create a new transaction
-		transaction := resourceforge.ForgeTransactionObj(transactionID, request)
+		transaction = resourceforge.ForgeTransactionObj(transactionID, &request)
 
 		// Add the transaction to the transactions map
 		g.addNewTransacion(transaction)
@@ -258,7 +263,7 @@ func (g *Gateway) reserveFlavour(w http.ResponseWriter, r *http.Request) {
 	encodeResponse(w, transaction)
 }
 
-// purchaseFlavour is an handler for purchasing a Flavour
+// purchaseFlavour is an handler for purchasing a Flavour.
 func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 	// Get the flavourID value from the URL parameters
 	params := mux.Vars(r)
@@ -288,7 +293,7 @@ func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 
 	klog.Infof("Flavour requested: %s", transaction.FlavourID)
 
-	if tools.CheckExpiration(transaction.StartTime, flags.EXPIRATION_TRANSACTION) {
+	if tools.CheckExpiration(transaction.StartTime, flags.ExpirationTransaction) {
 		klog.Infof("Transaction %s expired", transaction.TransactionID)
 		http.Error(w, "Error: transaction Timeout", http.StatusRequestTimeout)
 		g.removeTransaction(transaction.TransactionID)
@@ -343,7 +348,7 @@ func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new contract
 	klog.Infof("Creating a new contract...")
-	contract = *resourceforge.ForgeContract(*flavourSold, transaction, liqoCredentials)
+	contract = *resourceforge.ForgeContract(flavourSold, &transaction, liqoCredentials)
 	err = g.client.Create(context.Background(), &contract)
 	if err != nil {
 		klog.Errorf("Error creating the Contract: %s", err)
@@ -357,6 +362,21 @@ func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 	contractObject := parseutil.ParseContract(&contract)
 	// create a response purchase
 	responsePurchase := resourceforge.ForgeResponsePurchaseObj(contractObject)
+
+	klog.Infof("Contract %v", *contractObject.Partition)
+
+	// Create allocation
+	klog.Infof("Creating allocation...")
+	workerName := contract.Spec.Flavour.Spec.OptionalFields.WorkerID
+	allocation := *resourceforge.ForgeAllocation(&contract, "", workerName, nodecorev1alpha1.Remote, nodecorev1alpha1.Node)
+	err = g.client.Create(context.Background(), &allocation)
+	if err != nil {
+		klog.Errorf("Error creating the Allocation: %s", err)
+		http.Error(w, "Contract created but we ran into an error while allocating the resources", http.StatusInternalServerError)
+		return
+	}
+
+	klog.Infof("Response purchase %v", *responsePurchase.Contract.Partition)
 
 	// Respond with the response purchase as JSON
 	encodeResponse(w, responsePurchase)

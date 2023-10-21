@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package consts contains the constants used in the FLUIDOS and some miscellaneous ones.
+// Package consts contains the constants used in the FLUIDOS and some miscellaneous ones.
 package consts

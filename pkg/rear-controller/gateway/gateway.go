@@ -36,20 +36,29 @@ import (
 )
 
 // clusterRole
-//+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch
+//	+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours,verbs=get;list;watch;create;update;patch;delete
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
+//	+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch
 
 const (
-	LIST_FLAVOURS_PATH             = "/api/listflavours"
-	LIST_FLAVOUR_BY_ID_PATH        = "/api/listflavours/"
-	RESERVE_FLAVOUR_PATH           = "/api/reserveflavour/"
-	PURCHASE_FLAVOUR_PATH          = "/api/purchaseflavour/"
-	LIST_FLAVOURS_BY_SELECTOR_PATH = "/api/listflavours/selector"
+	// ListFlavoursPath is the path to get the list of flavours.
+	ListFlavoursPath = "/api/listflavours"
+	// ListFlavourByIDPath is the path to get a flavour by ID.
+	ListFlavourByIDPath = "/api/listflavours/"
+	// ReserveFlavourPath is the path to reserve a flavour.
+	ReserveFlavourPath = "/api/reserveflavour/"
+	// PurchaseFlavourPath is the path to purchase a flavour.
+	PurchaseFlavourPath = "/api/purchaseflavour/"
+	// ListFlavoursBySelectorPath is the path to get the list of flavours by selector.
+	ListFlavoursBySelectorPath = "/api/listflavours/selector"
 )
 
+// Gateway is the object that contains all the logical data stractures of the REAR Gateway.
 type Gateway struct {
 	// NodeIdentity is the identity of the FLUIDOS Node
 	ID *nodecorev1alpha1.NodeIdentity
@@ -67,6 +76,7 @@ type Gateway struct {
 	ClusterID string
 }
 
+// NewGateway creates a new Gateway object.
 func NewGateway(c client.Client) *Gateway {
 	return &Gateway{
 		client:       c,
@@ -76,14 +86,14 @@ func NewGateway(c client.Client) *Gateway {
 	}
 }
 
-// Start starts a new HTTP server
+// Start starts a new HTTP server.
 func (g *Gateway) Start(ctx context.Context) error {
 	klog.Info("Getting FLUIDOS Node identity...")
 
 	nodeIdentity := getters.GetNodeIdentity(ctx, g.client)
 	if nodeIdentity == nil {
 		klog.Info("Error getting FLUIDOS Node identity")
-		return fmt.Errorf("Error getting FLUIDOS Node identity")
+		return fmt.Errorf("error getting FLUIDOS Node identity")
 	}
 
 	g.RegisterNodeIdentity(nodeIdentity)
@@ -97,23 +107,26 @@ func (g *Gateway) Start(ctx context.Context) error {
 	router.Use(g.readinessMiddleware)
 
 	// Gateway endpoints
-	router.HandleFunc(LIST_FLAVOURS_PATH, g.getFlavours).Methods("GET")
-	//router.HandleFunc(LIST_FLAVOUR_BY_ID_PATH+"{flavourID}", g.getFlavourByID).Methods("GET")
-	router.HandleFunc(LIST_FLAVOURS_BY_SELECTOR_PATH, g.getFlavoursBySelector).Methods("POST")
-	router.HandleFunc(RESERVE_FLAVOUR_PATH+"{flavourID}", g.reserveFlavour).Methods("POST")
-	router.HandleFunc(PURCHASE_FLAVOUR_PATH+"{transactionID}", g.purchaseFlavour).Methods("POST")
+	router.HandleFunc(ListFlavoursPath, g.getFlavours).Methods("GET")
+	//nolint:gocritic // For the moment we are not using this endpoint
+	// router.HandleFunc(LIST_FLAVOUR_BY_ID_PATH+"{flavourID}", g.getFlavourByID).Methods("GET")
+	router.HandleFunc(ListFlavoursBySelectorPath, g.getFlavoursBySelector).Methods("POST")
+	router.HandleFunc(ReserveFlavourPath+"{flavourID}", g.reserveFlavour).Methods("POST")
+	router.HandleFunc(PurchaseFlavourPath+"{transactionID}", g.purchaseFlavour).Methods("POST")
 
 	// Configure the HTTP server
+	//nolint:gosec // we are not using a TLS certificate
 	srv := &http.Server{
 		Handler: router,
-		Addr:    ":" + flags.HTTP_PORT,
+		Addr:    ":" + flags.HTTPPort,
 	}
 
 	// Start server HTTP
-	klog.Infof("Starting HTTP server on port %s", flags.HTTP_PORT)
+	klog.Infof("Starting HTTP server on port %s", flags.HTTPPort)
 	return srv.ListenAndServe()
 }
 
+// RegisterNodeIdentity registers the FLUIDOS Node identity into the Gateway.
 func (g *Gateway) RegisterNodeIdentity(nodeIdentity *nodecorev1alpha1.NodeIdentity) {
 	g.ID = nodeIdentity
 }
@@ -137,17 +150,20 @@ func (g *Gateway) readinessMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// CacheRefresher is a function that periodically checks the cache and removes expired transactions.
 func (g *Gateway) CacheRefresher(interval time.Duration) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		return wait.PollUntilContextCancel(ctx, interval, false, g.refreshCache)
 	}
 }
 
-// check expired transactions and remove them from the cache
+// check expired transactions and remove them from the cache.
+//
+//nolint:revive // we need to pass ctx as parameter to be compliant with the Poller interface
 func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
 	klog.Infof("Refreshing cache")
 	for transactionID, transaction := range g.Transactions {
-		if tools.CheckExpiration(transaction.StartTime, flags.EXPIRATION_TRANSACTION) {
+		if tools.CheckExpiration(transaction.StartTime, flags.ExpirationTransaction) {
 			klog.Infof("Transaction %s expired, removing it from cache...", transactionID)
 			g.removeTransaction(transactionID)
 			return false, nil
@@ -156,12 +172,14 @@ func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
+// LiqoChecker is a function that periodically checks if Liqo is ready.
 func (g *Gateway) LiqoChecker(interval time.Duration) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		return wait.PollUntilContextCancel(ctx, interval, false, g.checkLiqoReadiness)
 	}
 }
 
+// check if Liqo is ready and set the LiqoReady flag to true.
 func (g *Gateway) checkLiqoReadiness(ctx context.Context) (bool, error) {
 	klog.Infof("Checking Liqo readiness")
 	if g.LiqoReady && g.ClusterID != "" {

@@ -16,17 +16,17 @@ package models
 
 import "k8s.io/apimachinery/pkg/api/resource"
 
-// Partition represents the partitioning properties of a Flavour
+// Partition represents the partitioning properties of a Flavour.
 type Partition struct {
 	Architecture     string            `json:"architecture"`
-	Cpu              resource.Quantity `json:"cpu"`
+	CPU              resource.Quantity `json:"cpu"`
 	Memory           resource.Quantity `json:"memory"`
 	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
 }
 
-// Transaction contains information regarding the transaction for a flavour
+// Transaction contains information regarding the transaction for a flavour.
 type Transaction struct {
 	TransactionID string       `json:"transactionID"`
 	FlavourID     string       `json:"flavourID"`
@@ -36,7 +36,7 @@ type Transaction struct {
 	StartTime     string       `json:"startTime"`
 }
 
-// Contract represents a Contract object with its characteristics
+// Contract represents a Contract object with its characteristics.
 type Contract struct {
 	ContractID        string            `json:"contractID"`
 	TransactionID     string            `json:"transactionID"`

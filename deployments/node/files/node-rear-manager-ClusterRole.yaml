@@ -54,10 +54,46 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps
+  - '*'
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - discovery.liqo.io
+  resources:
+  - foreignclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - discovery.liqo.io
+  resources:
+  - foreignclusters/finalizers
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - discovery.liqo.io
+  resources:
+  - foreignclusters/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - nodecore.fluidos.eu

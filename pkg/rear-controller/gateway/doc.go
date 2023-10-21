@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package gateway contains the HTTP Server and the utility functions for the REAR Gateway
+// Package gateway contains the HTTP Server and the utility functions for the REAR Gateway
 package gateway

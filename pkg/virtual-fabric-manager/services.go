@@ -33,12 +33,13 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/consts"
 )
 
+// clusterRole
 //+kubebuilder:rbac:groups=discovery.liqo.io,resources=foreignclusters,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch
 
 // PeerWithCluster creates a ForeignCluster resource to peer with a remote cluster.
-func PeerWithCluster(ctx context.Context, cl client.Client, clusterID, clusterName, clusterAuthURL, clusterToken string) (*discoveryv1alpha1.ForeignCluster, error) {
-
+func PeerWithCluster(ctx context.Context, cl client.Client, clusterID,
+	clusterName, clusterAuthURL, clusterToken string) (*discoveryv1alpha1.ForeignCluster, error) {
 	// Retrieve the cluster identity associated with the current cluster.
 	clusterIdentity, err := utils.GetClusterIdentityWithControllerClient(ctx, cl, consts.LiqoNamespace)
 	if err != nil {
@@ -87,6 +88,7 @@ func enforceForeignCluster(ctx context.Context, cl client.Client,
 			fc.Spec.IncomingPeeringEnabled = discoveryv1alpha1.PeeringEnabledAuto
 		}
 		if fc.Spec.InsecureSkipTLSVerify == nil {
+			//nolint:staticcheck // referring to the Liqo implementation
 			fc.Spec.InsecureSkipTLSVerify = pointer.BoolPtr(true)
 		}
 		return nil

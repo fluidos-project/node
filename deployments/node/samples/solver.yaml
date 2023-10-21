@@ -4,13 +4,20 @@ metadata:
   name: solver-sample
   namespace: fluidos
 spec:
+  # This is the Selector used to find a Flavour (FLUIDOS node) that matches the requirements
   selector:
+    # ONLY k8s-fluidos is supported at the moment
     type: k8s-fluidos
-    architecture: amd64
+    # REMEMBER: the architecture is the one of the node, not the one of the container. Change it accordingly
+    architecture: arm64
+    # ONLY rangeSelector is supported at the moment
     rangeSelector:
-      minCpu: 1
-      minMemory: 1
+      minCpu: "1000m"
+      minMemory: "1Gi"
   intentID: "intent-sample"
+  # This flag is used to indicate that the solver should find a candidate (FLUIDOS node)
   findCandidate: true
+  # This flag is used to indicate that the solver should reserve and buy the resources from the candidate (FLUIDOS node)
   reserveAndBuy: true
-  enstablishPeering: false
+  # This flag is used to indicate that the solver should establish peering with the candidate (FLUIDOS node)
+  enstablishPeering: true

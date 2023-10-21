@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
-	localResourceManager "github.com/fluidos-project/node/pkg/local-resource-manager"
+	localresourcemanager "github.com/fluidos-project/node/pkg/local-resource-manager"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
@@ -50,14 +50,15 @@ func main() {
 	flag.StringVar(&flags.AMOUNT, "amount", "", "Amount of money set for the flavours of this node")
 	flag.StringVar(&flags.CURRENCY, "currency", "", "Currency of the money set for the flavours of this node")
 	flag.StringVar(&flags.PERIOD, "period", "", "Period set for the flavours of this node")
-	flag.StringVar(&flags.RESOURCE_TYPE, "resources-types", "k8s-fluidos", "Type of the Flavour related to k8s resources")
-	flag.StringVar(&flags.CPU_MIN, "cpu-min", "0", "Minimum CPU value")
-	flag.StringVar(&flags.MEMORY_MIN, "memory-min", "0", "Minimum memory value")
-	flag.StringVar(&flags.CPU_STEP, "cpu-step", "0", "CPU step value")
-	flag.StringVar(&flags.MEMORY_STEP, "memory-step", "0", "Memory step value")
-	flag.Int64Var(&flags.MIN_COUNT, "min-count", 0, "Minimum number of flavours")
-	flag.Int64Var(&flags.MAX_COUNT, "max-count", 0, "Maximum number of flavours")
-	flag.StringVar(&flags.RESOURCE_NODE_LABEL, "node-resource-label", "node-role.fluidos.eu/resources", "Label used to filter the k8s nodes from which create flavours")
+	flag.StringVar(&flags.ResourceType, "resources-types", "k8s-fluidos", "Type of the Flavour related to k8s resources")
+	flag.StringVar(&flags.CPUMin, "cpu-min", "0", "Minimum CPU value")
+	flag.StringVar(&flags.MemoryMin, "memory-min", "0", "Minimum memory value")
+	flag.StringVar(&flags.CPUStep, "cpu-step", "0", "CPU step value")
+	flag.StringVar(&flags.MemoryStep, "memory-step", "0", "Memory step value")
+	flag.Int64Var(&flags.MinCount, "min-count", 0, "Minimum number of flavours")
+	flag.Int64Var(&flags.MaxCount, "max-count", 0, "Maximum number of flavours")
+	flag.StringVar(&flags.ResourceNodeLabel, "node-resource-label", "node-role.fluidos.eu/resources",
+		"Label used to filter the k8s nodes from which create flavours")
 
 	flag.Parse()
 
@@ -68,7 +69,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = localResourceManager.Start(context.Background(), cl)
+	err = localresourcemanager.Start(context.Background(), cl)
 	if err != nil {
 		setupLog.Error(err, "Unable to start LocalResourceManager")
 		os.Exit(1)
@@ -78,6 +79,7 @@ func main() {
 	mux.HandleFunc("/healthz", healthHandler) // health check endpoint
 	mux.HandleFunc("/readyz", healthHandler)  // readiness check endpoint
 
+	//nolint:gosec // We don't need this kind of security check
 	server := &http.Server{
 		Addr:    probeAddr,
 		Handler: mux,
@@ -90,7 +92,7 @@ func main() {
 	}
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }

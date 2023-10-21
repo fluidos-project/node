@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package discoverymanager implements the utility functions for the discovery manager controller
+// Package discoverymanager implements the utility functions for the discovery manager controller
 package discoverymanager

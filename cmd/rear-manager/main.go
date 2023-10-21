@@ -1,32 +1,33 @@
-/*
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright 2022-2023 FLUIDOS Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	liqodiscovery "github.com/liqotech/liqo/apis/discovery/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -46,6 +47,7 @@ func init() {
 	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(liqodiscovery.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -79,6 +81,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	cache := mgr.GetCache()
+
+	// Index the RemoteClusterID field of the Allocation CRD
+	indexFuncAllocation := func(obj client.Object) []string {
+		allocation := obj.(*nodecorev1alpha1.Allocation)
+		return []string{allocation.Spec.RemoteClusterID}
+	}
+
+	if err := cache.IndexField(context.Background(), &nodecorev1alpha1.Allocation{}, "spec.remoteClusterID", indexFuncAllocation); err != nil {
+		setupLog.Error(err, "unable to create index for field", "field", "spec.remoteClusterID")
+		os.Exit(1)
+	}
+
 	if err = (&rearmanager.SolverReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -105,9 +120,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	//av := rearmanager.NewValidator(mgr.GetClient())
-
-	//mgr.GetWebhookServer().Register("/validate/allocation", &webhook.Admission{Handler: av})
+	//nolint:gocritic // This code is needed to register the webhook
+	// av := rearmanager.NewValidator(mgr.GetClient())
+	// mgr.GetWebhookServer().Register("/validate/allocation", &webhook.Admission{Handler: av})
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

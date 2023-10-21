@@ -16,6 +16,7 @@ package services
 
 import (
 	"context"
+	"sync"
 
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,9 +25,15 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
-// GetAllFlavours returns all the Flavours in the cluster
-func GetAllFlavours(cl client.Client) ([]nodecorev1alpha1.Flavour, error) {
+// FlavourService is the interface that wraps the basic Flavour methods and allows to manage the concurrent access to the Flavour CRs.
+type FlavourService interface {
+	sync.Mutex
+	GetAllFlavours() ([]nodecorev1alpha1.Flavour, error)
+	GetFlavourByID(flavourID string) (*nodecorev1alpha1.Flavour, error)
+}
 
+// GetAllFlavours returns all the Flavours in the cluster.
+func GetAllFlavours(cl client.Client) ([]nodecorev1alpha1.Flavour, error) {
 	var flavourList nodecorev1alpha1.FlavourList
 
 	// List all Flavour CRs
@@ -39,13 +46,12 @@ func GetAllFlavours(cl client.Client) ([]nodecorev1alpha1.Flavour, error) {
 	return flavourList.Items, nil
 }
 
-// GetFlavourByID returns the entire Flavour CR (not only spec) in the cluster that matches the flavourID
+// GetFlavourByID returns the entire Flavour CR (not only spec) in the cluster that matches the flavourID.
 func GetFlavourByID(flavourID string, cl client.Client) (*nodecorev1alpha1.Flavour, error) {
-
 	// Get the flavour with the given ID (that is the name of the CR)
 	flavour := &nodecorev1alpha1.Flavour{}
 	err := cl.Get(context.Background(), client.ObjectKey{
-		Namespace: flags.FLUIDOS_NAMESPACE,
+		Namespace: flags.FluidoNamespace,
 		Name:      flavourID,
 	}, flavour)
 	if err != nil {
