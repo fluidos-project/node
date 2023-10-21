@@ -33,9 +33,6 @@ const (
 	Inactive Status = "Inactive"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // AllocationSpec defines the desired state of Allocation
 type AllocationSpec struct {
 
@@ -45,19 +42,19 @@ type AllocationSpec struct {
 	IntentID string `json:"intentID"`
 
 	// This is the corresponding Node or VirtualNode name
-	LocalNode string `json:"localNode"`
+	NodeName string `json:"nodeName"`
 
 	// This specifies the type of the node: Node (Physical node of the cluster) or VirtualNode (Remote node owned by a different cluster)
 	Type NodeType `json:"type"`
 
 	// This flag indicates if the allocation is a forwarding allocation, if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
-	Forwarding bool `json:"forwarding"`
+	Forwarding bool `json:"forwarding,omitempty"`
 
 	// This Flavour describes the characteristics of the allocation, it is based on the Flavour CRD from which it was created
 	Flavour Flavour `json:"flavour"`
 
 	// This is the dimension of the allocation, it is based on the Flavour CRD from which it was created
-	Partition FlavourSelector `json:"partition,omitempty"`
+	Partition *Partition `json:"partition,omitempty"`
 }
 
 // AllocationStatus defines the observed state of Allocation

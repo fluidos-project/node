@@ -169,7 +169,7 @@ func (g *Gateway) checkLiqoReadiness(ctx context.Context) (bool, error) {
 	}
 
 	var cm corev1.ConfigMap
-	err := g.client.Get(ctx, types.NamespacedName{Name: consts.LIQO_CLUSTERID_CONFIGMAP_NAME, Namespace: consts.LIQO_NAMESPACE}, &cm)
+	err := g.client.Get(ctx, types.NamespacedName{Name: consts.LiqoClusterIdConfigMapName, Namespace: consts.LiqoNamespace}, &cm)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			klog.Errorf("Error when retrieving Liqo ConfigMap: %s", err)

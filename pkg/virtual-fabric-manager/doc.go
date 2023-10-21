@@ -12,13 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package consts
-
-const (
-	NetworkConfigMapName          = "fluidos-network-manager-config"
-	NodeIdentityConfigMapName     = "fluidos-network-manager-identity"
-	LiqoClusterIdConfigMapName    = "liqo-clusterid-configmap"
-	LiqoNamespace                 = "liqo"
-	LiqoAuthTokenSecretNamePrefix = "remote-token-"
-	LiqoTokenKey                  = "token"
-)
+// Package virtualfabricmanager provides the virtual fabric manager services to manage the peering between FLUIDOS Node.
+package virtualfabricmanager

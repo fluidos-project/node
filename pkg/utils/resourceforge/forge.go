@@ -29,7 +29,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
-// ForgeDiscovery creates a Discovery CR from a FlavourSelector and a solverID
+// ForgeDiscovery creates a Discovery CR from a FlavourSelector and a solverID.
 func ForgeDiscovery(selector *nodecorev1alpha1.FlavourSelector, solverID string) *advertisementv1alpha1.Discovery {
 	return &advertisementv1alpha1.Discovery{
 		ObjectMeta: metav1.ObjectMeta{
@@ -49,7 +49,7 @@ func ForgeDiscovery(selector *nodecorev1alpha1.FlavourSelector, solverID string)
 	}
 }
 
-// ForgePeeringCandidate creates a PeeringCandidate CR from a Flavour and a Discovery
+// ForgePeeringCandidate creates a PeeringCandidate CR from a Flavour and a Discovery.
 func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, solverID string, reserved bool) (pc *advertisementv1alpha1.PeeringCandidate) {
 	pc = &advertisementv1alpha1.PeeringCandidate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -75,9 +75,11 @@ func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, so
 	return
 }
 
-// ForgeReservation creates a Reservation CR from a PeeringCandidate
-func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, partition *reservationv1alpha1.Partition, ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
-	solverID := peeringCandidate.Spec.SolverID
+// ForgeReservation creates a Reservation CR from a PeeringCandidate.
+func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
+	partition *nodecorev1alpha1.Partition,
+	ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
+	solverID := pc.Spec.SolverID
 	reservation := &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeReservationName(solverID),
@@ -87,17 +89,17 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, p
 			SolverID: solverID,
 			Buyer:    ni,
 			Seller: nodecorev1alpha1.NodeIdentity{
-				Domain: peeringCandidate.Spec.Flavour.Spec.Owner.Domain,
-				NodeID: peeringCandidate.Spec.Flavour.Spec.Owner.NodeID,
-				IP:     peeringCandidate.Spec.Flavour.Spec.Owner.IP,
+				Domain: pc.Spec.Flavour.Spec.Owner.Domain,
+				NodeID: pc.Spec.Flavour.Spec.Owner.NodeID,
+				IP:     pc.Spec.Flavour.Spec.Owner.IP,
 			},
 			PeeringCandidate: nodecorev1alpha1.GenericRef{
-				Name:      peeringCandidate.Name,
-				Namespace: peeringCandidate.Namespace,
+				Name:      pc.Name,
+				Namespace: pc.Namespace,
 			},
 			Reserve:  true,
 			Purchase: true,
-			Partition: func() *reservationv1alpha1.Partition {
+			Partition: func() *nodecorev1alpha1.Partition {
 				if partition != nil {
 					return partition
 				}
@@ -111,7 +113,7 @@ func ForgeReservation(peeringCandidate advertisementv1alpha1.PeeringCandidate, p
 	return reservation
 }
 
-// ForgeContract creates a Contract CR
+// ForgeContract creates a Contract CR.
 func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transaction, lc *reservationv1alpha1.LiqoCredentials) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
@@ -129,7 +131,7 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 			Seller:            flavour.Spec.Owner,
 			SellerCredentials: *lc,
 			TransactionID:     transaction.TransactionID,
-			Partition: func() *reservationv1alpha1.Partition {
+			Partition: func() *nodecorev1alpha1.Partition {
 				if transaction.Partition != nil {
 					return parseutil.ParsePartitionFromObj(transaction.Partition)
 				}
@@ -147,7 +149,7 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 	}
 }
 
-// ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node
+// ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node.
 func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
 	return &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
@@ -193,7 +195,7 @@ func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 
 // FORGER FUNCTIONS FROM OBJECTS
 
-// ForgeTransaction creates a new transaction
+// ForgeTransactionObj creates a new Transaction object.
 func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transaction {
 	return models.Transaction{
 		TransactionID: ID,
@@ -210,6 +212,7 @@ func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transactio
 	}
 }
 
+// ForgeContractObj creates a new Contract object.
 func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 	return models.Contract{
 		ContractID:     contract.Name,
@@ -240,7 +243,7 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 	}
 }
 
-// ForgeResponsePurchaseObj creates a new response purchase
+// ForgeResponsePurchaseObj creates a new response purchase.
 func ForgeResponsePurchaseObj(contract models.Contract) models.ResponsePurchase {
 	return models.ResponsePurchase{
 		Contract: contract,
@@ -248,7 +251,7 @@ func ForgeResponsePurchaseObj(contract models.Contract) models.ResponsePurchase 
 	}
 }
 
-// ForgeContractFromObj creates a Contract from a reservation
+// ForgeContractFromObj creates a Contract from a reservation.
 func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +278,7 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 				Endpoint:    contract.SellerCredentials.Endpoint,
 			},
 			TransactionID: contract.TransactionID,
-			Partition: func() *reservationv1alpha1.Partition {
+			Partition: func() *nodecorev1alpha1.Partition {
 				if contract.Partition != nil {
 					return parseutil.ParsePartitionFromObj(contract.Partition)
 				}
@@ -314,7 +317,7 @@ func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alph
 				NodeID: transaction.Buyer.NodeID,
 			},
 			ClusterID: transaction.ClusterID,
-			Partition: func() *reservationv1alpha1.Partition {
+			Partition: func() *nodecorev1alpha1.Partition {
 				if transaction.Partition != nil {
 					return parseutil.ParsePartitionFromObj(transaction.Partition)
 				}
@@ -324,7 +327,7 @@ func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alph
 	}
 }
 
-// ForgeFlavourFromObj creates a Flavour CR from a Flavour Object (REAR)
+// ForgeFlavourFromObj creates a Flavour CR from a Flavour Object (REAR).
 func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 	f := &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
@@ -384,10 +387,11 @@ func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
 	return f
 }
 
-func ForgePartition(selector *nodecorev1alpha1.FlavourSelector) *reservationv1alpha1.Partition {
-	return &reservationv1alpha1.Partition{
+// ForgePartition creates a Partition from a FlavourSelector.
+func ForgePartition(selector *nodecorev1alpha1.FlavourSelector) *nodecorev1alpha1.Partition {
+	return &nodecorev1alpha1.Partition{
 		Architecture:     selector.Architecture,
-		Cpu:              selector.RangeSelector.MinCpu,
+		CPU:              selector.RangeSelector.MinCpu,
 		Memory:           selector.RangeSelector.MinMemory,
 		EphemeralStorage: selector.RangeSelector.MinEph,
 		Storage:          selector.RangeSelector.MinStorage,

@@ -14,6 +14,8 @@
 
 package v1alpha1
 
+import "k8s.io/apimachinery/pkg/api/resource"
+
 const (
 	//PhaseReady   Phase = "Ready"
 	PhaseSolved   Phase = "Solved"
@@ -38,10 +40,21 @@ type GenericRef struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// NodeIdentity is the identity of a FLUIDOS Node.
 type NodeIdentity struct {
 	Domain string `json:"domain"`
 	NodeID string `json:"nodeID"`
 	IP     string `json:"ip"`
+}
+
+// Partition is the partition of the flavour.
+type Partition struct {
+	Architecture     string            `json:"architecture"`
+	CPU              resource.Quantity `json:"cpu"`
+	Memory           resource.Quantity `json:"memory"`
+	Gpu              resource.Quantity `json:"gpu,omitempty"`
+	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
+	Storage          resource.Quantity `json:"storage,omitempty"`
 }
 
 // toString() returns a string representation of the GenericRef.
