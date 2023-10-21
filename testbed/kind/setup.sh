@@ -26,7 +26,9 @@ helm install node fluidos/node -n fluidos \
   --set networkManager.configMaps.nodeIdentity.ip="$consumer_controlplane_ip:$consumer_node_port" \
   --set networkManager.configMaps.providers.local="$provider_controlplane_ip:$provider_node_port"
 
-liqoctl install kind --cluster-name fluidos-consumer
+liqoctl install kind --cluster-name fluidos-consumer \
+  --set controllerManager.config.resourcePluginAddress=node-rear-controller-grpc.fluidos:2710 \
+  --set controllerManager.config.enableResourceEnforcement=true
 
 export KUBECONFIG=$PWD/provider/config
 
@@ -41,6 +43,8 @@ helm install node fluidos/node -n fluidos \
   --set networkManager.configMaps.nodeIdentity.ip="$provider_controlplane_ip:$provider_node_port" \
   --set networkManager.configMaps.providers.local="$consumer_controlplane_ip:$consumer_node_port"
 
-liqoctl install kind --cluster-name fluidos-provider
+liqoctl install kind --cluster-name fluidos-provider \
+  --set controllerManager.config.resourcePluginAddress=node-rear-controller-grpc.fluidos:2710 \
+  --set controllerManager.config.enableResourceEnforcement=true
 
 

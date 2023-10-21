@@ -27,46 +27,65 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
-// ForgeContractName creates a name for the Contract CR
+// ForgeVirtualNodeName creates a name for the VirtualNode starting from the cluster name of the remote cluster.
+func ForgeVirtualNodeName(clusterName string) string {
+	return fmt.Sprintf("liqo-%s", clusterName)
+}
+
+// ForgeContractName creates a name for the Contract.
 func ForgeContractName(flavourID string) string {
 	hash := ForgeHashString(flavourID, 4)
 	return fmt.Sprintf("contract-%s-%s", flavourID, hash)
 }
 
-// ForgePeeringCandidateName generates a name for the PeeringCandidate
+// ForgeAllocationName generates a name for the Allocation.
+func ForgeAllocationName(flavourID string) string {
+	hash := ForgeHashString(flavourID, 4)
+	return fmt.Sprintf("allocation-%s-%s", flavourID, hash)
+}
+
+// ForgePeeringCandidateName generates a name for the PeeringCandidate.
 func ForgePeeringCandidateName(flavourID string) string {
 	return fmt.Sprintf("peeringcandidate-%s", flavourID)
 }
 
-// ForgeReservationName generates a name for the Reservation
+// ForgeReservationName generates a name for the Reservation.
 func ForgeReservationName(solverID string) string {
 	return fmt.Sprintf("reservation-%s", solverID)
 }
 
-// ForgeFlavourName returns the name of the flavour following the pattern Domain-Type-rand(4)
-func ForgeFlavourName(WorkerID, domain string) string {
-	rand, err := ForgeRandomString()
+// ForgeFlavourName returns the name of the flavour following the pattern Domain-resourceType-rand(4).
+func ForgeFlavourName(workerID, resourceType, domain string) string {
+	var resType string
+	if resourceType == "" {
+		resType = flags.ResourceType
+	} else {
+		resType = resourceType
+	}
+	r, err := ForgeRandomString()
 	if err != nil {
 		klog.Errorf("Error when generating random string: %s", err)
 	}
 
-	return domain + "-" + flags.RESOURCE_TYPE + "-" + ForgeHashString(WorkerID+rand, 8)
+	return domain + "-" + resType + "-" + ForgeHashString(workerID+r, 8)
 }
 
-// ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery
+// ForgeDiscoveryName returns the name of the discovery following the pattern solverID-discovery.
 func ForgeDiscoveryName(solverID string) string {
 	return fmt.Sprintf("discovery-%s", solverID)
 }
 
+// RetrieveSolverNameFromDiscovery retrieves the solver name from the discovery name.
 func RetrieveSolverNameFromDiscovery(discoveryName string) string {
 	return strings.TrimPrefix(discoveryName, "discovery-")
 }
 
+// RetrieveSolverNameFromReservation retrieves the solver name from the reservation name.
 func RetrieveSolverNameFromReservation(reservationName string) string {
 	return strings.TrimPrefix(reservationName, "reservation-")
 }
 
-// ForgeTransactionID Generates a unique transaction ID using the current timestamp
+// ForgeTransactionID Generates a unique transaction ID using the current timestamp.
 func ForgeTransactionID() (string, error) {
 	// Convert the random bytes to a hexadecimal string
 	transactionID, err := ForgeRandomString()
@@ -80,12 +99,12 @@ func ForgeTransactionID() (string, error) {
 	return transactionID, nil
 }
 
-// RetrieveFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate
+// RetrieveFlavourNameFromPC generates a name for the Flavour from the PeeringCandidate.
 func RetrieveFlavourNameFromPC(pcName string) string {
 	return strings.TrimPrefix(pcName, "peeringcandidate-")
 }
 
-// ForgePrefixClientID generates a prefix for the client ID
+// ForgeRandomString generates a random string of 16 bytes.
 func ForgeRandomString() (string, error) {
 	randomBytes := make([]byte, 16)
 	_, err := rand.Read(randomBytes)
@@ -97,11 +116,11 @@ func ForgeRandomString() (string, error) {
 	return randomString, nil
 }
 
-// ForgeHashString computes SHA-256 Hash of the NodeUID
-func ForgeHashString(input string, lenght int) string {
+// ForgeHashString computes SHA-256 Hash of the NodeUID.
+func ForgeHashString(input string, length int) string {
 	hash := sha256.Sum256([]byte(input))
 	hashString := hex.EncodeToString(hash[:])
-	uniqueString := hashString[:lenght]
+	uniqueString := hashString[:length]
 
 	return uniqueString
 }

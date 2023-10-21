@@ -20,14 +20,6 @@ import (
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
 
-// LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
-type LiqoCredentials struct {
-	ClusterID   string `json:"clusterID"`
-	ClusterName string `json:"clusterName"`
-	Token       string `json:"token"`
-	Endpoint    string `json:"endpoint"`
-}
-
 // ContractSpec defines the desired state of Contract.
 type ContractSpec struct {
 	// This is the flavour on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
@@ -50,7 +42,7 @@ type ContractSpec struct {
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
 	// This credentials will be used by the customer to connect and enstablish a peering with the seller FLUIDOS Node through Liqo.
-	SellerCredentials LiqoCredentials `json:"sellerCredentials"`
+	SellerCredentials nodecorev1alpha1.LiqoCredentials `json:"sellerCredentials"`
 
 	// This is the expiration time of the contract. It can be empty if the contract is not time limited.
 	ExpirationTime string `json:"expirationTime,omitempty"`

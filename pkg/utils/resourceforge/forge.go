@@ -34,7 +34,7 @@ func ForgeDiscovery(selector *nodecorev1alpha1.FlavourSelector, solverID string)
 	return &advertisementv1alpha1.Discovery{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeDiscoveryName(solverID),
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: advertisementv1alpha1.DiscoverySpec{
 			Selector: func() *nodecorev1alpha1.FlavourSelector {
@@ -50,11 +50,12 @@ func ForgeDiscovery(selector *nodecorev1alpha1.FlavourSelector, solverID string)
 }
 
 // ForgePeeringCandidate creates a PeeringCandidate CR from a Flavour and a Discovery.
-func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour, solverID string, reserved bool) (pc *advertisementv1alpha1.PeeringCandidate) {
+func ForgePeeringCandidate(flavourPeeringCandidate *nodecorev1alpha1.Flavour,
+	solverID string, reserved bool) (pc *advertisementv1alpha1.PeeringCandidate) {
 	pc = &advertisementv1alpha1.PeeringCandidate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgePeeringCandidateName(flavourPeeringCandidate.Name),
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: advertisementv1alpha1.PeeringCandidateSpec{
 			Flavour: nodecorev1alpha1.Flavour{
@@ -83,7 +84,7 @@ func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 	reservation := &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeReservationName(solverID),
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: reservationv1alpha1.ReservationSpec{
 			SolverID: solverID,
@@ -114,14 +115,15 @@ func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 }
 
 // ForgeContract creates a Contract CR.
-func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transaction, lc *reservationv1alpha1.LiqoCredentials) *reservationv1alpha1.Contract {
+func ForgeContract(flavour *nodecorev1alpha1.Flavour, transaction *models.Transaction,
+	lc *nodecorev1alpha1.LiqoCredentials) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavour.Name),
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: reservationv1alpha1.ContractSpec{
-			Flavour: flavour,
+			Flavour: *flavour,
 			Buyer: nodecorev1alpha1.NodeIdentity{
 				Domain: transaction.Buyer.Domain,
 				IP:     transaction.Buyer.IP,
@@ -137,7 +139,7 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 				}
 				return nil
 			}(),
-			ExpirationTime:   time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
+			ExpirationTime:   time.Now().Add(flags.ExpirationContract).Format(time.RFC3339),
 			ExtraInformation: nil,
 		},
 		Status: reservationv1alpha1.ContractStatus{
@@ -150,11 +152,11 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 }
 
 // ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node.
-func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
+func ForgeFlavourFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
 	return &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgeFlavourName(node.UID, ni.Domain),
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Name:      namings.ForgeFlavourName(node.UID, "", ni.Domain),
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
 			ProviderID: ni.NodeID,
@@ -169,14 +171,14 @@ func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 			},
 			Policy: nodecorev1alpha1.Policy{
 				Partitionable: &nodecorev1alpha1.Partitionable{
-					CpuMin:     parseutil.ParseQuantityFromString(flags.CPU_MIN),
-					MemoryMin:  parseutil.ParseQuantityFromString(flags.MEMORY_MIN),
-					CpuStep:    parseutil.ParseQuantityFromString(flags.CPU_STEP),
-					MemoryStep: parseutil.ParseQuantityFromString(flags.MEMORY_STEP),
+					CpuMin:     parseutil.ParseQuantityFromString(flags.CPUMin),
+					MemoryMin:  parseutil.ParseQuantityFromString(flags.MemoryMin),
+					CpuStep:    parseutil.ParseQuantityFromString(flags.CPUStep),
+					MemoryStep: parseutil.ParseQuantityFromString(flags.MemoryStep),
 				},
 				Aggregatable: &nodecorev1alpha1.Aggregatable{
-					MinCount: int(flags.MIN_COUNT),
-					MaxCount: int(flags.MAX_COUNT),
+					MinCount: int(flags.MinCount),
+					MaxCount: int(flags.MaxCount),
 				},
 			},
 			Owner: ni,
@@ -187,7 +189,30 @@ func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 			},
 			OptionalFields: nodecorev1alpha1.OptionalFields{
 				Availability: true,
-				WorkerID:     node.UID,
+				// This previously was the node UID that maybe is not the best choice to manage the scheduling
+				WorkerID: node.Name,
+			},
+		},
+	}
+}
+
+// ForgeFlavourFromRef creates a new flavour starting from a Reference Flavour and the new Characteristics.
+func ForgeFlavourFromRef(f *nodecorev1alpha1.Flavour, char *nodecorev1alpha1.Characteristics) (flavour *nodecorev1alpha1.Flavour) {
+	return &nodecorev1alpha1.Flavour{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namings.ForgeFlavourName(f.Spec.OptionalFields.WorkerID, string(f.Spec.Type), f.Spec.Owner.Domain),
+			Namespace: flags.FluidoNamespace,
+		},
+		Spec: nodecorev1alpha1.FlavourSpec{
+			ProviderID:      f.Spec.ProviderID,
+			Type:            f.Spec.Type,
+			Characteristics: *char,
+			Policy:          f.Spec.Policy,
+			Owner:           f.Spec.Owner,
+			Price:           f.Spec.Price,
+			OptionalFields: nodecorev1alpha1.OptionalFields{
+				Availability: true,
+				WorkerID:     f.Spec.OptionalFields.WorkerID,
 			},
 		},
 	}
@@ -196,9 +221,9 @@ func ForgeFlavourFromMetrics(node models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 // FORGER FUNCTIONS FROM OBJECTS
 
 // ForgeTransactionObj creates a new Transaction object.
-func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transaction {
-	return models.Transaction{
-		TransactionID: ID,
+func ForgeTransactionObj(id string, req *models.ReserveRequest) *models.Transaction {
+	return &models.Transaction{
+		TransactionID: id,
 		Buyer:         req.Buyer,
 		ClusterID:     req.ClusterID,
 		FlavourID:     req.FlavourID,
@@ -216,7 +241,7 @@ func ForgeTransactionObj(ID string, req models.ReserveRequest) models.Transactio
 func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 	return models.Contract{
 		ContractID:     contract.Name,
-		Flavour:        parseutil.ParseFlavour(contract.Spec.Flavour),
+		Flavour:        *parseutil.ParseFlavour(&contract.Spec.Flavour),
 		Buyer:          parseutil.ParseNodeIdentity(contract.Spec.Buyer),
 		BuyerClusterID: contract.Spec.BuyerClusterID,
 		Seller:         parseutil.ParseNodeIdentity(contract.Spec.Seller),
@@ -244,22 +269,22 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 }
 
 // ForgeResponsePurchaseObj creates a new response purchase.
-func ForgeResponsePurchaseObj(contract models.Contract) models.ResponsePurchase {
-	return models.ResponsePurchase{
-		Contract: contract,
+func ForgeResponsePurchaseObj(contract *models.Contract) *models.ResponsePurchase {
+	return &models.ResponsePurchase{
+		Contract: *contract,
 		Status:   "Completed",
 	}
 }
 
 // ForgeContractFromObj creates a Contract from a reservation.
-func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contract {
+func ForgeContractFromObj(contract *models.Contract) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      contract.ContractID,
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: reservationv1alpha1.ContractSpec{
-			Flavour: *ForgeFlavourFromObj(contract.Flavour),
+			Flavour: *ForgeFlavourFromObj(&contract.Flavour),
 			Buyer: nodecorev1alpha1.NodeIdentity{
 				Domain: contract.Buyer.Domain,
 				IP:     contract.Buyer.IP,
@@ -271,7 +296,7 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 				IP:     contract.Seller.IP,
 				Domain: contract.Seller.Domain,
 			},
-			SellerCredentials: reservationv1alpha1.LiqoCredentials{
+			SellerCredentials: nodecorev1alpha1.LiqoCredentials{
 				ClusterID:   contract.SellerCredentials.ClusterID,
 				ClusterName: contract.SellerCredentials.ClusterName,
 				Token:       contract.SellerCredentials.Token,
@@ -301,12 +326,12 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 	}
 }
 
-// ForgeTransactionFromObj creates a transaction from a Transaction object
+// ForgeTransactionFromObj creates a transaction from a Transaction object.
 func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alpha1.Transaction {
 	return &reservationv1alpha1.Transaction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      transaction.TransactionID,
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: reservationv1alpha1.TransactionSpec{
 			FlavourID: transaction.FlavourID,
@@ -328,11 +353,11 @@ func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alph
 }
 
 // ForgeFlavourFromObj creates a Flavour CR from a Flavour Object (REAR).
-func ForgeFlavourFromObj(flavour models.Flavour) *nodecorev1alpha1.Flavour {
+func ForgeFlavourFromObj(flavour *models.Flavour) *nodecorev1alpha1.Flavour {
 	f := &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      flavour.FlavourID,
-			Namespace: flags.FLUIDOS_NAMESPACE,
+			Namespace: flags.FluidoNamespace,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
 			ProviderID: flavour.Owner.NodeID,
@@ -396,5 +421,44 @@ func ForgePartition(selector *nodecorev1alpha1.FlavourSelector) *nodecorev1alpha
 		EphemeralStorage: selector.RangeSelector.MinEph,
 		Storage:          selector.RangeSelector.MinStorage,
 		Gpu:              selector.RangeSelector.MinGpu,
+	}
+}
+
+// ForgeAllocation creates an Allocation from a Contract.
+func ForgeAllocation(contract *reservationv1alpha1.Contract, intentID, nodeName string,
+	destination nodecorev1alpha1.Destination, nodeType nodecorev1alpha1.NodeType) *nodecorev1alpha1.Allocation {
+	return &nodecorev1alpha1.Allocation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namings.ForgeAllocationName(contract.Spec.Flavour.Name),
+			Namespace: flags.FluidoNamespace,
+		},
+		Spec: nodecorev1alpha1.AllocationSpec{
+			RemoteClusterID: func() string {
+				if nodeType == nodecorev1alpha1.Node {
+					return contract.Spec.BuyerClusterID
+				}
+				return contract.Spec.SellerCredentials.ClusterID
+			}(),
+			IntentID:    intentID,
+			NodeName:    nodeName,
+			Type:        nodeType,
+			Destination: destination,
+			Forwarding:  false,
+			Flavour:     *contract.Spec.Flavour.DeepCopy(),
+			Partitioned: func() bool { return contract.Spec.Partition != nil }(),
+			Resources: func() nodecorev1alpha1.Characteristics {
+				if contract.Spec.Partition != nil {
+					return nodecorev1alpha1.Characteristics{
+						Architecture:      contract.Spec.Partition.Architecture,
+						Cpu:               contract.Spec.Partition.CPU,
+						Memory:            contract.Spec.Partition.Memory,
+						EphemeralStorage:  contract.Spec.Partition.EphemeralStorage,
+						Gpu:               contract.Spec.Partition.Gpu,
+						PersistentStorage: contract.Spec.Partition.Storage,
+					}
+				}
+				return *contract.Spec.Flavour.Spec.Characteristics.DeepCopy()
+			}(),
+		},
 	}
 }

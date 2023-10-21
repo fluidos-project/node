@@ -22,7 +22,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/models"
 )
 
-// buildSelector builds a selector from a request body
+// buildSelector builds a selector from a request body.
 func buildSelector(body []byte) (*models.Selector, error) {
 	// Parse the request body into the APIRequest struct
 	var selector models.Selector
@@ -33,43 +33,42 @@ func buildSelector(body []byte) (*models.Selector, error) {
 	return &selector, nil
 }
 
-// getTransaction returns a transaction from the transactions map
+// GetTransaction returns a transaction from the transactions map.
 func (g *Gateway) GetTransaction(transactionID string) (models.Transaction, error) {
 	transaction, exists := g.Transactions[transactionID]
 	if !exists {
-		return models.Transaction{}, fmt.Errorf("Transaction not found")
+		return models.Transaction{}, fmt.Errorf("transaction not found")
 	}
 	return transaction, nil
 }
 
-// SearchTransaction returns a transaction from the transactions map
-func (g *Gateway) SearchTransaction(buyerID string, flavourID string) (models.Transaction, bool) {
+// SearchTransaction returns a transaction from the transactions map.
+func (g *Gateway) SearchTransaction(buyerID, flavourID string) (*models.Transaction, bool) {
 	for _, t := range g.Transactions {
 		if t.Buyer.NodeID == buyerID && t.FlavourID == flavourID {
-			return t, true
+			return &t, true
 		}
 	}
-	return models.Transaction{}, false
+	return &models.Transaction{}, false
 }
 
-// addNewTransacion add a new transaction to the transactions map
-func (g *Gateway) addNewTransacion(transaction models.Transaction) {
-	g.Transactions[transaction.TransactionID] = transaction
+// addNewTransacion add a new transaction to the transactions map.
+func (g *Gateway) addNewTransacion(transaction *models.Transaction) {
+	g.Transactions[transaction.TransactionID] = *transaction
 }
 
-// removeTransaction removes a transaction from the transactions map
+// removeTransaction removes a transaction from the transactions map.
 func (g *Gateway) removeTransaction(transactionID string) {
 	delete(g.Transactions, transactionID)
 }
 
-// handleError handles errors by sending an error response
+// handleError handles errors by sending an error response.
 func handleError(w http.ResponseWriter, err error, statusCode int) {
 	http.Error(w, err.Error(), statusCode)
 }
 
-// encodeResponse encodes the response as JSON and writes it to the response writer
+// encodeResponse encodes the response as JSON and writes it to the response writer.
 func encodeResponse(w http.ResponseWriter, data interface{}) {
-
 	resp, err := json.Marshal(data)
 	if err != nil {
 		handleError(w, err, http.StatusInternalServerError)
@@ -77,5 +76,5 @@ func encodeResponse(w http.ResponseWriter, data interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	_, _ = w.Write(resp)
 }

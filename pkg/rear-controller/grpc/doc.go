@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package rearmanager implements the utility functions for the rear manager controller
-package rearmanager
+// Package grpc provides the gRPC server for Liqo Controller Manager.
+package grpc

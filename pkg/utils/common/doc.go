@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package common contains common functions used by other packagess
+// Package common contains common functions used by other packagess
 package common

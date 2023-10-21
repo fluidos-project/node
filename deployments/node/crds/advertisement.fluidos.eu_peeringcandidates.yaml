@@ -35,7 +35,7 @@ spec:
             description: PeeringCandidateSpec defines the desired state of PeeringCandidate
             properties:
               flavour:
-                description: Flavour is the Schema for the flavours API
+                description: Flavour is the Schema for the flavours API.
                 properties:
                   apiVersion:
                     description: 'APIVersion defines the versioned schema of this
@@ -255,7 +255,7 @@ spec:
                     - type
                     type: object
                   status:
-                    description: FlavourStatus defines the observed state of Flavour
+                    description: FlavourStatus defines the observed state of Flavour.
                     properties:
                       creationTime:
                         description: This field represents the creation time of the

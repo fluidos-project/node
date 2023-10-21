@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 
 	resourcemonitors "github.com/liqotech/liqo/pkg/liqo-controller-manager/resource-request-controller/resource-monitors"
 	grpc "google.golang.org/grpc"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,94 +30,122 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
-type grpcServer struct {
+// Server is the object that contains all the logical data stractures of the REAR gRPC Server.
+type Server struct {
 	Server *grpc.Server
 	client client.Client
-	//contractHandler connector.ContractHandler
-	stream resourcemonitors.ResourceReader_SubscribeServer
 	resourcemonitors.ResourceReaderServer
+	subscribers sync.Map
 }
 
-func NewGrpcServer(cl client.Client) *grpcServer {
-	return &grpcServer{
+// NewGrpcServer creates a new gRPC server.
+func NewGrpcServer(cl client.Client) *Server {
+	return &Server{
 		Server: grpc.NewServer(),
 		client: cl,
 	}
 }
 
-func (s *grpcServer) Start(ctx context.Context) error {
-	grpcUrl := ":" + flags.GRPC_PORT
+// Start starts the gRPC server.
+func (s *Server) Start(ctx context.Context) error {
+	_ = ctx
+	// server setup. The stream is not initialized here because it needs a subscriber so
+	// it will be initialized in the Subscribe method below
 
 	// gRPC Configuration
 	klog.Info("Configuring gRPC Server")
-	lis, err := net.Listen("tcp", grpcUrl)
+	grpcURL := ":" + flags.GRPCPort
+	lis, err := net.Listen("tcp", grpcURL)
 	if err != nil {
 		klog.Infof("gRPC failed to listen: %v", err)
-		return fmt.Errorf("gRPC failed to listen: %v", err)
+		return fmt.Errorf("gRPC failed to listen: %w", err)
 	}
 
-	klog.Infof("gRPC Server Listening on %s", grpcUrl)
+	// register this server using the register interface defined in liqo
+	resourcemonitors.RegisterResourceReaderServer(s.Server, s)
+	klog.Infof("gRPC Server Listening on %s", grpcURL)
 	// gRPC Server start listener
-	return s.Server.Serve(lis)
+	if err := s.Server.Serve(lis); err != nil {
+		return fmt.Errorf("gRPC server failed to serve: %w", err)
+	}
+
+	return nil
 }
 
-/* func (s *grpcServer) RegisterContractHandler(ch connector.ContractHandler) {
-	s.contractHandler = ch
-} */
-
-func (s *grpcServer) ReadResources(ctx context.Context, req *resourcemonitors.ClusterIdentity) (*resourcemonitors.ResourceList, error) {
-	readResponse := &resourcemonitors.ResourceList{Resources: map[string]*resource.Quantity{}}
-
-	log.Printf("ReadResource for clusterID %s", req.ClusterID)
+// ReadResources is the method that returns the resources assigned to a specific ClusterID.
+func (s *Server) ReadResources(ctx context.Context, req *resourcemonitors.ClusterIdentity) (*resourcemonitors.PoolResourceList, error) {
+	_ = ctx
+	klog.Infof("Reading resources for cluster %s", req.ClusterID)
 	resources, err := s.GetOfferResourcesByClusterID(req.ClusterID)
 	if err != nil {
-		// TODO: maybe should be resurned an empty resource list
+		// TODO: maybe should be returned an empty resource list
 		return nil, err
 	}
 
 	log.Printf("Retrieved resources for clusterID %s: %v", req.ClusterID, resources)
-	for key, value := range *resources {
-		readResponse.Resources[key.String()] = &value
-	}
 
-	return readResponse, nil
+	resourceList := []*resourcemonitors.ResourceList{{Resources: resources}}
+	response := resourcemonitors.PoolResourceList{ResourceLists: resourceList}
+
+	return &response, nil
 }
 
-func (s *grpcServer) Subscribe(req *resourcemonitors.Empty, srv resourcemonitors.ResourceReader_SubscribeServer) error {
-	// Implement here your logic
-	s.stream = srv
+// Subscribe is the method that subscribes a the Liqo controller manager to the gRPC server.
+func (s *Server) Subscribe(req *resourcemonitors.Empty, srv resourcemonitors.ResourceReader_SubscribeServer) error {
+	klog.Info("Liqo controller manager subscribed to the gRPC server")
+
+	// Store the stream. Using req as key since each request will have a different req object.
+	s.subscribers.Store(req, srv)
 	ctx := srv.Context()
 
-	fmt.Println("Subscribe")
-
-	_ = s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: resourcemonitors.AllClusterIDs})
+	// This notification is useful since you can edit the resources declared in the deployment and apply it to the cluster when one or more
+	// foreign clusters are already peered so this broadcast notification will update the resources for those clusters.
+	err := s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: resourcemonitors.AllClusterIDs})
+	if err != nil {
+		klog.Infof("Error during sending notification to liqo: %s", err)
+	}
 
 	for {
-		select {
-		case <-ctx.Done():
-			klog.Info("liqo controller manager disconnected")
-			return nil
-		}
+		<-ctx.Done()
+		s.subscribers.Delete(req)
+		klog.Infof("Liqo controller manager disconnected")
+		return nil
 	}
-
 }
 
-func (s *grpcServer) NotifyChange(ctx context.Context, req *resourcemonitors.ClusterIdentity) error {
-	// Implement here your logic
-	if s.stream == nil {
-		return fmt.Errorf("you must first subscribe a controller manager to notify a change")
-	} else {
-		_ = s.stream.Send(req)
+// NotifyChange is the method that notifies a change to the Liqo controller manager.
+func (s *Server) NotifyChange(ctx context.Context, req *resourcemonitors.ClusterIdentity) error {
+	_ = ctx
+	klog.Infof("Notifying change to Liqo controller manager for cluster %s", req.ClusterID)
+	var err error
+	s.subscribers.Range(func(key, value interface{}) bool {
+		stream := value.(resourcemonitors.ResourceReader_SubscribeServer)
+
+		err = stream.Send(req)
+		if err != nil {
+			err = fmt.Errorf("error: error during sending a notification %w", err)
+		}
+		return true
+	})
+	if err != nil {
+		klog.Infof("%s", err)
+		return err
 	}
+	klog.Infof("Notification sent to Liqo controller manager for cluster %s", req.ClusterID)
 	return nil
 }
 
-func (s *grpcServer) RemoveCluster(ctx context.Context, req *resourcemonitors.ClusterIdentity) (*resourcemonitors.Empty, error) {
+// RemoveCluster is the method that removes a cluster from the gRPC server.
+func (s *Server) RemoveCluster(ctx context.Context, req *resourcemonitors.ClusterIdentity) (*resourcemonitors.Empty, error) {
+	_ = ctx
+	klog.Infof("Removing cluster %s", req.ClusterID)
+	klog.Info("Method RemoveCluster not implemented yet")
 	// Implement here your logic
-	return nil, fmt.Errorf("Not implemented")
+	return &resourcemonitors.Empty{}, nil
 }
 
-func (s *grpcServer) GetOfferResourcesByClusterID(clusterID string) (*corev1.ResourceList, error) {
+// GetOfferResourcesByClusterID is the method that returns the resources assigned to a specific ClusterID.
+func (s *Server) GetOfferResourcesByClusterID(clusterID string) (map[string]*resource.Quantity, error) {
 	log.Printf("Getting resources for cluster ID: %s", clusterID)
 	resources, err := getContractResourcesByClusterID(s.client, clusterID)
 	if err != nil {
@@ -126,6 +154,7 @@ func (s *grpcServer) GetOfferResourcesByClusterID(clusterID string) (*corev1.Res
 	return resources, nil
 }
 
-func (s *grpcServer) UpdatePeeringOffer(clusterID string) {
+// UpdatePeeringOffer is the method that updates the peering offer.
+func (s *Server) UpdatePeeringOffer(clusterID string) {
 	_ = s.NotifyChange(context.Background(), &resourcemonitors.ClusterIdentity{ClusterID: clusterID})
 }

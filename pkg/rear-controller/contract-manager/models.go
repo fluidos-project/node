@@ -24,21 +24,21 @@ type Selector struct {
 	EphemeralStorage int    `json:"ephemeral-storage,omitempty"`
 }
 
-// Transaction contains information regarding the transaction for a flavour
+// Transaction contains information regarding the transaction for a flavour.
 type Transaction struct {
 	TransactionID string    `json:"transactionID"`
 	FlavourID     string    `json:"flavourID"`
 	StartTime     time.Time `json:"startTime,omitempty"`
 }
 
-// Purchase contains information regarding the purchase for a flavour
+// Purchase contains information regarding the purchase for a flavour.
 type Purchase struct {
 	TransactionID string `json:"transactionID"`
 	FlavourID     string `json:"flavourID"`
 	BuyerID       string `json:"buyerID"`
 }
 
-// ResponsePurchase contain information after purchase a Flavour
+// ResponsePurchase contain information after purchase a Flavour.
 type ResponsePurchase struct {
 	FlavourID string `json:"flavourID"`
 	BuyerID   string `json:"buyerID"`

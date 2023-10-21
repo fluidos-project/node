@@ -27,20 +27,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
-	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
 // GetNodeIdentity retrieves the list of local providers ip addresses from the Network Manager configMap.
 func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.NodeIdentity {
-
 	cm := &corev1.ConfigMap{}
 
 	// Get the node identity
 	err := cl.Get(ctx, types.NamespacedName{
 		Name:      consts.NodeIdentityConfigMapName,
-		Namespace: flags.FLUIDOS_NAMESPACE,
+		Namespace: flags.FluidoNamespace,
 	}, cm)
 	if err != nil {
 		klog.Errorf("Error getting the configmap: %s", err)
@@ -61,7 +59,7 @@ func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 	// Get the configmap
 	err := cl.Get(ctx, types.NamespacedName{
 		Name:      consts.NetworkConfigMapName,
-		Namespace: flags.FLUIDOS_NAMESPACE,
+		Namespace: flags.FluidoNamespace,
 	}, cm)
 	if err != nil {
 		klog.Errorf("Error getting the configmap: %s", err)
@@ -71,7 +69,7 @@ func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 }
 
 // GetLiqoCredentials retrieves the Liqo credentials from the local cluster.
-func GetLiqoCredentials(ctx context.Context, cl client.Client) (*reservationv1alpha1.LiqoCredentials, error) {
+func GetLiqoCredentials(ctx context.Context, cl client.Client) (*nodecorev1alpha1.LiqoCredentials, error) {
 	localToken, err := auth.GetToken(ctx, cl, consts.LiqoNamespace)
 	if err != nil {
 		return nil, err
@@ -93,10 +91,24 @@ func GetLiqoCredentials(ctx context.Context, cl client.Client) (*reservationv1al
 		clusterIdentity.ClusterName = clusterIdentity.ClusterID
 	}
 
-	return &reservationv1alpha1.LiqoCredentials{
+	return &nodecorev1alpha1.LiqoCredentials{
 		ClusterName: clusterIdentity.ClusterName,
 		ClusterID:   clusterIdentity.ClusterID,
 		Endpoint:    authEP,
 		Token:       localToken,
 	}, nil
+}
+
+// GetAllocationNameByClusterIDSpec retrieves the name of the allocation with the given in its Specs.
+func GetAllocationNameByClusterIDSpec(ctx context.Context, c client.Client, clusterID string) *string {
+	allocationList := nodecorev1alpha1.AllocationList{}
+	if err := c.List(ctx, &allocationList, client.MatchingFields{"spec.remoteClusterID": clusterID}); err != nil {
+		klog.Infof("Error when getting the allocation list: %s", err)
+		return nil
+	}
+	if len(allocationList.Items) == 0 {
+		klog.Infof("No Allocations found with the ClusterID %s", clusterID)
+		return nil
+	}
+	return &allocationList.Items[0].Name
 }

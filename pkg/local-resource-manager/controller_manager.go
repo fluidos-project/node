@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package localResourceManager
+package localresourcemanager
 
 import (
 	"context"
@@ -37,15 +37,14 @@ import (
 // ensure to check and subtract the already allocated resources from the node
 // resources calculation.
 
-// Start starts the controller
+// Start starts the controller.
 func Start(ctx context.Context, cl client.Client) error {
-
 	klog.Info("Getting FLUIDOS Node identity...")
 
 	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
 	if nodeIdentity == nil {
 		klog.Info("Error getting FLUIDOS Node identity")
-		return fmt.Errorf("Error getting FLUIDOS Node identity")
+		return fmt.Errorf("error getting FLUIDOS Node identity")
 	}
 
 	klog.Info("Getting nodes resources...")
@@ -55,11 +54,11 @@ func Start(ctx context.Context, cl client.Client) error {
 		return err
 	}
 
-	klog.Infof("Creating Flavours: found %d nodes", len(*nodes))
+	klog.Infof("Creating Flavours: found %d nodes", len(nodes))
 
 	// For each node create a Flavour
-	for _, node := range *nodes {
-		flavour := resourceforge.ForgeFlavourFromMetrics(node, *nodeIdentity)
+	for i := range nodes {
+		flavour := resourceforge.ForgeFlavourFromMetrics(&nodes[i], *nodeIdentity)
 		err := cl.Create(ctx, flavour)
 		if err != nil {
 			log.Printf("Error creating Flavour: %v", err)

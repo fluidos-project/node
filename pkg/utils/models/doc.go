@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package models contains shared models for the FLUIDOS environment.
+// Package models contains shared models for the FLUIDOS environment.
 package models

@@ -16,6 +16,7 @@ package gateway
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -27,7 +28,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
-func searchFlavourWithSelector(selector *models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
+func searchFlavourWithSelector(ctx context.Context, selector *models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
 	var flavour models.Flavour
 
 	// Marshal the selector into JSON bytes
@@ -37,12 +38,14 @@ func searchFlavourWithSelector(selector *models.Selector, addr string) (*nodecor
 	}
 
 	body := bytes.NewBuffer(selectorBytes)
-	url := fmt.Sprintf("http://%s%s", addr, LIST_FLAVOURS_BY_SELECTOR_PATH)
+	url := fmt.Sprintf("http://%s%s", addr, ListFlavoursBySelectorPath)
 
-	resp, err := makeRequest("POST", url, body)
+	resp, err := makeRequest(ctx, "POST", url, body)
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
 	if resp.StatusCode != http.StatusOK {
@@ -54,20 +57,21 @@ func searchFlavourWithSelector(selector *models.Selector, addr string) (*nodecor
 		return nil, err
 	}
 
-	flavourCR := resourceforge.ForgeFlavourFromObj(flavour)
+	flavourCR := resourceforge.ForgeFlavourFromObj(&flavour)
 
 	return flavourCR, nil
 }
 
-func searchFlavour(addr string) (*nodecorev1alpha1.Flavour, error) {
+func searchFlavour(ctx context.Context, addr string) (*nodecorev1alpha1.Flavour, error) {
 	var flavour models.Flavour
 
-	url := fmt.Sprintf("http://%s%s", addr, LIST_FLAVOURS_PATH)
+	url := fmt.Sprintf("http://%s%s", addr, ListFlavoursPath)
 
-	resp, err := makeRequest("GET", url, nil)
+	resp, err := makeRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
 	if resp.StatusCode != http.StatusOK {
@@ -79,20 +83,19 @@ func searchFlavour(addr string) (*nodecorev1alpha1.Flavour, error) {
 		return nil, err
 	}
 
-	flavourCR := resourceforge.ForgeFlavourFromObj(flavour)
+	flavourCR := resourceforge.ForgeFlavourFromObj(&flavour)
 
 	return flavourCR, nil
 }
 
-func makeRequest(method, url string, body *bytes.Buffer) (*http.Response, error) {
-
+func makeRequest(ctx context.Context, method, url string, body *bytes.Buffer) (*http.Response, error) {
 	httpClient := &http.Client{}
 
 	if body == nil {
 		body = bytes.NewBuffer([]byte{})
 	}
 
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		klog.Errorf("Error creating the request: %s", err)
 		return nil, err

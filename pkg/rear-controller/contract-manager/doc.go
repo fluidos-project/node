@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package contractmanager implements the utility functions for the contract manager controller
+// Package contractmanager implements the utility functions for the contract manager controller
 package contractmanager

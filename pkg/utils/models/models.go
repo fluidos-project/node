@@ -83,6 +83,7 @@ type OptionalFields struct {
 	WorkerID     string `json:"workerID"`
 }
 
+// Selector represents the criteria for selecting Flavours.
 type Selector struct {
 	FlavourType   string         `json:"type,omitempty"`
 	Architecture  string         `json:"architecture,omitempty"`
@@ -92,7 +93,7 @@ type Selector struct {
 
 // MatchSelector represents the criteria for selecting Flavours through a strict match.
 type MatchSelector struct {
-	Cpu              resource.Quantity `json:"cpu,omitempty"`
+	CPU              resource.Quantity `json:"cpu,omitempty"`
 	Memory           resource.Quantity `json:"memory,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
@@ -101,12 +102,12 @@ type MatchSelector struct {
 
 // RangeSelector represents the criteria for selecting Flavours through a range.
 type RangeSelector struct {
-	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
+	MinCPU     resource.Quantity `json:"minCpu,omitempty"`
 	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
 	MinStorage resource.Quantity `json:"minStorage,omitempty"`
 	MinEph     resource.Quantity `json:"minEph,omitempty"`
 	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
-	MaxCpu     resource.Quantity `json:"maxCpu,omitempty"`
+	MaxCPU     resource.Quantity `json:"maxCpu,omitempty"`
 	MaxMemory  resource.Quantity `json:"maxMemory,omitempty"`
 	MaxStorage resource.Quantity `json:"maxStorage,omitempty"`
 	MaxEph     resource.Quantity `json:"maxEph,omitempty"`

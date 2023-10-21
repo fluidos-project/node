@@ -1,18 +1,16 @@
-/*
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright 2022-2023 FLUIDOS Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package discoverymanager
 
@@ -31,7 +29,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
-// DiscoveryReconciler reconciles a Discovery object
+// DiscoveryReconciler reconciles a Discovery object.
 type DiscoveryReconciler struct {
 	client.Client
 	Scheme  *runtime.Scheme
@@ -49,10 +47,6 @@ type DiscoveryReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Discovery object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.2/pkg/reconcile
@@ -79,7 +73,6 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseFailed &&
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseRunning &&
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseIdle {
-
 		discovery.Status.Phase.StartTime = tools.GetTimeNow()
 		discovery.SetPhase(nodecorev1alpha1.PhaseRunning, "Discovery started")
 
@@ -90,9 +83,10 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	//nolint:exhaustive // We don't need to handle all the cases
 	switch discovery.Status.Phase.Phase {
 	case nodecorev1alpha1.PhaseRunning:
-		flavours, err := r.Gateway.DiscoverFlavours(discovery.Spec.Selector)
+		flavours, err := r.Gateway.DiscoverFlavours(ctx, discovery.Spec.Selector)
 		if err != nil {
 			klog.Errorf("Error when getting Flavour: %s", err)
 			discovery.SetPhase(nodecorev1alpha1.PhaseFailed, "Error when getting Flavour")
@@ -116,7 +110,7 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		klog.Infof("Flavours found: %d", len(flavours))
 
 		// TODO: check if a corresponding PeeringCandidate already exists!!
-		var first bool = true
+		first := true
 		for _, flavour := range flavours {
 			if first {
 				// We refer to the first peering candidate as the one that is reserved
@@ -159,7 +153,7 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-// updateDiscoveryStatus updates the status of the discovery
+// updateDiscoveryStatus updates the status of the discovery.
 func (r *DiscoveryReconciler) updateDiscoveryStatus(ctx context.Context, discovery *advertisementv1alpha1.Discovery) error {
 	return r.Status().Update(ctx, discovery)
 }

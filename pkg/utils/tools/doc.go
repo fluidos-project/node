@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package utils contains shared utility methods for the FLUIDOS environment.
-package utils
+// Package tools contains different tools used into the FLUIDOS environment.
+package tools

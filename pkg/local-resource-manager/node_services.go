@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package localResourceManager
+package localresourcemanager
 
 import (
 	"context"
@@ -27,10 +27,10 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/models"
 )
 
-// GetNodesResources retrieves the metrics from all the worker nodes in the cluster
-func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInfo, error) {
+// GetNodesResources retrieves the metrics from all the worker nodes in the cluster.
+func GetNodesResources(ctx context.Context, cl client.Client) ([]models.NodeInfo, error) {
 	// Set a label selector to filter worker nodes
-	labelSelector := labels.Set{flags.RESOURCE_NODE_LABEL: "true"}.AsSelector()
+	labelSelector := labels.Set{flags.ResourceNodeLabel: "true"}.AsSelector()
 
 	// Get a list of nodes
 	nodes := &corev1.NodeList{}
@@ -54,9 +54,11 @@ func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInf
 
 	var nodesInfo []models.NodeInfo
 	// Print the name of each node
-	for _, node := range nodes.Items {
-		for _, metrics := range nodesMetrics.Items {
-			if node.Name != metrics.Name {
+	for n := range nodes.Items {
+		for m := range nodesMetrics.Items {
+			node := nodes.Items[n]
+			metrics := nodesMetrics.Items[m]
+			if nodes.Items[n].Name != nodesMetrics.Items[m].Name {
 				// So that we can select just the nodes that we want
 				continue
 			}
@@ -66,10 +68,10 @@ func GetNodesResources(ctx context.Context, cl client.Client) (*[]models.NodeInf
 		}
 	}
 
-	return &nodesInfo, nil
+	return nodesInfo, nil
 }
 
-// forgeResourceMetrics creates from params a new ResourceMetrics Struct
+// forgeResourceMetrics creates from params a new ResourceMetrics Struct.
 func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.Node) *models.ResourceMetrics {
 	// Get the total and used resources
 	cpuTotal := node.Status.Allocatable.Cpu()
@@ -93,7 +95,7 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 	}
 }
 
-// forgeNodeInfo creates from params a new NodeInfo Struct
+// forgeNodeInfo creates from params a new NodeInfo struct.
 func forgeNodeInfo(node *corev1.Node, metrics *models.ResourceMetrics) *models.NodeInfo {
 	return &models.NodeInfo{
 		UID:             string(node.UID),

@@ -28,19 +28,25 @@ import (
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
 )
 
+//nolint:lll // This is a long line
+// clusterRole
 //+kubebuilder:webhook:path=/validate/peeringcandidate,mutating=false,failurePolicy=ignore,groups=advertisement.node.fluidos.io,resources=peeringcandidates,verbs=create;update;delete,versions=v1alpha1,name=pc.validate.fluidos.eu,sideEffects=None,admissionReviewVersions={v1,v1beta1}
 
+// PCValidator is the PeerinCandidate validator.
 type PCValidator struct {
 	client  client.Client
 	decoder *admission.Decoder
 }
 
-func NewPCValidator(client client.Client) *PCValidator {
-	return &PCValidator{client: client, decoder: admission.NewDecoder(runtime.NewScheme())}
+// NewPCValidator creates a new PCValidator.
+func NewPCValidator(c client.Client) *PCValidator {
+	return &PCValidator{client: c, decoder: admission.NewDecoder(runtime.NewScheme())}
 }
 
+// Handle manages the validation of the PeeringCandidate.
+//
+//nolint:gocritic // This function cannot be changed
 func (v *PCValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
-
 	switch req.Operation {
 	case admissionv1.Create:
 		return v.HandleCreate(ctx, req)
@@ -53,11 +59,14 @@ func (v *PCValidator) Handle(ctx context.Context, req admission.Request) admissi
 	}
 }
 
-func (v *PCValidator) HandleCreate(ctx context.Context, req admission.Request) admission.Response {
+// HandleCreate manages the validation of the PeeringCandidate creation.
+//
+//nolint:gocritic // This function cannot be changed
+func (v *PCValidator) HandleCreate(_ context.Context, req admission.Request) admission.Response {
 	pc, err := v.DecodePeeringCandidate(req.Object)
 	if err != nil {
 		klog.Errorf("Failed to decode peering candidate: %v", err)
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering candidate: %v", err))
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering candidate: %w", err))
 	}
 
 	if pc.Spec.Reserved && pc.Spec.SolverID == "" {
@@ -71,24 +80,32 @@ func (v *PCValidator) HandleCreate(ctx context.Context, req admission.Request) a
 	return admission.Allowed("")
 }
 
-func (v *PCValidator) HandleDelete(ctx context.Context, req admission.Request) admission.Response {
-	// Here we could check if the peering candidate is reserved and if so, we need to check if the solver ID matches the one of the solver that is deleting the peering candidate
+// HandleDelete manages the validation of the PeeringCandidate deletion.
+//
+//nolint:gocritic // This function cannot be changed
+func (v *PCValidator) HandleDelete(_ context.Context, req admission.Request) admission.Response {
+	// Here we could check if the peering candidate is reserved and if so,we need to check if the solver ID
+	// matches the one of the solver that is deleting the peering candidate
 	// or if the solver ID is empty, we need to check if there is a Contract that is using this peering candidate
 	// Maybe this is not the right logic but it need to be discussed and implemented
+	_ = req
 	return admission.Allowed("")
 }
 
-func (v *PCValidator) HandleUpdate(ctx context.Context, req admission.Request) admission.Response {
+// HandleUpdate manages the validation of the PeeringCandidate update.
+//
+//nolint:gocritic // This function cannot be changed
+func (v *PCValidator) HandleUpdate(_ context.Context, req admission.Request) admission.Response {
 	pc, err := v.DecodePeeringCandidate(req.Object)
 	if err != nil {
 		klog.Errorf("Failed to decode peering candidate: %v", err)
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering candidate: %v", err))
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering candidate: %w", err))
 	}
 
 	pcOld, err := v.DecodePeeringCandidate(req.OldObject)
 	if err != nil {
 		klog.Errorf("Failed to decode peering old candidate: %v", err)
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering old candidate: %v", err))
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering old candidate: %w", err))
 	}
 
 	// PC can be updated only if:
@@ -103,7 +120,8 @@ func (v *PCValidator) HandleUpdate(ctx context.Context, req admission.Request) a
 		return admission.Allowed("")
 	}
 
-	return admission.Denied("Peering candidate can be updated only if it is not reserved or if both Reserved flag and SolverID are set and you want to clear both in the same time")
+	//nolint:lll // This is a long line
+	return admission.Denied("peering candidate can be updated only if it is not reserved or if both Reserved flag and SolverID are set and you want to clear both in the same time")
 }
 
 /* func (v *PCValidator) InjectDecoder(d *admission.Decoder) error {
@@ -111,6 +129,7 @@ func (v *PCValidator) HandleUpdate(ctx context.Context, req admission.Request) a
 	return nil
 } */
 
+// DecodePeeringCandidate decodes the PeeringCandidate.
 func (v *PCValidator) DecodePeeringCandidate(obj runtime.RawExtension) (pc *advertisementv1alpha1.PeeringCandidate, err error) {
 	pc = &advertisementv1alpha1.PeeringCandidate{}
 	err = v.decoder.DecodeRaw(obj, pc)
