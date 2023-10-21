@@ -18,23 +18,28 @@ import (
 	"context"
 	"strings"
 
+	"github.com/liqotech/liqo/pkg/auth"
+	"github.com/liqotech/liqo/pkg/utils"
+	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
+// GetNodeIdentity retrieves the list of local providers ip addresses from the Network Manager configMap.
 func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.NodeIdentity {
 
 	cm := &corev1.ConfigMap{}
 
 	// Get the node identity
 	err := cl.Get(ctx, types.NamespacedName{
-		Name:      consts.NODE_IDENTITY_CONFIG_MAP_NAME,
+		Name:      consts.NodeIdentityConfigMapName,
 		Namespace: flags.FLUIDOS_NAMESPACE,
 	}, cm)
 	if err != nil {
@@ -49,13 +54,13 @@ func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.No
 	}
 }
 
-// This function retrieves the list of local providers ip addresses from the Network Manager configMap
+// GetLocalProviders retrieves the list of local providers ip addresses from the Network Manager configMap.
 func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 	cm := &corev1.ConfigMap{}
 
 	// Get the configmap
 	err := cl.Get(ctx, types.NamespacedName{
-		Name:      consts.NETWORK_CONFIG_MAP_NAME,
+		Name:      consts.NetworkConfigMapName,
 		Namespace: flags.FLUIDOS_NAMESPACE,
 	}, cm)
 	if err != nil {
@@ -63,4 +68,35 @@ func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 		return nil
 	}
 	return strings.Split(cm.Data["local"], ",")
+}
+
+// GetLiqoCredentials retrieves the Liqo credentials from the local cluster.
+func GetLiqoCredentials(ctx context.Context, cl client.Client) (*reservationv1alpha1.LiqoCredentials, error) {
+	localToken, err := auth.GetToken(ctx, cl, consts.LiqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterIdentity, err := utils.GetClusterIdentityWithControllerClient(ctx, cl, consts.LiqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	authEP, err := foreigncluster.GetHomeAuthURL(ctx, cl, consts.LiqoNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the local cluster has not a cluster name, we print the use the local clusterID to not leave this field empty.
+	// This can be changed by the user when pasting this value in a remote cluster.
+	if clusterIdentity.ClusterName == "" {
+		clusterIdentity.ClusterName = clusterIdentity.ClusterID
+	}
+
+	return &reservationv1alpha1.LiqoCredentials{
+		ClusterName: clusterIdentity.ClusterName,
+		ClusterID:   clusterIdentity.ClusterID,
+		Endpoint:    authEP,
+		Token:       localToken,
+	}, nil
 }

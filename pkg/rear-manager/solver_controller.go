@@ -214,7 +214,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			klog.Infof("ReserveAndBuy %s", reserveAndBuyStatus)
 			switch reserveAndBuyStatus {
 			case nodecorev1alpha1.PhaseIdle:
-				var partition *reservationv1alpha1.Partition
+				var partition *nodecorev1alpha1.Partition
 				klog.Infof("Creating the Reservation %s", req.NamespacedName.Name)
 				// Create the Reservation
 				var pc advertisementv1alpha1.PeeringCandidate
@@ -235,7 +235,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
 
 				// Forge the Reservation
-				reservation := resourceforge.ForgeReservation(pc, partition, *nodeIdentity)
+				reservation := resourceforge.ForgeReservation(&pc, partition, *nodeIdentity)
 				if err := r.Client.Create(ctx, reservation); err != nil {
 					klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
 					return ctrl.Result{}, err

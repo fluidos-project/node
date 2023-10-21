@@ -38,7 +38,7 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 		return nil, err
 	}
 
-	liqoCredentials, err := GetLiqoCredentials(ctx, g.client)
+	liqoCredentials, err := getters.GetLiqoCredentials(ctx, g.client)
 	if err != nil {
 		klog.Errorf("Error when getting Liqo credentials: %s", err)
 		return nil, err

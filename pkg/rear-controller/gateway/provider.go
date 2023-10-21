@@ -29,6 +29,7 @@ import (
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/common"
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
@@ -333,7 +334,7 @@ func (g *Gateway) purchaseFlavour(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	liqoCredentials, err := GetLiqoCredentials(context.Background(), g.client)
+	liqoCredentials, err := getters.GetLiqoCredentials(context.Background(), g.client)
 	if err != nil {
 		klog.Errorf("Error getting Liqo Credentials: %s", err)
 		http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)

@@ -22,7 +22,7 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/models"
 )
 
-// ParseFlavourSelector parses FlavourSelector into a Selector
+// ParseFlavourSelector parses FlavourSelector into a Selector.
 func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models.Selector) {
 
 	s.Architecture = selector.Architecture
@@ -56,9 +56,10 @@ func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) (s *models
 	return
 }
 
-func ParsePartition(partition *reservationv1alpha1.Partition) *models.Partition {
+// ParsePartition creates a Partition Object from a Partition CR.
+func ParsePartition(partition *nodecorev1alpha1.Partition) *models.Partition {
 	return &models.Partition{
-		Cpu:              partition.Cpu,
+		Cpu:              partition.CPU,
 		Memory:           partition.Memory,
 		EphemeralStorage: partition.EphemeralStorage,
 		Storage:          partition.Storage,
@@ -66,10 +67,11 @@ func ParsePartition(partition *reservationv1alpha1.Partition) *models.Partition 
 	}
 }
 
-func ParsePartitionFromObj(partition *models.Partition) *reservationv1alpha1.Partition {
-	return &reservationv1alpha1.Partition{
+// ParsePartitionFromObj creates a Partition CR from a Partition Object.
+func ParsePartitionFromObj(partition *models.Partition) *nodecorev1alpha1.Partition {
+	return &nodecorev1alpha1.Partition{
 		Architecture:     partition.Architecture,
-		Cpu:              partition.Cpu,
+		CPU:              partition.Cpu,
 		Memory:           partition.Memory,
 		Gpu:              partition.Gpu,
 		Storage:          partition.Storage,
@@ -77,6 +79,7 @@ func ParsePartitionFromObj(partition *models.Partition) *reservationv1alpha1.Par
 	}
 }
 
+// ParseNodeIdentity creates a NodeIdentity Object from a NodeIdentity CR.
 func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 	return models.NodeIdentity{
 		NodeID: node.NodeID,
@@ -85,7 +88,7 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 	}
 }
 
-// ParseFlavourObject creates a Flavour Object from a Flavour CR
+// ParseFlavour creates a Flavour Object from a Flavour CR.
 func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 	return models.Flavour{
 		FlavourID:  flavour.Name,
@@ -133,7 +136,7 @@ func ParseFlavour(flavour nodecorev1alpha1.Flavour) models.Flavour {
 	}
 }
 
-// ForgeContractObject creates a Contract Object
+// ParseContract creates a Contract Object.
 func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 	return models.Contract{
 		ContractID:     contract.Name,
@@ -159,6 +162,7 @@ func ParseContract(contract *reservationv1alpha1.Contract) models.Contract {
 	}
 }
 
+// ParseQuantityFromString parses a string into a resource.Quantity.
 func ParseQuantityFromString(s string) resource.Quantity {
 	i, err := resource.ParseQuantity(s)
 	if err != nil {

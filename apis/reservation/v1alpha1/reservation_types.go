@@ -15,20 +15,10 @@
 package v1alpha1
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
-
-type Partition struct {
-	Architecture     string            `json:"architecture"`
-	Cpu              resource.Quantity `json:"cpu"`
-	Memory           resource.Quantity `json:"memory"`
-	Gpu              resource.Quantity `json:"gpu,omitempty"`
-	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
-	Storage          resource.Quantity `json:"storage,omitempty"`
-}
 
 // ReservationSpec defines the desired state of Reservation
 type ReservationSpec struct {
@@ -43,7 +33,7 @@ type ReservationSpec struct {
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
 	// Parition is the partition of the flavour that is being reserved
-	Partition *Partition `json:"partition,omitempty"`
+	Partition *nodecorev1alpha1.Partition `json:"partition,omitempty"`
 
 	// Reserve indicates if the reservation is a reserve or not
 	Reserve bool `json:"reserve,omitempty"`

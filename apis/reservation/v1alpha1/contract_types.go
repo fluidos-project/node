@@ -38,7 +38,7 @@ type ContractSpec struct {
 
 	// The partition represents the dimension of the resources sold/bought.
 	// So it will reflect the dimension of the resources allocated on the remote cluster and reflected on the local virtual node.
-	Partition *Partition `json:"partition,omitempty"`
+	Partition *nodecorev1alpha1.Partition `json:"partition,omitempty"`
 
 	// This is the Node identity of the buyer FLUIDOS Node.
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
