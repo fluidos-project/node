@@ -72,6 +72,15 @@ type ContractStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Flavour ID",type=string,JSONPath=`.spec.flavour.metadata.name`
+// +kubebuilder:printcolumn:name="Buyer Name",type=string,JSONPath=`.spec.buyer.nodeID`
+// +kubebuilder:printcolumn:name="Buyer Domain",type=string,priority=1,JSONPath=`.spec.buyer.domain`
+// +kubebuilder:printcolumn:name="Seller Name",type=string,JSONPath=`.spec.seller.nodeID`
+// +kubebuilder:printcolumn:name="Seller Domain",type=string,priority=1,JSONPath=`.spec.seller.domain`
+// +kubebuilder:printcolumn:name="Transaction ID",type=string,priority=1,JSONPath=`.spec.transactionID`
+// +kubebuilder:printcolumn:name="Buyer Liqo ID",type=string,priority=1,JSONPath=`.spec.buyerClusterID`
+// +kubebuilder:printcolumn:name="Expiration Time",type=string,priority=1,JSONPath=`.spec.expirationTime`
+
 // Contract is the Schema for the contracts API
 type Contract struct {
 	metav1.TypeMeta   `json:",inline"`

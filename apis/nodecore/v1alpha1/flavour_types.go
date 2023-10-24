@@ -146,6 +146,15 @@ type FlavourStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Provider ID",type=string,JSONPath=`.spec.providerID`
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
+// +kubebuilder:printcolumn:name="CPU",type=string,priority=1,JSONPath=`.spec.characteristics.cpu`
+// +kubebuilder:printcolumn:name="Memory",type=string,priority=1,JSONPath=`.spec.characteristics.memory`
+// +kubebuilder:printcolumn:name="Owner Name",type=string,priority=1,JSONPath=`.spec.owner.nodeID`
+// +kubebuilder:printcolumn:name="Owner Domain",type=string,priority=1,JSONPath=`.spec.owner.domain`
+// +kubebuilder:printcolumn:name="Available",type=boolean,JSONPath=`.spec.optionalFields.availability`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+
 // Flavour is the Schema for the flavours API
 type Flavour struct {
 	metav1.TypeMeta   `json:",inline"`

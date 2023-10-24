@@ -135,7 +135,8 @@ func ForgeContract(flavour nodecorev1alpha1.Flavour, transaction models.Transact
 				}
 				return nil
 			}(),
-			ExpirationTime: time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
+			ExpirationTime:   time.Now().Add(flags.EXPIRATION_CONTRACT).Format(time.RFC3339),
+			ExtraInformation: nil,
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -298,24 +299,24 @@ func ForgeContractFromObj(contract models.Contract) *reservationv1alpha1.Contrac
 }
 
 // ForgeTransactionFromObj creates a transaction from a Transaction object
-func ForgeTransactionFromObj(reservation *models.Transaction) *reservationv1alpha1.Transaction {
+func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alpha1.Transaction {
 	return &reservationv1alpha1.Transaction{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      reservation.TransactionID,
+			Name:      transaction.TransactionID,
 			Namespace: flags.FLUIDOS_NAMESPACE,
 		},
 		Spec: reservationv1alpha1.TransactionSpec{
-			FlavourID: reservation.FlavourID,
-			StartTime: reservation.StartTime,
+			FlavourID: transaction.FlavourID,
+			StartTime: transaction.StartTime,
 			Buyer: nodecorev1alpha1.NodeIdentity{
-				Domain: reservation.Buyer.Domain,
-				IP:     reservation.Buyer.IP,
-				NodeID: reservation.Buyer.NodeID,
+				Domain: transaction.Buyer.Domain,
+				IP:     transaction.Buyer.IP,
+				NodeID: transaction.Buyer.NodeID,
 			},
-			ClusterID: reservation.ClusterID,
+			ClusterID: transaction.ClusterID,
 			Partition: func() *reservationv1alpha1.Partition {
-				if reservation.Partition != nil {
-					return parseutil.ParsePartitionFromObj(reservation.Partition)
+				if transaction.Partition != nil {
+					return parseutil.ParsePartitionFromObj(transaction.Partition)
 				}
 				return nil
 			}(),

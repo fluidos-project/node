@@ -14,7 +14,37 @@ spec:
     singular: contract
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.flavour.metadata.name
+      name: Flavour ID
+      type: string
+    - jsonPath: .spec.buyer.nodeID
+      name: Buyer Name
+      type: string
+    - jsonPath: .spec.buyer.domain
+      name: Buyer Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.seller.nodeID
+      name: Seller Name
+      type: string
+    - jsonPath: .spec.seller.domain
+      name: Seller Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.transactionID
+      name: Transaction ID
+      priority: 1
+      type: string
+    - jsonPath: .spec.buyerClusterID
+      name: Buyer Liqo ID
+      priority: 1
+      type: string
+    - jsonPath: .spec.expirationTime
+      name: Expiration Time
+      priority: 1
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Contract is the Schema for the contracts API
@@ -418,5 +448,4 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}
