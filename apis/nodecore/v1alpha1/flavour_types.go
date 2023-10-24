@@ -130,7 +130,7 @@ type FlavourSpec struct {
 	OptionalFields OptionalFields `json:"optionalFields"`
 }
 
-// FlavourStatus defines the observed state of Flavour
+// FlavourStatus defines the observed state of Flavour.
 type FlavourStatus struct {
 
 	// This field represents the expiration time of the Flavour. It is used to determine when the Flavour is no longer valid.
@@ -146,7 +146,15 @@ type FlavourStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Flavour is the Schema for the flavours API
+// +kubebuilder:printcolumn:name="Provider ID",type=string,JSONPath=`.spec.providerID`
+// +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
+// +kubebuilder:printcolumn:name="CPU",type=string,priority=1,JSONPath=`.spec.characteristics.cpu`
+// +kubebuilder:printcolumn:name="Memory",type=string,priority=1,JSONPath=`.spec.characteristics.memory`
+// +kubebuilder:printcolumn:name="Owner Name",type=string,priority=1,JSONPath=`.spec.owner.nodeID`
+// +kubebuilder:printcolumn:name="Owner Domain",type=string,priority=1,JSONPath=`.spec.owner.domain`
+// +kubebuilder:printcolumn:name="Available",type=boolean,JSONPath=`.spec.optionalFields.availability`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// Flavour is the Schema for the flavours API.
 type Flavour struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

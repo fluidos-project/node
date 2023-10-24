@@ -14,7 +14,28 @@ spec:
     singular: transaction
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.flavourID
+      name: Flavour ID
+      type: string
+    - jsonPath: .spec.buyer.nodeID
+      name: Buyer Name
+      type: string
+    - jsonPath: .spec.buyer.ip
+      name: Buyer IP
+      priority: 1
+      type: string
+    - jsonPath: .spec.buyer.domain
+      name: Buyer Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.clusterID
+      name: Cluster ID
+      type: string
+    - jsonPath: .spec.startTime
+      name: Start Time
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Transaction is the Schema for the transactions API

@@ -14,10 +14,40 @@ spec:
     singular: contract
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.flavour.metadata.name
+      name: Flavour ID
+      type: string
+    - jsonPath: .spec.buyer.nodeID
+      name: Buyer Name
+      type: string
+    - jsonPath: .spec.buyer.domain
+      name: Buyer Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.seller.nodeID
+      name: Seller Name
+      type: string
+    - jsonPath: .spec.seller.domain
+      name: Seller Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.transactionID
+      name: Transaction ID
+      priority: 1
+      type: string
+    - jsonPath: .spec.buyerClusterID
+      name: Buyer Liqo ID
+      priority: 1
+      type: string
+    - jsonPath: .spec.expirationTime
+      name: Expiration Time
+      priority: 1
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Contract is the Schema for the contracts API
+        description: Contract is the Schema for the contracts API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,7 +62,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ContractSpec defines the desired state of Contract
+            description: ContractSpec defines the desired state of Contract.
             properties:
               buyer:
                 description: This is the Node identity of the buyer FLUIDOS Node.
@@ -394,7 +424,7 @@ spec:
             - transactionID
             type: object
           status:
-            description: ContractStatus defines the observed state of Contract
+            description: ContractStatus defines the observed state of Contract.
             properties:
               phase:
                 description: This is the status of the contract.

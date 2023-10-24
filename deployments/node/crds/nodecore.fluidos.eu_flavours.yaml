@@ -14,7 +14,36 @@ spec:
     singular: flavour
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.providerID
+      name: Provider ID
+      type: string
+    - jsonPath: .spec.type
+      name: Type
+      type: string
+    - jsonPath: .spec.characteristics.cpu
+      name: CPU
+      priority: 1
+      type: string
+    - jsonPath: .spec.characteristics.memory
+      name: Memory
+      priority: 1
+      type: string
+    - jsonPath: .spec.owner.nodeID
+      name: Owner Name
+      priority: 1
+      type: string
+    - jsonPath: .spec.owner.domain
+      name: Owner Domain
+      priority: 1
+      type: string
+    - jsonPath: .spec.optionalFields.availability
+      name: Available
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Flavour is the Schema for the flavours API

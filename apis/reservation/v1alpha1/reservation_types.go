@@ -79,11 +79,12 @@ type ReservationStatus struct {
 // +kubebuilder:printcolumn:name="Solver ID",type=string,JSONPath=`.spec.solverID`
 // +kubebuilder:printcolumn:name="Reserve",type=boolean,JSONPath=`.spec.reserve`
 // +kubebuilder:printcolumn:name="Purchase",type=boolean,JSONPath=`.spec.purchase`
-// +kubebuilder:printcolumn:name="Seller",type=string,JSONPath=`.spec.seller.name`
+// +kubebuilder:printcolumn:name="Seller Name",type=string,JSONPath=`.spec.seller.nodeID`
+// +kubebuilder:printcolumn:name="Seller Domain",type=string,priority=1,JSONPath=`.spec.buyer.domain`
 // +kubebuilder:printcolumn:name="Peering Candidate",type=string,priority=1,JSONPath=`.spec.peeringCandidate.name`
 // +kubebuilder:printcolumn:name="Transaction ID",type=string,JSONPath=`.status.transactionID`
-// +kubebuilder:printcolumn:name="Reserve Phase",type=string,priority=1,JSONPath=`.status.reservePhase.phase`
-// +kubebuilder:printcolumn:name="Purchase Phase",type=string,priority=1,JSONPath=`.status.purchasePhase.phase`
+// +kubebuilder:printcolumn:name="Reserve Phase",type=string,priority=1,JSONPath=`.status.reservePhase`
+// +kubebuilder:printcolumn:name="Purchase Phase",type=string,priority=1,JSONPath=`.status.purchasePhase`
 // +kubebuilder:printcolumn:name="Contract Name",type=string,JSONPath=`.status.contract.name`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,priority=1,JSONPath=`.status.phase.message`

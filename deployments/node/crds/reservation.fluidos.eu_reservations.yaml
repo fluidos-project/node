@@ -24,8 +24,12 @@ spec:
     - jsonPath: .spec.purchase
       name: Purchase
       type: boolean
-    - jsonPath: .spec.seller.name
-      name: Seller
+    - jsonPath: .spec.seller.nodeID
+      name: Seller Name
+      type: string
+    - jsonPath: .spec.buyer.domain
+      name: Seller Domain
+      priority: 1
       type: string
     - jsonPath: .spec.peeringCandidate.name
       name: Peering Candidate
@@ -34,11 +38,11 @@ spec:
     - jsonPath: .status.transactionID
       name: Transaction ID
       type: string
-    - jsonPath: .status.reservePhase.phase
+    - jsonPath: .status.reservePhase
       name: Reserve Phase
       priority: 1
       type: string
-    - jsonPath: .status.purchasePhase.phase
+    - jsonPath: .status.purchasePhase
       name: Purchase Phase
       priority: 1
       type: string

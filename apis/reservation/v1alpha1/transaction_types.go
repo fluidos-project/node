@@ -47,6 +47,12 @@ type TransactionStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Flavour ID",type="string",JSONPath=".spec.flavourID"
+// +kubebuilder:printcolumn:name="Buyer Name",type="string",JSONPath=".spec.buyer.nodeID"
+// +kubebuilder:printcolumn:name="Buyer IP",type="string",priority=1,JSONPath=".spec.buyer.ip"
+// +kubebuilder:printcolumn:name="Buyer Domain",type="string",priority=1,JSONPath=".spec.buyer.domain"
+// +kubebuilder:printcolumn:name="Cluster ID",type="string",JSONPath=".spec.clusterID"
+// +kubebuilder:printcolumn:name="Start Time",type="string",JSONPath=".spec.startTime"
 // Transaction is the Schema for the transactions API
 type Transaction struct {
 	metav1.TypeMeta   `json:",inline"`
