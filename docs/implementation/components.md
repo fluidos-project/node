@@ -39,7 +39,7 @@ The primary objectives of the Discovery Manager are as follows:
 
 ## Peering Candidates
 
-The **Peering Candidates** component manages a dynamic list of nodes that are potentially suitable for establishing peering connections. This list is continuously updated by the Discovery Manager.
+The **Peering Candidates** component manages a dynamic list of nodes that are potentially suitable for establishing peering connections. This list is continuously updated by the Discovery Manager. A Peering Candidate resource stores information regarding the flavour it exposes. Consequently, you can find data about specific characteristics about the flavour, data about the owner and even its price.
 
 Under the hood, Peering Candidates are stored through an appropriate Custom Resource.
 
@@ -50,6 +50,10 @@ The **REAR Manager** plays a pivotal role in orchestrating the service provision
 - If no Peering Candidates are found, it initiates the **Discovery**.
 - Optionally, if a suitable candidate is found, it triggers the **Reservation** phase.
 - If this process is successfully fulfilled, resources are allocated, contracts are stored, and optionally can start the **Peering** phase.
+
+<p align="center">
+<img src="../images/REARManagerUMLdecisionpath.svg" width="700">
+</p>
 
 ## Contract Manager
 
