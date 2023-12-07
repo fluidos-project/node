@@ -7,7 +7,7 @@
 
 ## Getting Started
 
-This guide will help you to install a FLUIDOS Node **Testbed** using KIND (Kubernetes in Docker). This is the easiest way to install FLUIDOS Node on a local machine.
+This guide will help you to install a FLUIDOS Node **Testbed** using KIND (Kubernetes in Docker). This is the easiest way to install the FLUIDOS Node on a local machine.
 
 This guide has been made only for testing purposes. If you want to install FLUIDOS Node on a production environment, please follow the [official installation guide](/docs/installation/installation.md)
 
@@ -15,9 +15,9 @@ This guide has been made only for testing purposes. If you want to install FLUID
 
 This guide will create two different Kubernetes clusters:
 
-- **fluidos-consumer**: This cluster will act as a consumer of the FLUIDOS Node. It will be used to deploy a `solver` example CR which will simulate an Intent resolution request. Through the REAR Protocol it will be able to communicate with the Provider cluster and to receive matching Flavours, reserving the one that best fits the request and purchasing it.
+- **fluidos-consumer**: This cluster (a.k.a., FLUIDOS node) will act as a consumer of FLUIDOS resources. It will be used to deploy a `solver` example CR that will simulate an _Intent resolution_ request. This cluster will use the REAR protocol to communicate with the Provider cluster and to receive available Flavours, reserving the one that best fits the request and purchasing it.
 
-- **fluidos-provider**: This cluster will act as a provider of the FLUIDOS Node. It will offer its own Flavours on the specific request made by the consumer, reserving and selling it.
+- **fluidos-provider**: This cluster (a.k.a. FLUIDOS node) will act as a provider of FLUIDOS resources. It will offer its own Flavours on the specific request made by the consumer, reserving and selling it.
 
 ### Prerequisites
 
@@ -47,15 +47,15 @@ cd testbed/kind
 chmod +x setup.sh
 ```
 
-3. Launch the `setup.sh` script
+4. Launch the `setup.sh` script
 
 ```sh
  ./setup.sh
 ```
 
-4. Wait for the script to finish. It will take some minutes.
+5. Wait for the script to finish. It will take some minutes.
 
-5. After running the script, you can check the status of the pods in the consumer cluster using the following commands:
+6. After running the script, you can check the status of the pods in the consumer cluster using the following commands:
 
 ```sh
 export KUBECONFIG=consumer/config
