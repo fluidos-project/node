@@ -78,6 +78,11 @@ func filterByMatchSelector(selector *models.Selector, f *nodecorev1alpha1.Flavou
 		return false
 	}
 
+	if selector.MatchSelector.Pods.CmpInt64(0) == 0 && f.Spec.Characteristics.Pods.Cmp(selector.MatchSelector.Pods) != 0 {
+		klog.Infof("MatchSelector Pods: %d - Flavour Pods: %d", selector.MatchSelector.Pods, f.Spec.Characteristics.Pods)
+		return false
+	}
+
 	if selector.MatchSelector.EphemeralStorage.CmpInt64(0) == 0 &&
 		f.Spec.Characteristics.EphemeralStorage.Cmp(selector.MatchSelector.EphemeralStorage) != 0 {
 		klog.Infof("MatchSelector EphemeralStorage: %d - Flavour EphemeralStorage: %d",
@@ -108,6 +113,11 @@ func filterByRangeSelector(selector *models.Selector, f *nodecorev1alpha1.Flavou
 		return false
 	}
 
+	if selector.RangeSelector.MinPods.CmpInt64(0) != 0 && f.Spec.Characteristics.Pods.Cmp(selector.RangeSelector.MinPods) < 0 {
+		klog.Infof("RangeSelector MinPods: %d - Flavour Pods: %d", selector.RangeSelector.MinPods, f.Spec.Characteristics.Pods)
+		return false
+	}
+
 	if selector.RangeSelector.MinEph.CmpInt64(0) != 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.RangeSelector.MinEph) < 0 {
 		klog.Infof("RangeSelector MinEph: %d - Flavour EphemeralStorage: %d", selector.RangeSelector.MinEph, f.Spec.Characteristics.EphemeralStorage)
 		return false
@@ -127,6 +137,10 @@ func filterByRangeSelector(selector *models.Selector, f *nodecorev1alpha1.Flavou
 	}
 
 	if selector.RangeSelector.MaxMemory.CmpInt64(0) != 0 && f.Spec.Characteristics.Memory.Cmp(selector.RangeSelector.MaxMemory) > 0 {
+		return false
+	}
+
+	if selector.RangeSelector.MaxPods.CmpInt64(0) != 0 && f.Spec.Characteristics.Pods.Cmp(selector.RangeSelector.MaxPods) > 0 {
 		return false
 	}
 

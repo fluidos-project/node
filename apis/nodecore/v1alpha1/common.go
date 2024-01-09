@@ -52,6 +52,7 @@ type Partition struct {
 	Architecture     string            `json:"architecture"`
 	CPU              resource.Quantity `json:"cpu"`
 	Memory           resource.Quantity `json:"memory"`
+	Pods             resource.Quantity `json:"pods"`
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`

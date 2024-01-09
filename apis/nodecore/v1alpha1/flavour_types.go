@@ -36,6 +36,9 @@ type Characteristics struct {
 	// Memory is the amount of RAM of the Flavour.
 	Memory resource.Quantity `json:"memory"`
 
+	// Pods is the maximum number of pods of the Flavour.
+	Pods resource.Quantity `json:"pods"`
+
 	// GPU is the number of GPU cores of the Flavour.
 	Gpu resource.Quantity `json:"gpu,omitempty"`
 
@@ -63,11 +66,17 @@ type Partitionable struct {
 	// MemoryMin is the minimum requirable amount of RAM of the Flavour.
 	MemoryMin resource.Quantity `json:"memoryMin"`
 
+	// PodsMin is the minimum requirable number of pods of the Flavour.
+	PodsMin resource.Quantity `json:"podsMin"`
+
 	// CpuStep is the incremental value of CPU cores of the Flavour.
 	CpuStep resource.Quantity `json:"cpuStep"`
 
 	// MemoryStep is the incremental value of RAM of the Flavour.
 	MemoryStep resource.Quantity `json:"memoryStep"`
+
+	// PodsStep is the incremental value of pods of the Flavour.
+	PodsStep resource.Quantity `json:"podsStep"`
 }
 
 // Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.

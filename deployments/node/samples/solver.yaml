@@ -9,11 +9,12 @@ spec:
     # ONLY k8s-fluidos is supported at the moment
     type: k8s-fluidos
     # REMEMBER: the architecture is the one of the node, not the one of the container. Change it accordingly
-    architecture: arm64
+    architecture: amd64
     # ONLY rangeSelector is supported at the moment
     rangeSelector:
       minCpu: "1000m"
       minMemory: "1Gi"
+      minPods: "50"
   intentID: "intent-sample"
   # This flag is used to indicate that the solver should find a candidate (FLUIDOS node)
   findCandidate: true

@@ -37,6 +37,7 @@ type Flavour struct {
 type Characteristics struct {
 	CPU               resource.Quantity `json:"cpu,omitempty"`
 	Memory            resource.Quantity `json:"memory,omitempty"`
+	Pods              resource.Quantity `json:"pods,omitempty"`
 	PersistentStorage resource.Quantity `json:"storage,omitempty"`
 	EphemeralStorage  resource.Quantity `json:"ephemeralStorage,omitempty"`
 	Gpu               resource.Quantity `json:"gpu,omitempty"`
@@ -53,8 +54,10 @@ type Policy struct {
 type Partitionable struct {
 	CPUMinimum    resource.Quantity `json:"cpuMinimum"`
 	MemoryMinimum resource.Quantity `json:"memoryMinimum"`
+	PodsMinimum   resource.Quantity `json:"podsMinimum"`
 	CPUStep       resource.Quantity `json:"cpuStep"`
 	MemoryStep    resource.Quantity `json:"memoryStep"`
+	PodsStep      resource.Quantity `json:"podsStep"`
 }
 
 // Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.
@@ -95,6 +98,7 @@ type Selector struct {
 type MatchSelector struct {
 	CPU              resource.Quantity `json:"cpu,omitempty"`
 	Memory           resource.Quantity `json:"memory,omitempty"`
+	Pods             resource.Quantity `json:"pods,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
@@ -104,11 +108,13 @@ type MatchSelector struct {
 type RangeSelector struct {
 	MinCPU     resource.Quantity `json:"minCpu,omitempty"`
 	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
+	MinPods    resource.Quantity `json:"minPods,omitempty"`
 	MinStorage resource.Quantity `json:"minStorage,omitempty"`
 	MinEph     resource.Quantity `json:"minEph,omitempty"`
 	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
 	MaxCPU     resource.Quantity `json:"maxCpu,omitempty"`
 	MaxMemory  resource.Quantity `json:"maxMemory,omitempty"`
+	MaxPods    resource.Quantity `json:"maxPods,omitempty"`
 	MaxStorage resource.Quantity `json:"maxStorage,omitempty"`
 	MaxEph     resource.Quantity `json:"maxEph,omitempty"`
 	MaxGpu     resource.Quantity `json:"maxGpu,omitempty"`

@@ -46,8 +46,10 @@ var (
 	PERIOD       string
 	CPUMin       string
 	MemoryMin    string
+	PodsMin      string
 	CPUStep      string
 	MemoryStep   string
+	PodsStep     string
 	MinCount     int64
 	MaxCount     int64
 )
