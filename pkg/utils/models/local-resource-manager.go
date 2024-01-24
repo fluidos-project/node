@@ -33,5 +33,7 @@ type ResourceMetrics struct {
 	CPUAvailable     resource.Quantity `json:"availableCPU"`
 	MemoryTotal      resource.Quantity `json:"totalMemory"`
 	MemoryAvailable  resource.Quantity `json:"availableMemory"`
+	PodsTotal        resource.Quantity `json:"totalPods"`
+	PodsAvailable    resource.Quantity `json:"availablePods"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage"`
 }

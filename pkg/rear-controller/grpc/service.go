@@ -77,6 +77,7 @@ func mapQuantityToResourceList(partition *nodecorev1alpha1.Partition) map[string
 	resources := make(map[string]*resource.Quantity)
 	resources[corev1.ResourceCPU.String()] = &partition.CPU
 	resources[corev1.ResourceMemory.String()] = &partition.Memory
+	resources[corev1.ResourcePods.String()] = &partition.Pods
 	resources[corev1.ResourceStorage.String()] = &partition.Storage
 	resources[corev1.ResourceEphemeralStorage.String()] = &partition.EphemeralStorage
 	return resources

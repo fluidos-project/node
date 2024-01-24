@@ -145,3 +145,22 @@ kubectl get contracts.reservation.fluidos.eu -n fluidos
 kubectl get peeringcandidates.advertisement.fluidos.eu -n fluidos
 kubectl get transactions.reservation.fluidos.eu -n fluidos
 ```
+
+6. The infrastructure for the resource sharing has been created.
+
+You can now create a demo namespace on the `fluidos-consumer` cluster:
+
+```sh
+kubectl create namespace demo
+```
+And then offload the namespace to the `fluidos-provider` cluster:
+
+```sh
+liqoctl offload namespace demo --pod-offloading-strategy Remote
+```
+
+You can now create a workload inside this offloaded namespace through and already provided Kubernetes deployment:
+
+```sh
+kubectl apply -f nginx-deployment.yaml -n demo
+```

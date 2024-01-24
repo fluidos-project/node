@@ -54,8 +54,9 @@ type FlavourSelector struct {
 
 // MatchSelector represents the criteria for selecting Flavours through a strict match.
 type MatchSelector struct {
-	Cpu              resource.Quantity `json:"cpu"`
-	Memory           resource.Quantity `json:"memory"`
+	CPU              resource.Quantity `json:"cpu,omitempty"`
+	Memory           resource.Quantity `json:"memory,omitempty"`
+	Pods             resource.Quantity `json:"pods,omitempty"`
 	Storage          resource.Quantity `json:"storage,omitempty"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
 	Gpu              resource.Quantity `json:"gpu,omitempty"`
@@ -65,11 +66,13 @@ type MatchSelector struct {
 type RangeSelector struct {
 	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
 	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
+	MinPods    resource.Quantity `json:"minPods,omitempty"`
 	MinEph     resource.Quantity `json:"minEph,omitempty"`
 	MinStorage resource.Quantity `json:"minStorage,omitempty"`
 	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
 	MaxCpu     resource.Quantity `json:"MaxCpu,omitempty"`
 	MaxMemory  resource.Quantity `json:"MaxMemory,omitempty"`
+	MaxPods    resource.Quantity `json:"MaxPods,omitempty"`
 	MaxEph     resource.Quantity `json:"MaxEph,omitempty"`
 	MaxStorage resource.Quantity `json:"MaxStorage,omitempty"`
 	MaxGpu     resource.Quantity `json:"MaxGpu,omitempty"`

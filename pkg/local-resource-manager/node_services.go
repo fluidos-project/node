@@ -78,19 +78,25 @@ func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.
 	cpuUsed := nodeMetrics.Usage.Cpu()
 	memoryTotal := node.Status.Allocatable.Memory()
 	memoryUsed := nodeMetrics.Usage.Memory()
+	podsTotal := node.Status.Allocatable.Pods()
+	podsUsed := nodeMetrics.Usage.Pods()
 	ephemeralStorage := nodeMetrics.Usage.StorageEphemeral()
 
 	// Compute the available resources
 	cpuAvail := cpuTotal.DeepCopy()
 	memAvail := memoryTotal.DeepCopy()
+	podsAvail := podsTotal.DeepCopy()
 	cpuAvail.Sub(*cpuUsed)
 	memAvail.Sub(*memoryUsed)
+	podsAvail.Sub(*podsUsed)
 
 	return &models.ResourceMetrics{
 		CPUTotal:         *cpuTotal,
 		CPUAvailable:     cpuAvail,
 		MemoryTotal:      *memoryTotal,
 		MemoryAvailable:  memAvail,
+		PodsTotal:        *podsTotal,
+		PodsAvailable:    podsAvail,
 		EphemeralStorage: *ephemeralStorage,
 	}
 }

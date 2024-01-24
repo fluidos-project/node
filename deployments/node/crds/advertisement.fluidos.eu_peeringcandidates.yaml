@@ -117,10 +117,19 @@ spec:
                               storage of the Flavour.
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
+                          pods:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: Pods is the maximum number of pods of the
+                              Flavour.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
                         required:
                         - architecture
                         - cpu
                         - memory
+                        - pods
                         type: object
                       optionalFields:
                         description: This field is used to specify the optional fields
@@ -211,11 +220,29 @@ spec:
                                   RAM of the Flavour.
                                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                 x-kubernetes-int-or-string: true
+                              podsMin:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: PodsMin is the minimum requirable number
+                                  of pods of the Flavour.
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              podsStep:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: PodsStep is the incremental value of
+                                  pods of the Flavour.
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
                             required:
                             - cpuMin
                             - cpuStep
                             - memoryMin
                             - memoryStep
+                            - podsMin
+                            - podsStep
                             type: object
                         type: object
                       price:

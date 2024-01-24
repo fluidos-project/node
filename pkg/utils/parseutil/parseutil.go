@@ -31,8 +31,9 @@ func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) *models.Se
 
 	if selector.MatchSelector != nil {
 		s.MatchSelector = &models.MatchSelector{
-			CPU:              selector.MatchSelector.Cpu,
+			CPU:              selector.MatchSelector.CPU,
 			Memory:           selector.MatchSelector.Memory,
+			Pods:             selector.MatchSelector.Pods,
 			EphemeralStorage: selector.MatchSelector.EphemeralStorage,
 			Storage:          selector.MatchSelector.Storage,
 			Gpu:              selector.MatchSelector.Gpu,
@@ -43,11 +44,13 @@ func ParseFlavourSelector(selector *nodecorev1alpha1.FlavourSelector) *models.Se
 		s.RangeSelector = &models.RangeSelector{
 			MinCPU:     selector.RangeSelector.MinCpu,
 			MinMemory:  selector.RangeSelector.MinMemory,
+			MinPods:    selector.RangeSelector.MinPods,
 			MinEph:     selector.RangeSelector.MinEph,
 			MinStorage: selector.RangeSelector.MinStorage,
 			MinGpu:     selector.RangeSelector.MinGpu,
 			MaxCPU:     selector.RangeSelector.MaxCpu,
 			MaxMemory:  selector.RangeSelector.MaxMemory,
+			MaxPods:    selector.RangeSelector.MaxPods,
 			MaxEph:     selector.RangeSelector.MaxEph,
 			MaxStorage: selector.RangeSelector.MaxStorage,
 			MaxGpu:     selector.RangeSelector.MaxGpu,
@@ -62,6 +65,7 @@ func ParsePartition(partition *nodecorev1alpha1.Partition) *models.Partition {
 	return &models.Partition{
 		CPU:              partition.CPU,
 		Memory:           partition.Memory,
+		Pods:             partition.Pods,
 		EphemeralStorage: partition.EphemeralStorage,
 		Storage:          partition.Storage,
 		Gpu:              partition.Gpu,
@@ -74,6 +78,7 @@ func ParsePartitionFromObj(partition *models.Partition) *nodecorev1alpha1.Partit
 		Architecture:     partition.Architecture,
 		CPU:              partition.CPU,
 		Memory:           partition.Memory,
+		Pods:             partition.Pods,
 		Gpu:              partition.Gpu,
 		Storage:          partition.Storage,
 		EphemeralStorage: partition.EphemeralStorage,
@@ -98,6 +103,7 @@ func ParseFlavour(flavour *nodecorev1alpha1.Flavour) *models.Flavour {
 		Characteristics: models.Characteristics{
 			CPU:               flavour.Spec.Characteristics.Cpu,
 			Memory:            flavour.Spec.Characteristics.Memory,
+			Pods:              flavour.Spec.Characteristics.Pods,
 			PersistentStorage: flavour.Spec.Characteristics.PersistentStorage,
 			EphemeralStorage:  flavour.Spec.Characteristics.EphemeralStorage,
 			Gpu:               flavour.Spec.Characteristics.Gpu,
@@ -109,8 +115,10 @@ func ParseFlavour(flavour *nodecorev1alpha1.Flavour) *models.Flavour {
 					return &models.Partitionable{
 						CPUMinimum:    flavour.Spec.Policy.Partitionable.CpuMin,
 						MemoryMinimum: flavour.Spec.Policy.Partitionable.MemoryMin,
+						PodsMinimum:   flavour.Spec.Policy.Partitionable.PodsMin,
 						CPUStep:       flavour.Spec.Policy.Partitionable.CpuStep,
 						MemoryStep:    flavour.Spec.Policy.Partitionable.MemoryStep,
+						PodsStep:      flavour.Spec.Policy.Partitionable.PodsStep,
 					}
 				}
 				return nil
