@@ -1,0 +1,151 @@
+# Default values for fluidos-node.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Images' tag to select a development version of fluidos-node instead of a release
+tag: ""
+# -- The pullPolicy for fluidos-node pods.
+pullPolicy: "IfNotPresent"
+
+common:
+  # -- NodeSelector for all fluidos-node pods
+  nodeSelector: {
+    node-role.fluidos.eu/worker: "true"
+  }
+  # -- Tolerations for all fluidos-node pods
+  tolerations: []
+  # -- Affinity for all fluidos-node pods
+  affinity: {}
+  # -- Extra arguments for all fluidos-node pods
+  extraArgs: []
+
+localResourceManager:
+  # -- The number of REAR Controller, which can be increased for active/passive high availability.
+  replicas: 1
+  pod:
+    # -- Annotations for the local-resource-manager pod.
+    annotations: {}
+    # -- Labels for the local-resource-manager pod.
+    labels: {}
+    # -- Extra arguments for the local-resource-manager pod.
+    extraArgs: []
+    # -- Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the local-resource-manager pod.
+    resources:
+      limits: {}
+      requests: {}
+  imageName: "ghcr.io/fluidos-project/local-resource-manager"
+  config:
+    # -- Label used to identify the nodes from which resources are collected.
+    nodeResourceLabel: "node-role.fluidos.eu/resources"
+    # -- This flag defines the resource type of the generated flavours.
+    resourceType: "k8s-fluidos"
+    flavour:
+      # -- The minimum number of CPUs that can be requested to purchase a flavour.
+      cpuMin: "0"
+      # -- The minimum amount of memory that can be requested to purchase a flavour.
+      memoryMin: "0"
+      # -- The CPU step that must be respected when requesting a flavour through a Flavour Selector.
+      cpuStep: "1000m"
+      # -- The memory step that must be respected when requesting a flavour through a Flavour Selector.
+      memoryStep: "100Mi"
+
+rearManager:
+  # -- The number of REAR Manager, which can be increased for active/passive high availability.
+  replicas: 1
+  pod:
+    # -- Annotations for the rear-manager pod.
+    annotations: {}
+    # -- Labels for the rear-manager pod.
+    labels: {}
+    # -- Extra arguments for the rear-manager pod.
+    extraArgs: []
+    # -- Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the rear-manager pod.
+    resources:
+      limits: {}
+      requests: {}
+  imageName: "ghcr.io/fluidos-project/rear-manager"
+
+rearController:
+  # -- The number of REAR Controller, which can be increased for active/passive high availability.
+  replicas: 1
+  pod:
+    # -- Annotations for the rear-controller pod.
+    annotations: {}
+    # -- Labels for the rear-controller pod.
+    labels: {}
+    # -- Extra arguments for the rear-controller pod.
+    extraArgs: []
+    # -- Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the rear-controller pod.
+    resources:
+      limits: {}
+      requests: {}
+  imageName: "ghcr.io/fluidos-project/rear-controller"
+  service:
+    grpc:
+      name: "grpc"
+      # -- Kubernetes service used to expose the gRPC Server to liqo.
+      type: "ClusterIP"
+      # -- Annotations for the gRPC service.
+      annotations: {}
+      # -- Labels for the gRPC service.
+      labels: {}
+      # -- The gRPC port used by Liqo to connect with the Gateway of the rear-controller to obtain the Contract resources for a given consumer ClusterID.
+      port: 2710
+      # -- The target port used by the gRPC service.
+      targetPort: 2710
+    gateway:
+      name: "gateway"
+      # -- Kubernetes service to be used to expose the REAR gateway.
+      type: "NodePort"
+      # -- Annotations for the REAR gateway service.
+      annotations: {}
+      # -- Labels for the REAR gateway service.
+      labels: {}
+      # -- Options valid if service type is NodePort.
+      nodePort:
+        # -- Force the port used by the NodePort service.
+        port: 30001
+      # -- Options valid if service type is LoadBalancer.
+      loadBalancer:
+        # -- Override the IP here if service type is LoadBalancer and you want to use a specific IP address, e.g., because you want a static LB.
+        ip: ""
+      # -- The port used by the rear-controller to expose the REAR Gateway.
+      port: 3004
+      # -- The target port used by the REAR Gateway service.
+      targetPort: 3004
+
+networkManager:
+  # -- The number of Network Manager, which can be increased for active/passive high availability.
+  replicas: 1
+  pod:
+    # -- Annotations for the network-manager pod.
+    annotations: {}
+    # -- Labels for the network-manager pod.
+    labels: {}
+    # -- Extra arguments for the network-manager pod.
+    extraArgs: []
+    # -- Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the network-manager pod.
+    resources:
+      limits: {}
+      requests: {}
+    # -- The resource image to be used by the network-manager pod.
+  imageName: "ghcr.io/fluidos/network-manager"
+  configMaps:
+    providers:
+      # -- The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue).
+      name: "fluidos-network-manager-config"
+      # -- The IP List of Local knwon FLUIDOS Nodes separated by commas.
+      local: "host.docker.internal:9000"
+      # -- The IP List of Remote known FLUIDOS Nodes separated by commas.
+      remote: 
+      # -- The IP List of SuperNodes separated by commas.
+      default: 
+    nodeIdentity:
+      # -- The name of the ConfigMap containing the FLUIDOS Node identity info.
+      name: "fluidos-network-manager-identity"
+      # -- The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes
+      domain: "fluidos.eu"
+      # -- The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster.
+      ip: 
+      # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
+      nodeID: 
