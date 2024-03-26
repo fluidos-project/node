@@ -177,6 +177,7 @@ func ForgeFlavourFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIden
 					PodsMin:    parseutil.ParseQuantityFromString(flags.PodsMin),
 					CpuStep:    parseutil.ParseQuantityFromString(flags.CPUStep),
 					MemoryStep: parseutil.ParseQuantityFromString(flags.MemoryStep),
+					PodsStep:   parseutil.ParseQuantityFromString(flags.PodsStep),
 				},
 				Aggregatable: &nodecorev1alpha1.Aggregatable{
 					MinCount: int(flags.MinCount),
