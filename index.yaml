@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   node:
   - apiVersion: v2
+    appVersion: v0.0.3
+    created: "2024-03-26T17:30:45.656964895Z"
+    description: A Helm chart for Fluidos Node
+    digest: fb3382b33ca382a54e55d273376dd6abcad999aa34e67abb84cb18ff7035e3fd
+    name: node
+    type: application
+    urls:
+    - https://github.com/fluidos-project/node/releases/download/v0.0.3/node-v0.0.3.tgz
+    version: v0.0.3
+  - apiVersion: v2
     appVersion: v0.0.2
     created: "2023-10-31T14:57:00.019311055Z"
     description: A Helm chart for Fluidos Node
@@ -21,4 +31,4 @@ entries:
     urls:
     - https://github.com/fluidos-project/node/releases/download/v0.0.1/node-v0.0.1.tgz
     version: v0.0.1
-generated: "2023-10-31T14:57:00.019326255Z"
+generated: "2024-03-26T17:30:45.657001664Z"
