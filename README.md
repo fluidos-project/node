@@ -13,7 +13,7 @@ A FLUIDOS node is orchestrated by a single Kubernetes control plane, and it can 
 This repository contains the FLUIDOS Node, along with its essential components, such as:
 
 - [**Local ResourceManager**](/docs/implementation/components.md#local-resourcemanager)
-- [**Avaialable Resources**](/docs/implementation/components.md#available-resources)
+- [**Available Resources**](/docs/implementation/components.md#available-resources)
 - [**Discovery Manager**](/docs/implementation/components.md#discovery-manager)
 - [**Peering Candidates**](/docs/implementation/components.md#peering-candidates)
 - [**REAR Manager**](/docs/implementation/components.md#rear-manager)
@@ -23,11 +23,11 @@ Please note that this repository is continually updated, with additional compone
 
 ## Implementation
 
-Want to know more about the implementation? Check out the [**Implementation Part**](./docs/implementation/implementation.md).
+Want to know more about the implementation? Check out the [**Implementation**](./docs/implementation/implementation.md) section.
 
 ## Installation
 
-Want to know how to install a FLUIDOS Node? Check out the [**Installation Part**](./docs/installation/installation.md).
+Want to know how to install a FLUIDOS Node? Check out the [**Installation**](./docs/installation/installation.md) section.
 
 ## License
 
