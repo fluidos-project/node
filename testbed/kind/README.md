@@ -99,6 +99,8 @@ NAME                                   PROVIDER ID   TYPE          CPU          
 
 ### Usage
 
+In this section, we will instruct you on how you can interact with the FLUIDOS Node using an high-level approach. In case you want to interact with the FLUIDOS Node using its CRDs, please refer to the [low-level usage](../../docs/usage/usage.md) section.
+
 Now lets try to deploy a `solver` example CR on the `fluidos-consumer` cluster.
 
 1. Open a new terminal on the repo and move into the `deployments/node/samples` folder

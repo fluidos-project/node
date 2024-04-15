@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: flavours.nodecore.fluidos.eu
 spec:
   group: nodecore.fluidos.eu
@@ -49,14 +49,19 @@ spec:
         description: Flavour is the Schema for the flavours API.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -64,10 +69,9 @@ spec:
             description: FlavourSpec defines the desired state of Flavour
             properties:
               characteristics:
-                description: Characteristics contains the characteristics of the Flavour.
-                  They are based on the type of the Flavour and can change depending
-                  on it. In this case, the type is K8S so the characteristics are
-                  CPU, Memory, GPU and EphemeralStorage.
+                description: |-
+                  Characteristics contains the characteristics of the Flavour.
+                  They are based on the type of the Flavour and can change depending on it. In this case, the type is K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                 properties:
                   architecture:
                     description: Architecture is the architecture of the Flavour.
@@ -123,13 +127,13 @@ spec:
                 - pods
                 type: object
               optionalFields:
-                description: This field is used to specify the optional fields that
-                  can be retrieved from the Flavour. In the future it will be expanded
-                  to include more optional fields defined in the REAR Protocol or
-                  custom ones.
+                description: |-
+                  This field is used to specify the optional fields that can be retrieved from the Flavour.
+                  In the future it will be expanded to include more optional fields defined in the REAR Protocol or custom ones.
                 properties:
                   availability:
-                    description: Availability is the availability flag of the Flavour.
+                    description: |-
+                      Availability is the availability flag of the Flavour.
                       It is a field inherited from the REAR Protocol specifications.
                     type: boolean
                   workerID:
@@ -252,10 +256,9 @@ spec:
                 - period
                 type: object
               providerID:
-                description: ProviderID is the ID of the FLUIDOS Node ID that provides
-                  this Flavour. It can correspond to ID of the owner FLUIDOS Node
-                  or to the ID of a FLUIDOS SuperNode that represents the entry point
-                  to a FLUIDOS Domain
+                description: |-
+                  ProviderID is the ID of the FLUIDOS Node ID that provides this Flavour.
+                  It can correspond to ID of the owner FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents the entry point to a FLUIDOS Domain
                 type: string
               type:
                 description: Type is the type of the Flavour. Currently, only K8S

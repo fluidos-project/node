@@ -1,0 +1,31 @@
+apiVersion: reservation.fluidos.eu/v1alpha1
+kind: Reservation
+metadata:
+  name: reservation-sample
+  namespace: fluidos
+spec:
+  solverID: solver-sample
+  # Retrieve from configmap
+  buyer:
+    domain: fluidos.eu
+    nodeID: mhmigs553h
+    ip: 172.18.0.6:30000
+  # Retrieve from PeeringCandidate Flavor Owner field
+  seller:
+    domain: fluidos.eu
+    nodeID: 7m0htg6wpb
+    ip: 172.18.0.5:30001
+  # Set it as you want, following needs and requests in the solver. Actually if not used can lead to a bug
+  partition:
+    architecture: amd64
+    cpu: "1000m"
+    memory: "1Gi"
+    pods: "50"
+  # Set it to reserve
+  reserve: true
+  # Set it to purchase after reservation is completed and you have a transaction
+  purchase: false
+  # Retrieve from PeeringCandidate chosen to reserve
+  peeringCandidate:
+    name: peeringcandidate-fluidos.eu-k8s-fluidos-0edea17b
+    namespace: fluidos 

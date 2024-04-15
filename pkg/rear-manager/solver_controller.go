@@ -40,7 +40,6 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"github.com/fluidos-project/node/pkg/utils/tools"
-	virtualfabricmanager "github.com/fluidos-project/node/pkg/virtual-fabric-manager"
 )
 
 // SolverReconciler reconciles a Solver object.
@@ -348,31 +347,7 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 	case nodecorev1alpha1.PhaseAllocating:
 		klog.Infof("Solver %s has reserved and purchased the resources, creating the Allocation", req.NamespacedName.Name)
 		// Create the Allocation
-		contractNamespaceName := types.NamespacedName{Name: solver.Status.Contract.Name, Namespace: solver.Status.Contract.Namespace}
-		contract := reservationv1alpha1.Contract{}
-		err := r.Client.Get(ctx, contractNamespaceName, &contract)
-		if err != nil {
-			klog.Errorf("Error when getting Contract for Solver %s: %s", solver.Name, err)
-			return ctrl.Result{}, err
-		}
-		vnName := namings.ForgeVirtualNodeName(contract.Spec.SellerCredentials.ClusterName)
-		allocation := resourceforge.ForgeAllocation(&contract, solver.Name, vnName, nodecorev1alpha1.Local, nodecorev1alpha1.VirtualNode)
-		if err := r.Client.Create(ctx, allocation); err != nil {
-			klog.Errorf("Error when creating Allocation for Solver %s: %s", solver.Name, err)
-			return ctrl.Result{}, err
-		}
-		klog.Infof("Allocation %s created", allocation.Name)
-		solver.Status.Allocation = nodecorev1alpha1.GenericRef{
-			Name:      allocation.Name,
-			Namespace: allocation.Namespace,
-		}
-		solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseSolved)
-		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation created")
-		solver.Status.Credentials = contract.Spec.SellerCredentials
-		if err := r.updateSolverStatus(ctx, solver); err != nil {
-			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-			return ctrl.Result{}, err
-		}
+		//TODO: delete allocating phase
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseFailed:
 		klog.Infof("Solver %s has failed to reserve and buy the resources", req.NamespacedName.Name)
@@ -398,37 +373,50 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 	switch peeringStatus {
 	case nodecorev1alpha1.PhaseIdle:
 		klog.Infof("Solver %s is trying to enstablish a peering", req.NamespacedName.Name)
-		credentials := solver.Status.Credentials
-		_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
-			credentials.ClusterName, credentials.Endpoint, credentials.Token)
+
+		contractNamespaceName := types.NamespacedName{Name: solver.Status.Contract.Name, Namespace: solver.Status.Contract.Namespace}
+		contract := reservationv1alpha1.Contract{}
+		err := r.Client.Get(ctx, contractNamespaceName, &contract)
 		if err != nil {
-			klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterName, err)
-			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
-			if err := r.updateSolverStatus(ctx, solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
+			klog.Errorf("Error when getting Contract for Solver %s: %s", solver.Name, err)
 			return ctrl.Result{}, err
 		}
-		klog.Infof("Solver %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+		vnName := namings.ForgeVirtualNodeName(contract.Spec.SellerCredentials.ClusterName)
+		allocation := resourceforge.ForgeAllocation(&contract, solver.Name, vnName, nodecorev1alpha1.Local, nodecorev1alpha1.VirtualNode)
+		if err := r.Client.Create(ctx, allocation); err != nil {
+			klog.Errorf("Error when creating Allocation for Solver %s: %s", solver.Name, err)
+			return ctrl.Result{}, err
+		}
+		klog.Infof("Allocation %s created", allocation.Name)
+		solver.Status.Allocation = nodecorev1alpha1.GenericRef{
+			Name:      allocation.Name,
+			Namespace: allocation.Namespace,
+		}
 		solver.SetPeeringStatus(nodecorev1alpha1.PhaseRunning)
-		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver is peering with cluster "+credentials.ClusterName)
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation created")
+		solver.Status.Credentials = contract.Spec.SellerCredentials
 		if err := r.updateSolverStatus(ctx, solver); err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
+
 		return ctrl.Result{}, nil
+
 	case nodecorev1alpha1.PhaseRunning:
 		klog.Info("Checking peering status")
 		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, solver.Status.Credentials.ClusterID)
 		if err != nil {
-			klog.Errorf("Error when getting ForeignCluster for Solver %s: %s", solver.Name, err)
-			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
+			if errors.IsNotFound(err) {
+				klog.Infof("ForeignCluster %s not found", solver.Status.Credentials.ClusterID)
+			} else {
+				klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
+				solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
+			}
 			if err := r.updateSolverStatus(ctx, solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 		if fcutils.IsOutgoingJoined(fc) &&
 			fcutils.IsAuthenticated(fc) &&
