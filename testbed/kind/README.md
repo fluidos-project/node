@@ -79,7 +79,7 @@ This allows for convenient monitoring of both consumer and provider clusters wit
 
 6. You should see 3 pods running on the `fluidos-consumer` cluster and 3 pods running on the `fluidos-provider` cluster:
 
-- `node-local-reaource-manager-<random>`
+- `node-local-resource-manager-<random>`
 - `node-rear-manager-<random>`
 - `node-rear-controller-<random>`
 
