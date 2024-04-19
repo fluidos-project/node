@@ -284,18 +284,6 @@ spec:
                   candidate. Rear Manager is trying to enstablish a peering with the
                   candidate FLUIDOS Node.
                 type: string
-              peeringCandidate:
-                description: PeeringCandidate contains the candidate that the solver
-                  has eventually found to solve the intent.
-                properties:
-                  name:
-                    description: The name of the resource to be referenced.
-                    type: string
-                  namespace:
-                    description: The namespace containing the resource to be referenced.
-                      It should be left empty in case of cluster-wide resources.
-                    type: string
-                type: object
               reservationPhase:
                 description: ReservationPhase describes the status of the Reservation
                   where the Contract Manager is reserving and purchasing the resources

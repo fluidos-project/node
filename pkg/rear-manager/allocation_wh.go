@@ -72,11 +72,6 @@ func (v *Validator) HandleUpdate(ctx context.Context, req admission.Request) adm
 	return admission.Allowed("allowed")
 }
 
-/* func (v *Validator) InjectDecoder(d *admission.Decoder) error {
-	v.decoder = d
-	return nil
-} */
-
 // DecodeAllocation decodes the Allocation from the raw extension.
 func (v *Validator) DecodeAllocation(obj runtime.RawExtension) (pc *nodecorev1alpha1.Allocation, err error) {
 	pc = &nodecorev1alpha1.Allocation{}

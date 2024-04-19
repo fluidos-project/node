@@ -22,29 +22,3 @@ func (allocation *Allocation) SetStatus(status Status, msg string) {
 	allocation.Status.LastUpdateTime = tools.GetTimeNow()
 	allocation.Status.Message = msg
 }
-
-/*
-// SetPurchasePhase sets the ReserveAndBuy phase of the solver
-func (allocation *Allocation) SetReserveAndBuyStatus(phase Phase) {
-	solver.Status.ReserveAndBuy = phase
-	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
-}
-
-// SetFindCandidateStatus sets the FindCandidate phase of the solver
-func (allocation *Allocation) SetFindCandidateStatus(phase Phase) {
-	solver.Status.FindCandidate = phase
-	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
-}
-
-// SetDiscoveryStatus sets the discovery phase of the solver
-func (allocation *Allocation) SetDiscoveryStatus(phase Phase) {
-	solver.Status.DiscoveryPhase = phase
-	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
-}
-
-// SetReservationStatus sets the reservation phase of the solver
-func (allocation *Allocation) SetReservationStatus(phase Phase) {
-	solver.Status.ReservationPhase = phase
-	solver.Status.SolverPhase.LastChangeTime = tools.GetTimeNow()
-}
-*/

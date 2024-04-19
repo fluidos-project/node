@@ -88,35 +88,6 @@ func (g *Gateway) getFlavours(w http.ResponseWriter, _ *http.Request) {
 	encodeResponse(w, parsed)
 }
 
-// getFlavourByID gets the flavour CR from the cluster that matches the flavourID
-/* func (g *Gateway) getFlavourByID(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	// Get the flavourID from the URL
-	params := mux.Vars(r)
-	flavourID := params["flavourID"]
-
-	// Get the Flavour that matches the flavourID
-	flavour, err := services.GetFlavourByID(flavourID, g.client)
-	if err != nil {
-		http.Error(w, "Error getting the Flavour by ID", http.StatusInternalServerError)
-		return
-	}
-
-	if flavour == nil {
-		http.Error(w, "No Flavour found", http.StatusNotFound)
-		return
-	}
-
-	flavourParsed := parseutil.ParseFlavour(*flavour)
-
-	klog.Infof("Flavour found is: %s", flavourParsed.FlavourID)
-
-	// Encode the FlavourList as JSON and write it to the response writer
-	encodeResponse(w, flavourParsed)
-
-} */
-
 // getFlavourBySelectorHandler gets the flavour CRs from the cluster that match the selector.
 func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

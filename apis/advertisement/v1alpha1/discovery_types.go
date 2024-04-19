@@ -34,7 +34,7 @@ type DiscoverySpec struct {
 	// This pattern corresponds to what has been defined in the REAR Protocol to do a discovery with a selector
 	Selector *nodecorev1alpha1.FlavourSelector `json:"selector"`
 
-	// This flag indicates that needs to be enstablished a subscription to the provider in case a match is found.
+	// This flag indicates that needs to be established a subscription to the provider in case a match is found.
 	// In order to have periodic updates of the status of the matching Flavour
 	Subscribe bool `json:"subscribe"`
 }
@@ -45,8 +45,8 @@ type DiscoveryStatus struct {
 	// This is the current phase of the discovery
 	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
 
-	// This is the reference to the PeeringCandidate CRD that is the result of the discovery if a match is found
-	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
+	// This is a list of the PeeringCandidates that have been found as a result of the discovery matching the solver
+	PeeringCandidateList PeeringCandidateList `json:"peeringCandidateList,omitempty"`
 }
 
 //+kubebuilder:object:root=true

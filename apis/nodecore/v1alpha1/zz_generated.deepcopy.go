@@ -556,7 +556,6 @@ func (in *SolverSpec) DeepCopy() *SolverSpec {
 func (in *SolverStatus) DeepCopyInto(out *SolverStatus) {
 	*out = *in
 	out.SolverPhase = in.SolverPhase
-	out.PeeringCandidate = in.PeeringCandidate
 	out.Allocation = in.Allocation
 	out.Contract = in.Contract
 	out.Credentials = in.Credentials

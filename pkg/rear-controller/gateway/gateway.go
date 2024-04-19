@@ -100,7 +100,7 @@ func (g *Gateway) Start(ctx context.Context) error {
 
 	router := mux.NewRouter()
 
-	// middleware for debugging purposes
+	//nolint:gocritic // middleware for debugging purposes
 	// router.Use(loggingMiddleware)
 
 	// middleware for readiness
@@ -130,14 +130,6 @@ func (g *Gateway) Start(ctx context.Context) error {
 func (g *Gateway) RegisterNodeIdentity(nodeIdentity *nodecorev1alpha1.NodeIdentity) {
 	g.ID = nodeIdentity
 }
-
-// Only for debugging purposes
-/* func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		klog.Infof("Received request: %s %s %v", r.Method, r.URL.Path, r)
-		next.ServeHTTP(w, r)
-	})
-} */
 
 func (g *Gateway) readinessMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
