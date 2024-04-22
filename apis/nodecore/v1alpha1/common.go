@@ -65,11 +65,3 @@ type LiqoCredentials struct {
 	Token       string `json:"token"`
 	Endpoint    string `json:"endpoint"`
 }
-
-// toString() returns a string representation of the GenericRef.
-/* func (r GenericRef) toString() string {
-	if r.Namespace != "" {
-		return r.Namespace + "/" + r.Name
-	}
-	return r.Name
-} */

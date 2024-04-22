@@ -111,19 +111,3 @@ func forgeNodeInfo(node *corev1.Node, metrics *models.ResourceMetrics) *models.N
 		ResourceMetrics: *metrics,
 	}
 }
-
-// maxNode find the node with the maximum value based on the provided comparison function
-/* func maxNode(nodes []models.NodeInfo, compareFunc func(models.NodeInfo, models.NodeInfo) bool) models.NodeInfo {
-	if len(nodes) == 0 {
-		klog.Errorf("Error when finding the node with the maximum value: the list of nodes is empty")
-		return models.NodeInfo{}
-	}
-
-	maxNode := nodes[0]
-	for _, node := range nodes {
-		if compareFunc(node, maxNode) {
-			maxNode = node
-		}
-	}
-	return maxNode
-} */

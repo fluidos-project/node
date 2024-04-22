@@ -99,7 +99,7 @@ func (r *ReservationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	if reservation.Spec.Reserve {
 		if reservation.Status.ReservePhase != nodecorev1alpha1.PhaseSolved {
-			return r.handleReserve(ctx, req, &reservation)
+			return r.handleReserve(ctx, req, &reservation, &peeringCandidate)
 		}
 		klog.Infof("Reservation %s: Reserve phase solved", reservation.Name)
 	}
@@ -144,11 +144,36 @@ func checkInitialStatus(reservation *reservationv1alpha1.Reservation) bool {
 }
 
 func (r *ReservationReconciler) handleReserve(ctx context.Context,
-	req ctrl.Request, reservation *reservationv1alpha1.Reservation) (ctrl.Result, error) {
+	req ctrl.Request, reservation *reservationv1alpha1.Reservation, peeringCandidate *advertisementv1alpha1.PeeringCandidate) (ctrl.Result, error) {
 	reservePhase := reservation.Status.ReservePhase
 	switch reservePhase {
 	case nodecorev1alpha1.PhaseRunning:
 		klog.Infof("Reservation %s: Reserve phase running", reservation.Name)
+
+		// Check if the peering candidate is available
+		if !peeringCandidate.Spec.Available {
+			klog.Infof("PeeringCandidate %s not available", peeringCandidate.Name)
+			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: PeeringCandidate not available")
+			if err := r.updateReservationStatus(ctx, reservation); err != nil {
+				klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+
+		// Set the peering candidate as not available
+		peeringCandidate.Spec.Available = false
+		if err := r.Update(ctx, peeringCandidate); err != nil {
+			klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		peeringCandidate.Status.LastUpdateTime = tools.GetTimeNow()
+
+		if err := r.Status().Update(ctx, peeringCandidate); err != nil {
+			klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+
 		flavourID := namings.RetrieveFlavourNameFromPC(reservation.Spec.PeeringCandidate.Name)
 		res, err := r.Gateway.ReserveFlavour(ctx, reservation, flavourID)
 		if err != nil {

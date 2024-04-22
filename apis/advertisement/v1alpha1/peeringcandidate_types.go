@@ -25,11 +25,11 @@ import (
 
 // PeeringCandidateSpec defines the desired state of PeeringCandidate
 type PeeringCandidateSpec struct {
-	Reserved bool `json:"reserved"`
-
 	SolverID string `json:"solverID"`
 
 	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
+
+	Available bool `json:"available"`
 }
 
 // PeeringCandidateStatus defines the observed state of PeeringCandidate

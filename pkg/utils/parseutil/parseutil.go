@@ -101,6 +101,7 @@ func ParseFlavour(flavour *nodecorev1alpha1.Flavour) *models.Flavour {
 		Type:       string(flavour.Spec.Type),
 		ProviderID: flavour.Spec.ProviderID,
 		Characteristics: models.Characteristics{
+			Architecture:      flavour.Spec.Characteristics.Architecture,
 			CPU:               flavour.Spec.Characteristics.Cpu,
 			Memory:            flavour.Spec.Characteristics.Memory,
 			Pods:              flavour.Spec.Characteristics.Pods,

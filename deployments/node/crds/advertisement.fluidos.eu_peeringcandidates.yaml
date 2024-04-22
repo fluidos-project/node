@@ -34,6 +34,8 @@ spec:
           spec:
             description: PeeringCandidateSpec defines the desired state of PeeringCandidate
             properties:
+              available:
+                type: boolean
               flavour:
                 description: Flavour is the Schema for the flavours API.
                 properties:
@@ -303,13 +305,11 @@ spec:
                     - lastUpdateTime
                     type: object
                 type: object
-              reserved:
-                type: boolean
               solverID:
                 type: string
             required:
+            - available
             - flavour
-            - reserved
             - solverID
             type: object
           status:

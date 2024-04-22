@@ -118,7 +118,6 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if findCandidateStatus != nodecorev1alpha1.PhaseSolved {
 			return r.handleFindCandidate(ctx, req, &solver)
 		}
-		klog.Infof("Solver %s has reserved and purchased the resources", req.NamespacedName.Name)
 	} else {
 		klog.Infof("Solver %s Solved : No need to find a candidate", req.NamespacedName.Name)
 		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to find a candidate")
@@ -269,14 +268,27 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 	case nodecorev1alpha1.PhaseIdle:
 		var partition *nodecorev1alpha1.Partition
 		klog.Infof("Creating the Reservation %s", req.NamespacedName.Name)
+		var pcList []advertisementv1alpha1.PeeringCandidate
+		pc := advertisementv1alpha1.PeeringCandidate{}
 		// Create the Reservation
-		var pc advertisementv1alpha1.PeeringCandidate
-		pcNamespaceName := types.NamespacedName{Name: solver.Status.PeeringCandidate.Name, Namespace: solver.Status.PeeringCandidate.Namespace}
 
-		// Get the PeeringCandidate from the Solver
-		if err := r.Get(ctx, pcNamespaceName, &pc); err != nil {
-			klog.Errorf("Error when getting PeeringCandidate %s: %s", solver.Status.PeeringCandidate.Name, err)
+		pcList, err := r.searchPeeringCandidates(ctx, solver)
+		if err != nil {
+			klog.Errorf("Error when searching and booking a candidate for Solver %s: %s", req.NamespacedName.Name, err)
 			return ctrl.Result{}, err
+		}
+
+		// Filter PeeringCandidate by SolverID
+		for i := range pcList {
+			if pcList[i].Spec.SolverID == solver.Name {
+				pc = pcList[i]
+				break
+			}
+		}
+
+		if pc.Name == "" {
+			klog.Errorf("No PeeringCandidate found for Solver %s:", solver.Name)
+			return ctrl.Result{}, nil
 		}
 
 		if solver.Spec.Selector != nil {
@@ -483,11 +495,11 @@ func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context,
 		return nil, errors.NewNotFound(schema.GroupResource{Group: "advertisement", Resource: "PeeringCandidate"}, "PeeringCandidate")
 	}
 
-	// Filter the reserved PeeringCandidates
+	// Filter out the PeeringCandidates that are not available
 	filtered := []advertisementv1alpha1.PeeringCandidate{}
 	for i := range pc.Items {
 		p := pc.Items[i]
-		if !p.Spec.Reserved && p.Spec.SolverID == "" {
+		if p.Spec.Available {
 			filtered = append(filtered, p)
 		}
 	}
@@ -509,31 +521,31 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context,
 	solver *nodecorev1alpha1.Solver, pcList []advertisementv1alpha1.PeeringCandidate) (*advertisementv1alpha1.PeeringCandidate, error) {
 	// Select the first PeeringCandidate
 
-	var selected *advertisementv1alpha1.PeeringCandidate
+	var pc *advertisementv1alpha1.PeeringCandidate
 
 	for i := range pcList {
-		pc := pcList[i]
+		pc = &pcList[i]
 		// Select the first PeeringCandidate that is not reserved
-		if !pc.Spec.Reserved && pc.Spec.SolverID == "" {
+		if pc.Spec.Available {
 			// Book the PeeringCandidate
-			pc.Spec.Reserved = true
+			pc.Spec.Available = false
 			pc.Spec.SolverID = solver.Name
 
 			// Update the PeeringCandidate
-			if err := r.Update(ctx, &pc); err != nil {
-				klog.Errorf("Error when updating PeeringCandidate %s: %s", selected.Name, err)
+			if err := r.Update(ctx, pc); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s: %s", pc.Name, err)
 				continue
 			}
 
 			// Getting the just updated PeeringCandidate
-			if err := r.Get(ctx, types.NamespacedName{Name: pc.Name, Namespace: pc.Namespace}, selected); err != nil {
-				klog.Errorf("Error when getting the reserved PeeringCandidate %s: %s", selected.Name, err)
+			if err := r.Get(ctx, types.NamespacedName{Name: pc.Name, Namespace: pc.Namespace}, pc); err != nil {
+				klog.Errorf("Error when getting the reserved PeeringCandidate %s: %s", pc.Name, err)
 				continue
 			}
 
 			// Check if the PeeringCandidate has been reserved correctly
-			if !pc.Spec.Reserved || pc.Spec.SolverID != solver.Name {
-				klog.Errorf("Error when reserving PeeringCandidate %s. Trying with another one", selected.Name)
+			if pc.Spec.Available || pc.Spec.SolverID != solver.Name {
+				klog.Errorf("Error when reserving PeeringCandidate %s. Trying with another one", pc.Name)
 				continue
 			}
 
@@ -542,12 +554,12 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context,
 	}
 
 	// check if a PeeringCandidate has been selected
-	if selected == nil || selected.Name == "" {
+	if pc.Name == "" {
 		klog.Infof("No PeeringCandidate selected")
 		return nil, errors.NewNotFound(schema.GroupResource{Group: "advertisement", Resource: "PeeringCandidate"}, "PeeringCandidate")
 	}
 
-	return selected, nil
+	return pc, nil
 }
 
 func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nodecorev1alpha1.Solver) (*advertisementv1alpha1.Discovery, error) {

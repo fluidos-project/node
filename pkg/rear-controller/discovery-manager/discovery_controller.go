@@ -25,7 +25,7 @@ import (
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
-	resourceforge "github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
@@ -55,7 +55,6 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	ctx = ctrl.LoggerInto(ctx, log)
 
 	var peeringCandidate *advertisementv1alpha1.PeeringCandidate
-	var peeringCandidateReserved advertisementv1alpha1.PeeringCandidate
 
 	var discovery advertisementv1alpha1.Discovery
 	if err := r.Get(ctx, req.NamespacedName, &discovery); client.IgnoreNotFound(err) != nil {
@@ -74,6 +73,7 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseRunning &&
 		discovery.Status.Phase.Phase != nodecorev1alpha1.PhaseIdle {
 		discovery.Status.Phase.StartTime = tools.GetTimeNow()
+		discovery.Status.PeeringCandidateList.Items = []advertisementv1alpha1.PeeringCandidate{}
 		discovery.SetPhase(nodecorev1alpha1.PhaseRunning, "Discovery started")
 
 		if err := r.updateDiscoveryStatus(ctx, &discovery); err != nil {
@@ -109,30 +109,20 @@ func (r *DiscoveryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		klog.Infof("Flavours found: %d", len(flavours))
 
-		// TODO: check if a corresponding PeeringCandidate already exists!!
-		first := true
 		for _, flavour := range flavours {
-			if first {
-				// We refer to the first peering candidate as the one that is reserved
-				peeringCandidate = resourceforge.ForgePeeringCandidate(flavour, discovery.Spec.SolverID, true)
-				peeringCandidateReserved = *peeringCandidate
-				first = false
-			} else {
-				// the others are created as not reserved
-				peeringCandidate = resourceforge.ForgePeeringCandidate(flavour, discovery.Spec.SolverID, false)
-			}
-
+			peeringCandidate = resourceforge.ForgePeeringCandidate(flavour, discovery.Spec.SolverID, true)
 			err = r.Create(context.Background(), peeringCandidate)
 			if err != nil {
 				klog.Infof("Discovery %s failed: error while creating Peering Candidate", discovery.Name)
 				return ctrl.Result{}, err
 			}
-		}
-
-		// Update the Discovery with the PeeringCandidate
-		discovery.Status.PeeringCandidate = nodecorev1alpha1.GenericRef{
-			Name:      peeringCandidateReserved.Name,
-			Namespace: peeringCandidateReserved.Namespace,
+			peeringCandidate.Status.CreationTime = tools.GetTimeNow()
+			if err := r.Status().Update(ctx, peeringCandidate); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			// Appemd the PeeringCandidate to the list of PeeringCandidates found by the Discovery
+			discovery.Status.PeeringCandidateList.Items = append(discovery.Status.PeeringCandidateList.Items, *peeringCandidate)
 		}
 
 		discovery.SetPhase(nodecorev1alpha1.PhaseSolved, "Discovery Solved: Peering Candidate found")
