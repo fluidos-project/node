@@ -6,7 +6,7 @@ A quick script for installing the FLUIDOS Node is available. Currently, the scri
 
 **⚠️ ATTENTION:** The script is currently in an experimental phase, so it may not work as expected. If any issues arise, it may be tricky to understand and terminate the script, as many sub-tasks are executed in the background. We are aware of these issues and are actively working to resolve them.
 
-If you want to use a **working and tested script** to test the FLUIDOS Node within a KinD environment, please refer to the [**Testbed**](../testbed/kind/README.md) section.
+If you want to use a **working and tested script** to test the FLUIDOS Node within a KinD environment, please refer to the [**Testbed**](../../testbed/kind/README.md) section.
 
 ---
 

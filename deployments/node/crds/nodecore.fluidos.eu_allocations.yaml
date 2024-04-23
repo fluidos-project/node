@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: allocations.nodecore.fluidos.eu
 spec:
   group: nodecore.fluidos.eu
@@ -20,371 +20,59 @@ spec:
         description: Allocation is the Schema for the allocations API.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
             description: AllocationSpec defines the desired state of Allocation
             properties:
+              contract:
+                description: This is the reference to the contract related to the
+                  allocation
+                properties:
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: |-
+                      The namespace containing the resource to be referenced. It should be left
+                      empty in case of cluster-wide resources.
+                    type: string
+                type: object
               destination:
                 description: This specifies if the destination of the allocation is
                   local or remote so if the allocation will be used locally or from
                   a remote cluster
                 type: string
-              flavour:
-                description: This Flavour describes the characteristics of the allocation,
-                  it is based on the Flavour CRD from which it was created
-                properties:
-                  apiVersion:
-                    description: 'APIVersion defines the versioned schema of this
-                      representation of an object. Servers should convert recognized
-                      schemas to the latest internal value, and may reject unrecognized
-                      values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-                    type: string
-                  kind:
-                    description: 'Kind is a string value representing the REST resource
-                      this object represents. Servers may infer this from the endpoint
-                      the client submits requests to. Cannot be updated. In CamelCase.
-                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                    type: string
-                  metadata:
-                    properties:
-                      annotations:
-                        additionalProperties:
-                          type: string
-                        type: object
-                      finalizers:
-                        items:
-                          type: string
-                        type: array
-                      labels:
-                        additionalProperties:
-                          type: string
-                        type: object
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                    type: object
-                  spec:
-                    description: FlavourSpec defines the desired state of Flavour
-                    properties:
-                      characteristics:
-                        description: Characteristics contains the characteristics
-                          of the Flavour. They are based on the type of the Flavour
-                          and can change depending on it. In this case, the type is
-                          K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
-                        properties:
-                          architecture:
-                            description: Architecture is the architecture of the Flavour.
-                            type: string
-                          cpu:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: CPU is the number of CPU cores of the Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          ephemeral-storage:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: EphemeralStorage is the amount of ephemeral
-                              storage of the Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          gpu:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: GPU is the number of GPU cores of the Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          memory:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: Memory is the amount of RAM of the Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          persistent-storage:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: PersistentStorage is the amount of persistent
-                              storage of the Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          pods:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: Pods is the maximum number of pods of the
-                              Flavour.
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                        required:
-                        - architecture
-                        - cpu
-                        - memory
-                        - pods
-                        type: object
-                      optionalFields:
-                        description: This field is used to specify the optional fields
-                          that can be retrieved from the Flavour. In the future it
-                          will be expanded to include more optional fields defined
-                          in the REAR Protocol or custom ones.
-                        properties:
-                          availability:
-                            description: Availability is the availability flag of
-                              the Flavour. It is a field inherited from the REAR Protocol
-                              specifications.
-                            type: boolean
-                          workerID:
-                            description: WorkerID is the ID of the worker that provides
-                              the Flavour.
-                            type: string
-                        type: object
-                      owner:
-                        description: Owner contains the identity info of the owner
-                          of the Flavour. It can be unknown if the Flavour is provided
-                          by a reseller or a third party.
-                        properties:
-                          domain:
-                            type: string
-                          ip:
-                            type: string
-                          nodeID:
-                            type: string
-                        required:
-                        - domain
-                        - ip
-                        - nodeID
-                        type: object
-                      policy:
-                        description: Policy contains the policy of the Flavour. The
-                          policy describes the partitioning and aggregation properties
-                          of the Flavour.
-                        properties:
-                          aggregatable:
-                            description: Aggregatable contains the aggregation properties
-                              of the Flavour.
-                            properties:
-                              maxCount:
-                                description: MaxCount is the maximum requirable number
-                                  of instances of the Flavour.
-                                type: integer
-                              minCount:
-                                description: MinCount is the minimum requirable number
-                                  of instances of the Flavour.
-                                type: integer
-                            required:
-                            - maxCount
-                            - minCount
-                            type: object
-                          partitionable:
-                            description: Partitionable contains the partitioning properties
-                              of the Flavour.
-                            properties:
-                              cpuMin:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: CpuMin is the minimum requirable number
-                                  of CPU cores of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              cpuStep:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: CpuStep is the incremental value of CPU
-                                  cores of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              memoryMin:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: MemoryMin is the minimum requirable amount
-                                  of RAM of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              memoryStep:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: MemoryStep is the incremental value of
-                                  RAM of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              podsMin:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: PodsMin is the minimum requirable number
-                                  of pods of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                              podsStep:
-                                anyOf:
-                                - type: integer
-                                - type: string
-                                description: PodsStep is the incremental value of
-                                  pods of the Flavour.
-                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
-                            required:
-                            - cpuMin
-                            - cpuStep
-                            - memoryMin
-                            - memoryStep
-                            - podsMin
-                            - podsStep
-                            type: object
-                        type: object
-                      price:
-                        description: Price contains the price model of the Flavour.
-                        properties:
-                          amount:
-                            description: Amount is the amount of the price.
-                            type: string
-                          currency:
-                            description: Currency is the currency of the price.
-                            type: string
-                          period:
-                            description: Period is the period of the price.
-                            type: string
-                        required:
-                        - amount
-                        - currency
-                        - period
-                        type: object
-                      providerID:
-                        description: ProviderID is the ID of the FLUIDOS Node ID that
-                          provides this Flavour. It can correspond to ID of the owner
-                          FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents
-                          the entry point to a FLUIDOS Domain
-                        type: string
-                      type:
-                        description: Type is the type of the Flavour. Currently, only
-                          K8S is supported.
-                        type: string
-                    required:
-                    - characteristics
-                    - optionalFields
-                    - owner
-                    - policy
-                    - price
-                    - providerID
-                    - type
-                    type: object
-                  status:
-                    description: FlavourStatus defines the observed state of Flavour.
-                    properties:
-                      creationTime:
-                        description: This field represents the creation time of the
-                          Flavour.
-                        type: string
-                      expirationTime:
-                        description: This field represents the expiration time of
-                          the Flavour. It is used to determine when the Flavour is
-                          no longer valid.
-                        type: string
-                      lastUpdateTime:
-                        description: This field represents the last update time of
-                          the Flavour.
-                        type: string
-                    required:
-                    - creationTime
-                    - expirationTime
-                    - lastUpdateTime
-                    type: object
-                type: object
               forwarding:
-                description: This flag indicates if the allocation is a forwarding
-                  allocation if true it represents only a placeholder to undertand
-                  that the cluster is just a proxy to another cluster
+                description: |-
+                  This flag indicates if the allocation is a forwarding allocation
+                  if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
                 type: boolean
               intentID:
-                description: This is the ID of the intent for which the allocation
-                  was created. It is used by the Node Orchestrator to identify the
-                  correct allocation for a given intent
+                description: |-
+                  This is the ID of the intent for which the allocation was created.
+                  It is used by the Node Orchestrator to identify the correct allocation for a given intent
                 type: string
               nodeName:
                 description: This is the corresponding Node or VirtualNode local name
                 type: string
-              partitioned:
-                description: This flags indicates if the Flavour from which the allocation
-                  was created was partitioned or not
-                type: boolean
               remoteClusterID:
                 description: This is the ID of the cluster that owns the allocation.
                 type: string
-              resources:
-                description: This is the dimension of the allocation
-                properties:
-                  architecture:
-                    description: Architecture is the architecture of the Flavour.
-                    type: string
-                  cpu:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: CPU is the number of CPU cores of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  ephemeral-storage:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: EphemeralStorage is the amount of ephemeral storage
-                      of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  gpu:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: GPU is the number of GPU cores of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  memory:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: Memory is the amount of RAM of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  persistent-storage:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: PersistentStorage is the amount of persistent storage
-                      of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  pods:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    description: Pods is the maximum number of pods of the Flavour.
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                required:
-                - architecture
-                - cpu
-                - memory
-                - pods
-                type: object
               type:
                 description: 'This specifies the type of the node: Node (Physical
                   node of the cluster) or VirtualNode (Remote node owned by a different
@@ -392,10 +80,8 @@ spec:
                 type: string
             required:
             - destination
-            - flavour
             - intentID
             - nodeName
-            - partitioned
             - type
             type: object
           status:

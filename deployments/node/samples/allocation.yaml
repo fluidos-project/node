@@ -1,0 +1,20 @@
+apiVersion: nodecore.fluidos.eu/v1alpha1
+kind: Allocation
+metadata:
+  name: allocation-sample
+  namespace: fluidos
+spec:
+  # From the reservation get the contract and from the contract get the Spec.SellerCredentials.ClusterID
+  remoteClusterID: 6b89ba16-af18-4600-9b97-0ec0ee8be41a
+  # Get it from the solver
+  intentID: intent-sample
+  # Set a name for the VirtualNode on the consumer cluster. Pattern suggested: "liqo-clusterName", where clusterName s the one you get from the contract.Spec.SellerCredentials.ClusterName 
+  nodeName: liqo-fluidos-provider-1
+  # On the consumer set it as VirtualNode, since the allocation will be bound to a VirtualNode to be created
+  type: VirtualNode
+  # On the consumer set it as Local, since the allocation of resources will be consumed locally
+  destination: Local
+  # Retrieve information from the reservation and the contract bou d to it
+  contract:
+    name: contract-fluidos.eu-k8s-fluidos-0edea17b-f1d5
+    namespace: fluidos

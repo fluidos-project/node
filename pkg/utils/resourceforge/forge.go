@@ -445,22 +445,10 @@ func ForgeAllocation(contract *reservationv1alpha1.Contract, intentID, nodeName 
 			Type:        nodeType,
 			Destination: destination,
 			Forwarding:  false,
-			Flavour:     *contract.Spec.Flavour.DeepCopy(),
-			Partitioned: func() bool { return contract.Spec.Partition != nil }(),
-			Resources: func() nodecorev1alpha1.Characteristics {
-				if contract.Spec.Partition != nil {
-					return nodecorev1alpha1.Characteristics{
-						Architecture:      contract.Spec.Partition.Architecture,
-						Cpu:               contract.Spec.Partition.CPU,
-						Memory:            contract.Spec.Partition.Memory,
-						Pods:              contract.Spec.Partition.Pods,
-						EphemeralStorage:  contract.Spec.Partition.EphemeralStorage,
-						Gpu:               contract.Spec.Partition.Gpu,
-						PersistentStorage: contract.Spec.Partition.Storage,
-					}
-				}
-				return *contract.Spec.Flavour.Spec.Characteristics.DeepCopy()
-			}(),
+			Contract: nodecorev1alpha1.GenericRef{
+				Name:      contract.Name,
+				Namespace: contract.Namespace,
+			},
 		},
 	}
 }

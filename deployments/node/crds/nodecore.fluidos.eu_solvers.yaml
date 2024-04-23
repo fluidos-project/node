@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: solvers.nodecore.fluidos.eu
 spec:
   group: nodecore.fluidos.eu
@@ -51,18 +51,24 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Solver is the Schema for the solvers API Solver is the Schema
-          for the solvers API
+        description: |-
+          Solver is the Schema for the solvers API
+          Solver is the Schema for the solvers API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -78,8 +84,9 @@ spec:
                   should find a candidate to solve the intent.
                 type: boolean
               intentID:
-                description: IntentID is the ID of the intent that the Node Orchestrator
-                  is trying to solve. It is used to link the solver with the intent.
+                description: |-
+                  IntentID is the ID of the intent that the Node Orchestrator is trying to solve.
+                  It is used to link the solver with the intent.
                 type: string
               reserveAndBuy:
                 description: ReserveAndBuy is a flag that indicates if the solver
@@ -221,23 +228,24 @@ spec:
             description: SolverStatus defines the observed state of Solver
             properties:
               allocation:
-                description: Allocation contains the allocation that the solver has
-                  eventually created for the intent. It can correspond to a virtual
-                  node The Node Orchestrator will use this allocation to fullfill
-                  the intent.
+                description: |-
+                  Allocation contains the allocation that the solver has eventually created for the intent.
+                  It can correspond to a virtual node
+                  The Node Orchestrator will use this allocation to fullfill the intent.
                 properties:
                   name:
                     description: The name of the resource to be referenced.
                     type: string
                   namespace:
-                    description: The namespace containing the resource to be referenced.
-                      It should be left empty in case of cluster-wide resources.
+                    description: |-
+                      The namespace containing the resource to be referenced. It should be left
+                      empty in case of cluster-wide resources.
                     type: string
                 type: object
               consumePhase:
-                description: ConsumePhase describes the status of the Consume phase
-                  where the VFM (Liqo) is enstablishing a peering with the candidate
-                  node.
+                description: |-
+                  ConsumePhase describes the status of the Consume phase where the VFM (Liqo) is enstablishing
+                  a peering with the candidate node.
                 type: string
               contract:
                 description: Contract contains the Contract that the Contract Manager
@@ -247,8 +255,9 @@ spec:
                     description: The name of the resource to be referenced.
                     type: string
                   namespace:
-                    description: The namespace containing the resource to be referenced.
-                      It should be left empty in case of cluster-wide resources.
+                    description: |-
+                      The namespace containing the resource to be referenced. It should be left
+                      empty in case of cluster-wide resources.
                     type: string
                 type: object
               credentials:
@@ -270,34 +279,34 @@ spec:
                 - token
                 type: object
               discoveryPhase:
-                description: DiscoveryPhase describes the status of the Discovery
-                  where the Discovery Manager is looking for matching flavours outside
-                  the FLUIDOS Node
+                description: |-
+                  DiscoveryPhase describes the status of the Discovery where the Discovery Manager
+                  is looking for matching flavours outside the FLUIDOS Node
                 type: string
               findCandidate:
-                description: FindCandidate describes the status of research of the
-                  candidate. Rear Manager is looking for the best candidate Flavour
-                  to solve the Node Orchestrator request.
+                description: |-
+                  FindCandidate describes the status of research of the candidate.
+                  Rear Manager is looking for the best candidate Flavour to solve the Node Orchestrator request.
                 type: string
               peering:
-                description: Peering describes the status of the peering with the
-                  candidate. Rear Manager is trying to enstablish a peering with the
-                  candidate FLUIDOS Node.
+                description: |-
+                  Peering describes the status of the peering with the candidate.
+                  Rear Manager is trying to enstablish a peering with the candidate FLUIDOS Node.
                 type: string
               reservationPhase:
-                description: ReservationPhase describes the status of the Reservation
-                  where the Contract Manager is reserving and purchasing the resources
-                  on the candidate node.
+                description: |-
+                  ReservationPhase describes the status of the Reservation where the Contract Manager
+                  is reserving and purchasing the resources on the candidate node.
                 type: string
               reserveAndBuy:
-                description: ReserveAndBuy describes the status of the reservation
-                  and purchase of selected Flavour. Rear Manager is trying to reserve
-                  and purchase the resources on the candidate FLUIDOS Node.
+                description: |-
+                  ReserveAndBuy describes the status of the reservation and purchase of selected Flavour.
+                  Rear Manager is trying to reserve and purchase the resources on the candidate FLUIDOS Node.
                 type: string
               solverPhase:
-                description: SolverPhase describes the status of the Solver generated
-                  by the Node Orchestrator. It is usefull to understand if the solver
-                  is still running or if it has finished or failed.
+                description: |-
+                  SolverPhase describes the status of the Solver generated by the Node Orchestrator.
+                  It is usefull to understand if the solver is still running or if it has finished or failed.
                 properties:
                   endTime:
                     type: string

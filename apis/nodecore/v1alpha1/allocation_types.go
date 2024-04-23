@@ -71,14 +71,8 @@ type AllocationSpec struct {
 	// if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
 	Forwarding bool `json:"forwarding,omitempty"`
 
-	// This Flavour describes the characteristics of the allocation, it is based on the Flavour CRD from which it was created
-	Flavour Flavour `json:"flavour"`
-
-	// This flags indicates if the Flavour from which the allocation was created was partitioned or not
-	Partitioned bool `json:"partitioned"`
-
-	// This is the dimension of the allocation
-	Resources Characteristics `json:"resources,omitempty"`
+	// This is the reference to the contract related to the allocation
+	Contract GenericRef `json:"contract,omitempty"`
 }
 
 // AllocationStatus defines the observed state of Allocation.

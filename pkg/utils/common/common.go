@@ -212,7 +212,7 @@ func ReservationStatusCheck(solver *nodecorev1alpha1.Solver, reservation *reserv
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseSolved {
 		klog.Infof("Reservation %s has reserved and purchase the flavour %s", reservation.Name, flavourName)
 		solver.Status.ReservationPhase = nodecorev1alpha1.PhaseSolved
-		solver.Status.ReserveAndBuy = nodecorev1alpha1.PhaseAllocating
+		solver.Status.ReserveAndBuy = nodecorev1alpha1.PhaseSolved
 		solver.Status.Contract = reservation.Status.Contract
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation: Flavour reserved and purchased")
 	}

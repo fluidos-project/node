@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: discoveries.advertisement.fluidos.eu
 spec:
   group: advertisement.fluidos.eu
@@ -39,14 +39,19 @@ spec:
         description: Discovery is the Schema for the discoveries API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -54,10 +59,9 @@ spec:
             description: DiscoverySpec defines the desired state of Discovery
             properties:
               selector:
-                description: This is the FlavourSelector that describes the characteristics
-                  of the intent that the solver is looking to satisfy This pattern
-                  corresponds to what has been defined in the REAR Protocol to do
-                  a discovery with a selector
+                description: |-
+                  This is the FlavourSelector that describes the characteristics of the intent that the solver is looking to satisfy
+                  This pattern corresponds to what has been defined in the REAR Protocol to do a discovery with a selector
                 properties:
                   architecture:
                     type: string
@@ -186,13 +190,14 @@ spec:
                 - type
                 type: object
               solverID:
-                description: This is the Solver ID of the solver that creates and
-                  so asks for the discovery. This is a reference to the Solver CRD
+                description: |-
+                  This is the Solver ID of the solver that creates and so asks for the discovery.
+                  This is a reference to the Solver CRD
                 type: string
               subscribe:
-                description: This flag indicates that needs to be established a subscription
-                  to the provider in case a match is found. In order to have periodic
-                  updates of the status of the matching Flavour
+                description: |-
+                  This flag indicates that needs to be established a subscription to the provider in case a match is found.
+                  In order to have periodic updates of the status of the matching Flavour
                 type: boolean
             required:
             - selector
@@ -207,10 +212,11 @@ spec:
                   found as a result of the discovery matching the solver
                 properties:
                   apiVersion:
-                    description: 'APIVersion defines the versioned schema of this
-                      representation of an object. Servers should convert recognized
-                      schemas to the latest internal value, and may reject unrecognized
-                      values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    description: |-
+                      APIVersion defines the versioned schema of this representation of an object.
+                      Servers should convert recognized schemas to the latest internal value, and
+                      may reject unrecognized values.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
                     type: string
                   items:
                     items:
@@ -218,16 +224,19 @@ spec:
                         API
                       properties:
                         apiVersion:
-                          description: 'APIVersion defines the versioned schema of
-                            this representation of an object. Servers should convert
-                            recognized schemas to the latest internal value, and may
-                            reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                          description: |-
+                            APIVersion defines the versioned schema of this representation of an object.
+                            Servers should convert recognized schemas to the latest internal value, and
+                            may reject unrecognized values.
+                            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
                           type: string
                         kind:
-                          description: 'Kind is a string value representing the REST
-                            resource this object represents. Servers may infer this
-                            from the endpoint the client submits requests to. Cannot
-                            be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                          description: |-
+                            Kind is a string value representing the REST resource this object represents.
+                            Servers may infer this from the endpoint the client submits requests to.
+                            Cannot be updated.
+                            In CamelCase.
+                            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
                           type: string
                         metadata:
                           properties:
@@ -259,18 +268,19 @@ spec:
                                 API.
                               properties:
                                 apiVersion:
-                                  description: 'APIVersion defines the versioned schema
-                                    of this representation of an object. Servers should
-                                    convert recognized schemas to the latest internal
-                                    value, and may reject unrecognized values. More
-                                    info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                                  description: |-
+                                    APIVersion defines the versioned schema of this representation of an object.
+                                    Servers should convert recognized schemas to the latest internal value, and
+                                    may reject unrecognized values.
+                                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
                                   type: string
                                 kind:
-                                  description: 'Kind is a string value representing
-                                    the REST resource this object represents. Servers
-                                    may infer this from the endpoint the client submits
-                                    requests to. Cannot be updated. In CamelCase.
-                                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                                  description: |-
+                                    Kind is a string value representing the REST resource this object represents.
+                                    Servers may infer this from the endpoint the client submits requests to.
+                                    Cannot be updated.
+                                    In CamelCase.
+                                    More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
                                   type: string
                                 metadata:
                                   properties:
@@ -296,11 +306,9 @@ spec:
                                     of Flavour
                                   properties:
                                     characteristics:
-                                      description: Characteristics contains the characteristics
-                                        of the Flavour. They are based on the type
-                                        of the Flavour and can change depending on
-                                        it. In this case, the type is K8S so the characteristics
-                                        are CPU, Memory, GPU and EphemeralStorage.
+                                      description: |-
+                                        Characteristics contains the characteristics of the Flavour.
+                                        They are based on the type of the Flavour and can change depending on it. In this case, the type is K8S so the characteristics are CPU, Memory, GPU and EphemeralStorage.
                                       properties:
                                         architecture:
                                           description: Architecture is the architecture
@@ -361,16 +369,14 @@ spec:
                                       - pods
                                       type: object
                                     optionalFields:
-                                      description: This field is used to specify the
-                                        optional fields that can be retrieved from
-                                        the Flavour. In the future it will be expanded
-                                        to include more optional fields defined in
-                                        the REAR Protocol or custom ones.
+                                      description: |-
+                                        This field is used to specify the optional fields that can be retrieved from the Flavour.
+                                        In the future it will be expanded to include more optional fields defined in the REAR Protocol or custom ones.
                                       properties:
                                         availability:
-                                          description: Availability is the availability
-                                            flag of the Flavour. It is a field inherited
-                                            from the REAR Protocol specifications.
+                                          description: |-
+                                            Availability is the availability flag of the Flavour.
+                                            It is a field inherited from the REAR Protocol specifications.
                                           type: boolean
                                         workerID:
                                           description: WorkerID is the ID of the worker
@@ -500,11 +506,9 @@ spec:
                                       - period
                                       type: object
                                     providerID:
-                                      description: ProviderID is the ID of the FLUIDOS
-                                        Node ID that provides this Flavour. It can
-                                        correspond to ID of the owner FLUIDOS Node
-                                        or to the ID of a FLUIDOS SuperNode that represents
-                                        the entry point to a FLUIDOS Domain
+                                      description: |-
+                                        ProviderID is the ID of the FLUIDOS Node ID that provides this Flavour.
+                                        It can correspond to ID of the owner FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents the entry point to a FLUIDOS Domain
                                       type: string
                                     type:
                                       description: Type is the type of the Flavour.
@@ -568,50 +572,49 @@ spec:
                       type: object
                     type: array
                   kind:
-                    description: 'Kind is a string value representing the REST resource
-                      this object represents. Servers may infer this from the endpoint
-                      the client submits requests to. Cannot be updated. In CamelCase.
-                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    description: |-
+                      Kind is a string value representing the REST resource this object represents.
+                      Servers may infer this from the endpoint the client submits requests to.
+                      Cannot be updated.
+                      In CamelCase.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
                     type: string
                   metadata:
-                    description: ListMeta describes metadata that synthetic resources
-                      must have, including lists and various status objects. A resource
-                      may have only one of {ObjectMeta, ListMeta}.
+                    description: |-
+                      ListMeta describes metadata that synthetic resources must have, including lists and
+                      various status objects. A resource may have only one of {ObjectMeta, ListMeta}.
                     properties:
                       continue:
-                        description: continue may be set if the user set a limit on
-                          the number of items returned, and indicates that the server
-                          has more data available. The value is opaque and may be
-                          used to issue another request to the endpoint that served
-                          this list to retrieve the next set of available objects.
-                          Continuing a consistent list may not be possible if the
-                          server configuration has changed or more than a few minutes
-                          have passed. The resourceVersion field returned when using
-                          this continue value will be identical to the value in the
-                          first response, unless you have received this token from
-                          an error message.
+                        description: |-
+                          continue may be set if the user set a limit on the number of items returned, and indicates that
+                          the server has more data available. The value is opaque and may be used to issue another request
+                          to the endpoint that served this list to retrieve the next set of available objects. Continuing a
+                          consistent list may not be possible if the server configuration has changed or more than a few
+                          minutes have passed. The resourceVersion field returned when using this continue value will be
+                          identical to the value in the first response, unless you have received this token from an error
+                          message.
                         type: string
                       remainingItemCount:
-                        description: remainingItemCount is the number of subsequent
-                          items in the list which are not included in this list response.
-                          If the list request contained label or field selectors,
-                          then the number of remaining items is unknown and the field
-                          will be left unset and omitted during serialization. If
-                          the list is complete (either because it is not chunking
-                          or because this is the last chunk), then there are no more
-                          remaining items and this field will be left unset and omitted
-                          during serialization. Servers older than v1.15 do not set
-                          this field. The intended use of the remainingItemCount is
-                          *estimating* the size of a collection. Clients should not
-                          rely on the remainingItemCount to be set or to be exact.
+                        description: |-
+                          remainingItemCount is the number of subsequent items in the list which are not included in this
+                          list response. If the list request contained label or field selectors, then the number of
+                          remaining items is unknown and the field will be left unset and omitted during serialization.
+                          If the list is complete (either because it is not chunking or because this is the last chunk),
+                          then there are no more remaining items and this field will be left unset and omitted during
+                          serialization.
+                          Servers older than v1.15 do not set this field.
+                          The intended use of the remainingItemCount is *estimating* the size of a collection. Clients
+                          should not rely on the remainingItemCount to be set or to be exact.
                         format: int64
                         type: integer
                       resourceVersion:
-                        description: 'String that identifies the server''s internal
-                          version of this object that can be used by clients to determine
-                          when objects have changed. Value must be treated as opaque
-                          by clients and passed unmodified back to the server. Populated
-                          by the system. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency'
+                        description: |-
+                          String that identifies the server's internal version of this object that
+                          can be used by clients to determine when objects have changed.
+                          Value must be treated as opaque by clients and passed unmodified back to the server.
+                          Populated by the system.
+                          Read-only.
+                          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
                         type: string
                       selfLink:
                         description: 'Deprecated: selfLink is a legacy read-only field
