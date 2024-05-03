@@ -182,6 +182,21 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 				return ctrl.Result{Requeue: true}, nil
 			}
 			klog.Errorf("Error when reserving flavour for Reservation %s: %s", req.NamespacedName, err)
+
+			// Set the peering candidate as available again
+			peeringCandidate.Spec.Available = true
+			if err := r.Update(ctx, peeringCandidate); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			peeringCandidate.Status.LastUpdateTime = tools.GetTimeNow()
+
+			if err := r.Status().Update(ctx, peeringCandidate); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+
+			// Set the reservation as failed
 			reservation.SetReserveStatus(nodecorev1alpha1.PhaseFailed)
 			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavour")
 			if err := r.updateReservationStatus(ctx, reservation); err != nil {
@@ -267,6 +282,35 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 		resPurchase, err := r.Gateway.PurchaseFlavour(ctx, transactionID, reservation.Spec.Seller)
 		if err != nil {
 			klog.Errorf("Error when purchasing flavour for Reservation %s: %s", req.NamespacedName, err)
+
+			// Set the PeerCandidate as available again
+			var peeringCandidate advertisementv1alpha1.PeeringCandidate
+			if err := r.Get(ctx, client.ObjectKey{
+				Name:      reservation.Spec.PeeringCandidate.Name,
+				Namespace: reservation.Spec.PeeringCandidate.Namespace,
+			}, &peeringCandidate); err != nil {
+				klog.Errorf("Error when getting PeeringCandidate %s before reconcile: %s", req.NamespacedName, err)
+				reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when getting PeeringCandidate")
+				if err := r.updateReservationStatus(ctx, reservation); err != nil {
+					klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, err
+			}
+
+			peeringCandidate.Spec.Available = true
+			if err := r.Update(ctx, &peeringCandidate); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			peeringCandidate.Status.LastUpdateTime = tools.GetTimeNow()
+
+			if err := r.Status().Update(ctx, &peeringCandidate); err != nil {
+				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+
+			// Set the reservation as failed
 			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseFailed)
 			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when purchasing flavour")
 			if err := r.updateReservationStatus(ctx, reservation); err != nil {
