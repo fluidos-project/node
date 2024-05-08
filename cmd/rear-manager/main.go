@@ -123,6 +123,8 @@ func main() {
 	//nolint:gocritic // This code is needed to register the webhook
 	// av := rearmanager.NewValidator(mgr.GetClient())
 	// mgr.GetWebhookServer().Register("/validate/allocation", &webhook.Admission{Handler: av})
+	// sv := rearmanager.NewSolverValidator(mgr.GetClient())
+	// mgr.GetWebhookServer().Register("/validate/solver", &webhook.Admission{Handler: sv})
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
