@@ -163,6 +163,7 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 
 		// Set the peering candidate as not available
 		peeringCandidate.Spec.Available = false
+		peeringCandidate.Spec.SolverID = reservation.Spec.SolverID
 		if err := r.Update(ctx, peeringCandidate); err != nil {
 			klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
@@ -185,6 +186,7 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 
 			// Set the peering candidate as available again
 			peeringCandidate.Spec.Available = true
+			peeringCandidate.Spec.SolverID = ""
 			if err := r.Update(ctx, peeringCandidate); err != nil {
 				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -299,6 +301,7 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 			}
 
 			peeringCandidate.Spec.Available = true
+			peeringCandidate.Spec.SolverID = ""
 			if err := r.Update(ctx, &peeringCandidate); err != nil {
 				klog.Errorf("Error when updating PeeringCandidate %s status before reconcile: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
