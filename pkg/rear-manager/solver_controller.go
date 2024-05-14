@@ -187,7 +187,7 @@ func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Req
 		// If some PeeringCandidates are available, select one and book it
 		if len(pc) > 0 {
 			// If some PeeringCandidates are available, select one and book it
-			selectedPc, err := r.selectAndBookPeeringCandidate(ctx, solver, pc)
+			selectedPc, err := r.selectAndBookPeeringCandidate(pc)
 			if err != nil {
 				klog.Errorf("Error when selecting and booking a candidate for Solver %s: %s", req.NamespacedName.Name, err)
 				return ctrl.Result{}, err
@@ -201,7 +201,6 @@ func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Req
 			}
 			return ctrl.Result{}, nil
 		}
-
 		// If no PeeringCandidate is available, Create a Discovery
 		klog.Infof("Solver %s has not found any candidate. Trying a Discovery", req.NamespacedName.Name)
 		solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseRunning)
@@ -213,6 +212,7 @@ func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
+
 	case nodecorev1alpha1.PhaseRunning:
 		// Check solver expiration
 		if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
@@ -279,8 +279,16 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 
 		// Filter PeeringCandidate by SolverID
 		for i := range pcList {
-			if pcList[i].Spec.SolverID == solver.Name {
+			if pcList[i].Spec.Available {
 				pc = pcList[i]
+				// Update the SolverID in the PeeringCandidate selected if it is different from the current Solver
+				if pc.Spec.SolverID != solver.Name {
+					pc.Spec.SolverID = solver.Name
+					if err := r.Client.Update(ctx, &pc); err != nil {
+						klog.Errorf("Error when updating PeeringCandidate %s for Solver %s: %s", pc.Name, solver.Name, err)
+						return ctrl.Result{}, err
+					}
+				}
 				break
 			}
 		}
@@ -505,8 +513,8 @@ func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context,
 }
 
 // TODO: unify this logic with the one of the discovery controller.
-func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context,
-	solver *nodecorev1alpha1.Solver, pcList []advertisementv1alpha1.PeeringCandidate) (*advertisementv1alpha1.PeeringCandidate, error) {
+func (r *SolverReconciler) selectAndBookPeeringCandidate(
+	pcList []advertisementv1alpha1.PeeringCandidate) (*advertisementv1alpha1.PeeringCandidate, error) {
 	// Select the first PeeringCandidate
 
 	var pc *advertisementv1alpha1.PeeringCandidate
@@ -515,39 +523,13 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(ctx context.Context,
 		pc = &pcList[i]
 		// Select the first PeeringCandidate that is not reserved
 		if pc.Spec.Available {
-			// Book the PeeringCandidate
-			pc.Spec.Available = false
-			pc.Spec.SolverID = solver.Name
+			return pc, nil
 
-			// Update the PeeringCandidate
-			if err := r.Update(ctx, pc); err != nil {
-				klog.Errorf("Error when updating PeeringCandidate %s: %s", pc.Name, err)
-				continue
-			}
-
-			// Getting the just updated PeeringCandidate
-			if err := r.Get(ctx, types.NamespacedName{Name: pc.Name, Namespace: pc.Namespace}, pc); err != nil {
-				klog.Errorf("Error when getting the reserved PeeringCandidate %s: %s", pc.Name, err)
-				continue
-			}
-
-			// Check if the PeeringCandidate has been reserved correctly
-			if pc.Spec.Available || pc.Spec.SolverID != solver.Name {
-				klog.Errorf("Error when reserving PeeringCandidate %s. Trying with another one", pc.Name)
-				continue
-			}
-
-			break
 		}
 	}
 
-	// check if a PeeringCandidate has been selected
-	if pc.Name == "" {
-		klog.Infof("No PeeringCandidate selected")
-		return nil, errors.NewNotFound(schema.GroupResource{Group: "advertisement", Resource: "PeeringCandidate"}, "PeeringCandidate")
-	}
-
-	return pc, nil
+	klog.Infof("No PeeringCandidate selected")
+	return nil, errors.NewNotFound(schema.GroupResource{Group: "advertisement", Resource: "PeeringCandidate"}, "PeeringCandidate")
 }
 
 func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nodecorev1alpha1.Solver) (*advertisementv1alpha1.Discovery, error) {
