@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,13 @@ package rearmanager
 
 import (
 	"context"
+	"encoding/json"
 
 	liqodiscovery "github.com/liqotech/liqo/apis/discovery/v1alpha1"
 	discovery "github.com/liqotech/liqo/pkg/discovery"
 	fcutils "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -42,6 +44,7 @@ import (
 )
 
 // clusterRole
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
@@ -88,17 +91,59 @@ func (r *AllocationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	if allocation.Spec.Type == nodecorev1alpha1.Node {
-		return r.handleNodeAllocation(ctx, req, &allocation)
+	// Different actions based on the type of Flavor related to the contract of the Allocation
+	// Get the contract related to the Allocation
+	contract := &reservation.Contract{}
+	if err := r.Client.Get(ctx, types.NamespacedName{
+		Name:      allocation.Spec.Contract.Name,
+		Namespace: allocation.Spec.Contract.Namespace,
+	}, contract); err != nil {
+		klog.Errorf("Error when getting Contract %s: %v", allocation.Spec.Contract.Name, err)
+		allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting Contract")
+		if err := r.updateAllocationStatus(ctx, &allocation); err != nil {
+			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	}
 
-	if allocation.Spec.Type == nodecorev1alpha1.VirtualNode && allocation.Spec.Destination == nodecorev1alpha1.Local {
-		return r.handleVirtualNodeAllocation(ctx, req, &allocation)
+	// Parse Flavor type and data
+	flavorTypeIdentifier, _, err := nodecorev1alpha1.ParseFlavorType(&contract.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing Flavor %s: %v", contract.Spec.Flavor.Name, err)
+		allocation.SetStatus(nodecorev1alpha1.Error, "Error when parsing Flavor")
+		if err := r.updateAllocationStatus(ctx, &allocation); err != nil {
+			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, nil
+	switch flavorTypeIdentifier {
+	case nodecorev1alpha1.TypeK8Slice:
+		// We are handling a K8Slice type
+		// Check if we are the provider of the Allocation
+		if IsProvider(ctx, &allocation, r.Client) {
+			// We need to handle the Allocation as a provider
+			return r.handleK8SliceProviderAllocation(ctx, req, &allocation, contract)
+		}
+		// We need to handle the Allocation as a consumer
+		return r.handleK8SliceConsumerAllocation(ctx, req, &allocation, contract)
+		// TODO: handle other types of Flavor in the Contract of the Allocation
+	default:
+		// We are handling a different type
+		klog.Errorf("Flavor %s is not a K8Slice type", contract.Spec.Flavor.Name)
+		allocation.SetStatus(nodecorev1alpha1.Error, "Flavor is not a K8Slice type")
+		if err := r.updateAllocationStatus(ctx, &allocation); err != nil {
+			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
 }
 
+// checkInitialStatus checks if the Allocation is in an initial status, if not it sets it to Inactive.
 func (r *AllocationReconciler) checkInitialStatus(allocation *nodecorev1alpha1.Allocation) bool {
 	if allocation.Status.Status != nodecorev1alpha1.Active &&
 		allocation.Status.Status != nodecorev1alpha1.Reserved &&
@@ -110,9 +155,10 @@ func (r *AllocationReconciler) checkInitialStatus(allocation *nodecorev1alpha1.A
 	return false
 }
 
-func (r *AllocationReconciler) handleNodeAllocation(ctx context.Context,
-	req ctrl.Request, allocation *nodecorev1alpha1.Allocation) (ctrl.Result, error) {
+func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Context,
+	req ctrl.Request, allocation *nodecorev1alpha1.Allocation, contract *reservation.Contract) (ctrl.Result, error) {
 	allocStatus := allocation.Status.Status
+	// Get the contract related to the Allocation
 	switch allocStatus {
 	case nodecorev1alpha1.Active:
 		// We need to check if the ForeignCluster is still ready
@@ -120,42 +166,39 @@ func (r *AllocationReconciler) handleNodeAllocation(ctx context.Context,
 		klog.Infof("Allocation %s is active", req.NamespacedName)
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.Reserved:
-		if allocation.Spec.Destination == nodecorev1alpha1.Remote {
-			// We need to check the status of the ForeignCluster
-			// If the ForeignCluster is Ready the Allocation can be set to Active
-			// else we need to wait for the ForeignCluster to be Ready
-			klog.Infof("Allocation %s is reserved", req.NamespacedName)
-			fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, allocation.Spec.RemoteClusterID)
-			// check if not found
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					klog.Infof("ForeignCluster %s not found", allocation.Spec.RemoteClusterID)
-					allocation.SetStatus(nodecorev1alpha1.Reserved, "ForeignCluster not found, peering not yet started")
-				} else {
-					klog.Errorf("Error when getting ForeignCluster %s: %v", allocation.Spec.RemoteClusterID, err)
-					allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting ForeignCluster")
-				}
-				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-					klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-					return ctrl.Result{}, err
-				}
-				return ctrl.Result{}, nil
-			}
-			if fcutils.IsIncomingJoined(fc) &&
-				fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-				fcutils.IsAuthenticated(fc) &&
-				!fcutils.IsUnpeered(fc) {
-				klog.Infof("ForeignCluster %s is ready, incoming peering enstablished", allocation.Spec.RemoteClusterID)
-				allocation.SetStatus(nodecorev1alpha1.Active, "Incoming peering ready, Allocation is now Active")
+		// We need to check the status of the ForeignCluster
+		// If the ForeignCluster is Ready the Allocation can be set to Active
+		// else we need to wait for the ForeignCluster to be Ready
+		klog.Infof("Allocation %s is reserved", req.NamespacedName)
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.PeeringTargetCredentials.ClusterID)
+		// check if not found
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				klog.Infof("ForeignCluster %s not found", contract.Spec.PeeringTargetCredentials.ClusterID)
+				allocation.SetStatus(nodecorev1alpha1.Reserved, "ForeignCluster not found, peering not yet started")
 			} else {
-				klog.Infof("ForeignCluster %s is not ready yet", allocation.Spec.RemoteClusterID)
-				allocation.SetStatus(nodecorev1alpha1.Reserved, "Incoming peering not yet ready, Allocation is still Reserved")
+				klog.Errorf("Error when getting ForeignCluster %s: %v", contract.Spec.PeeringTargetCredentials.ClusterID, err)
+				allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting ForeignCluster")
 			}
 			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
+		}
+		if fcutils.IsIncomingJoined(fc) &&
+			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
+			fcutils.IsAuthenticated(fc) &&
+			!fcutils.IsUnpeered(fc) {
+			klog.Infof("ForeignCluster %s is ready, incoming peering enstablished", contract.Spec.PeeringTargetCredentials.ClusterID)
+			allocation.SetStatus(nodecorev1alpha1.Active, "Incoming peering ready, Allocation is now Active")
+		} else {
+			klog.Infof("ForeignCluster %s is not ready yet", contract.Spec.PeeringTargetCredentials.ClusterID)
+			allocation.SetStatus(nodecorev1alpha1.Reserved, "Incoming peering not yet ready, Allocation is still Reserved")
+		}
+		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+			return ctrl.Result{}, err
 		}
 		// We can set the Allocation to Active
 		klog.Infof("Allocation will be used locally, we can put it in 'Active' State", req.NamespacedName)
@@ -171,42 +214,15 @@ func (r *AllocationReconciler) handleNodeAllocation(ctx context.Context,
 		// We need to check if the ForeignCluster is again ready
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.Inactive:
-		// Alloction Type is Node, so we need to invalidate the Flavour
+		// Allocation is performed by the provider, so we need to invalidate the Flavor
 		// and eventually create a new one detaching the right Partition from the old one
 		klog.Infof("Allocation %s is inactive", req.NamespacedName)
 
-		// Get the contract related to the Allocation
-		contract := &reservation.Contract{}
-		if err := r.Client.Get(ctx, types.NamespacedName{
-			Name:      allocation.Spec.Contract.Name,
-			Namespace: allocation.Spec.Contract.Namespace,
-		}, contract); err != nil {
-			klog.Errorf("Error when getting Contract %s: %v", allocation.Spec.Contract.Name, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting Contract")
-			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-
-		flavour, err := services.GetFlavourByID(contract.Spec.Flavour.Name, r.Client)
+		// Get the Flavor related to the Allocation by the Contract
+		flavor, err := services.GetFlavorByID(contract.Spec.Flavor.Name, r.Client)
 		if err != nil {
-			klog.Errorf("Error when getting Flavour %s: %v", contract.Spec.Flavour.Name, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting Flavour")
-			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-		flavourCopy := flavour.DeepCopy()
-		flavourCopy.Spec.OptionalFields.Availability = false
-		klog.Infof("Updating Flavour %s: Availability %t", flavourCopy.Name, flavourCopy.Spec.OptionalFields.Availability)
-		// TODO: Known issue, availability will be not updated
-		if err := r.Client.Update(ctx, flavourCopy); err != nil {
-			klog.Errorf("Error when updating Flavour %s: %v", flavourCopy.Name, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when updating Flavour")
+			klog.Errorf("Error when getting Flavor %s: %v", contract.Spec.Flavor.Name, err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting Flavor")
 			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -214,25 +230,18 @@ func (r *AllocationReconciler) handleNodeAllocation(ctx context.Context,
 			return ctrl.Result{}, nil
 		}
 
-		if contract.Spec.Partition != nil {
-			// We need to create a new Flavour with the right Partition
-			flavourRes := contract.Spec.Flavour.Spec.Characteristics
-			allocationRes := computeResources(contract)
-
-			newCharacteristics := computeCharacteristics(&flavourRes, allocationRes)
-			newFlavour := resourceforge.ForgeFlavourFromRef(flavour, newCharacteristics)
-
-			if err := r.Client.Create(ctx, newFlavour); err != nil {
-				klog.Errorf("Error when creating Flavour %s: %v", newFlavour.Name, err)
-				allocation.SetStatus(nodecorev1alpha1.Error, "Error when creating Flavour")
-				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-					klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-					return ctrl.Result{}, err
-				}
-				return ctrl.Result{}, nil
+		// Reduce the availability of the Flavor
+		if err := reduceFlavorAvailability(ctx, flavor, contract, r.Client); err != nil {
+			klog.Errorf("Error when reducing Flavor %s availability: %v", contract.Spec.Flavor.Name, err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when reducing Flavor availability")
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, nil
 		}
 
+		// Switch to Reserved state
 		allocation.SetStatus(nodecorev1alpha1.Reserved, "Resources reserved")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
@@ -245,21 +254,27 @@ func (r *AllocationReconciler) handleNodeAllocation(ctx context.Context,
 	}
 }
 
-func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
-	req ctrl.Request, allocation *nodecorev1alpha1.Allocation) (ctrl.Result, error) {
+func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Context,
+	req ctrl.Request, allocation *nodecorev1alpha1.Allocation, contract *reservation.Contract) (ctrl.Result, error) {
 	allocStatus := allocation.Status.Status
 	switch allocStatus {
 	case nodecorev1alpha1.Active:
+		// The Allocation is active,
 		// We need to check if the ForeignCluster is ready
 
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, allocation.Spec.RemoteClusterID)
-		// check if not found
+		// Get the foreign cluster related to the Allocation
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.PeeringTargetCredentials.ClusterID)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				klog.Infof("ForeignCluster %s not found", allocation.Spec.RemoteClusterID)
+				// The ForeignCluster is not found
+				// We need to roll back to the establish peering phase
+				klog.Infof("ForeignCluster %s not found", contract.Spec.PeeringTargetCredentials.ClusterID)
+				// Change the status of the Allocation to Reserved
 				allocation.SetStatus(nodecorev1alpha1.Reserved, "ForeignCluster not found, peering not yet started")
 			} else {
-				klog.Errorf("Error when getting ForeignCluster %s: %v", allocation.Spec.RemoteClusterID, err)
+				// Error when getting the ForeignCluster
+				klog.Errorf("Error when getting ForeignCluster %s: %v", contract.Spec.PeeringTargetCredentials.ClusterID, err)
+				// Change the status of the Allocation to Error
 				allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting ForeignCluster")
 			}
 			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
@@ -268,14 +283,20 @@ func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
 			}
 			return ctrl.Result{}, nil
 		}
+
+		// Check if the ForeignCluster is ready with Liqo checks
 		if fcutils.IsOutgoingJoined(fc) &&
 			fcutils.IsAuthenticated(fc) &&
 			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
 			!fcutils.IsUnpeered(fc) {
-			klog.Infof("ForeignCluster %s is ready, outgoing peering enstablished", allocation.Spec.RemoteClusterID)
+			// The ForeignCluster is ready
+			klog.Infof("ForeignCluster %s is ready, outgoing peering established", contract.Spec.PeeringTargetCredentials.ClusterID)
+			// Change the status of the Allocation to Active
 			allocation.SetStatus(nodecorev1alpha1.Active, "Outgoing peering ready, Allocation is Active")
 		} else {
-			klog.Infof("ForeignCluster %s is not ready yet", allocation.Spec.RemoteClusterID)
+			// The ForeignCluster is not ready
+			klog.Infof("ForeignCluster %s is not ready yet", contract.Spec.PeeringTargetCredentials.ClusterID)
+			// Change the status of the Allocation to Reserved
 			allocation.SetStatus(nodecorev1alpha1.Active, "Outgoing peering not yet ready, Allocation is Active")
 		}
 
@@ -286,31 +307,21 @@ func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
 
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.Reserved:
+		// The Allocation is reserved,
+		// We need to establish the peering with the ForeignCluster
 
 		klog.Infof("Allocation %s is reserved", req.NamespacedName)
 
-		klog.Infof("Allocation %s is trying to enstablish a peering", req.NamespacedName.Name)
+		klog.Infof("Allocation %s is trying to establish a peering", req.NamespacedName.Name)
 
 		klog.InfofDepth(1, "Allocation %s is retrieving credentials", req.NamespacedName)
-		// Get the contract from the allocation
-		contract := &reservation.Contract{}
-		if err := r.Client.Get(ctx, types.NamespacedName{
-			Name:      allocation.Spec.Contract.Name,
-			Namespace: allocation.Spec.Contract.Namespace,
-		}, contract); err != nil {
-			klog.Errorf("Error when getting Contract %s: %v", allocation.Spec.Contract.Name, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting Contract")
-			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
 
 		klog.InfofDepth(1, "Allocation %s has retrieved contract %s from namespace %s", req.NamespacedName, contract.Name, contract.Namespace)
 
-		credentials := contract.Spec.SellerCredentials
+		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
+		credentials := contract.Spec.PeeringTargetCredentials
 
+		// Establish peering
 		klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterName)
 		_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
 			credentials.ClusterName, credentials.Endpoint, credentials.Token)
@@ -323,7 +334,10 @@ func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
 			}
 			return ctrl.Result{}, err
 		}
+		// Peering established
 		klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+
+		// Change the status of the Allocation to Active
 		allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
@@ -336,6 +350,8 @@ func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.Inactive:
 		klog.Infof("Allocation %s is inactive", req.NamespacedName)
+
+		// Change the status of the Allocation to Reserved
 		allocation.SetStatus(nodecorev1alpha1.Reserved, "Allocation is now Reserved")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
@@ -348,40 +364,142 @@ func (r *AllocationReconciler) handleVirtualNodeAllocation(ctx context.Context,
 	}
 }
 
-func computeResources(contract *reservation.Contract) *nodecorev1alpha1.Characteristics {
-	if contract.Spec.Partition != nil {
-		return &nodecorev1alpha1.Characteristics{
-			Architecture:      contract.Spec.Partition.Architecture,
-			Cpu:               contract.Spec.Partition.CPU,
-			Memory:            contract.Spec.Partition.Memory,
-			Pods:              contract.Spec.Partition.Pods,
-			EphemeralStorage:  contract.Spec.Partition.EphemeralStorage,
-			Gpu:               contract.Spec.Partition.Gpu,
-			PersistentStorage: contract.Spec.Partition.Storage,
-		}
+// computeK8SliceCharacteristics computes the new K8SliceCharacteristics from the origin and the partition obtained by the K8SliceConfiguration.
+func computeK8SliceCharacteristics(origin *nodecorev1alpha1.K8SliceCharacteristics,
+	part *nodecorev1alpha1.K8SliceConfiguration) *nodecorev1alpha1.K8SliceCharacteristics {
+	// Compulsory fields
+	newCPU := origin.CPU.DeepCopy()
+	newMemory := origin.Memory.DeepCopy()
+	newPods := origin.Pods.DeepCopy()
+	newCPU.Sub(part.CPU)
+	newMemory.Sub(part.Memory)
+	newPods.Sub(part.Pods)
+
+	return &nodecorev1alpha1.K8SliceCharacteristics{
+		CPU:    newCPU,
+		Memory: newMemory,
+		Pods:   newPods,
+		Gpu: func() *nodecorev1alpha1.GPU {
+			switch {
+			case part.Gpu != nil && origin != nil:
+				// Gpu is present in the origin and in the partition
+				newGpuCores := origin.Gpu.Cores.DeepCopy()
+				newGpuCores.Sub(part.Gpu.Cores)
+				newGpuMemory := origin.Gpu.Memory.DeepCopy()
+				newGpuMemory.Sub(part.Gpu.Memory)
+				return &nodecorev1alpha1.GPU{
+					Model:  origin.Gpu.Model,
+					Cores:  newGpuCores,
+					Memory: newGpuMemory,
+				}
+			case part.Gpu == nil && origin.Gpu != nil:
+				// Gpu is present in the origin but not in the partition
+				return origin.Gpu.DeepCopy()
+			default:
+				// Gpu is not present in the origin and in the partition
+				return nil
+			}
+		}(),
+		Storage: func() *resource.Quantity {
+			switch {
+			case part.Storage != nil && origin.Storage != nil:
+				// Storage is present in the origin and in the partition
+				newStorage := origin.Storage.DeepCopy()
+				newStorage.Sub(*part.Storage)
+				return &newStorage
+			case part.Storage == nil && origin.Storage != nil:
+				// Storage is present in the origin but not in the partition
+				newStorage := origin.Storage.DeepCopy()
+				return &newStorage
+			default:
+				// Storage is not present in the origin and in the partition
+				return nil
+			}
+		}(),
 	}
-	return contract.Spec.Flavour.Spec.Characteristics.DeepCopy()
 }
 
-func computeCharacteristics(origin, part *nodecorev1alpha1.Characteristics) *nodecorev1alpha1.Characteristics {
-	newCPU := origin.Cpu.DeepCopy()
-	newMemory := origin.Memory.DeepCopy()
-	newStorage := origin.PersistentStorage.DeepCopy()
-	newGpu := origin.Gpu.DeepCopy()
-	newEphemeralStorage := origin.EphemeralStorage.DeepCopy()
-	newCPU.Sub(part.Cpu)
-	newMemory.Sub(part.Memory)
-	newStorage.Sub(part.PersistentStorage)
-	newGpu.Sub(part.Gpu)
-	newEphemeralStorage.Sub(part.EphemeralStorage)
-	return &nodecorev1alpha1.Characteristics{
-		Architecture:      origin.Architecture,
-		Cpu:               newCPU,
-		Memory:            newMemory,
-		Gpu:               newGpu,
-		PersistentStorage: newStorage,
-		EphemeralStorage:  newEphemeralStorage,
+// reduceFlavorAvailability reduces the availability of a Flavor and manage the creation fo new one in case of specific configuration.
+func reduceFlavorAvailability(ctx context.Context, flavor *nodecorev1alpha1.Flavor, contract *reservation.Contract, r client.Client) error {
+	flavor.Spec.Availability = false
+	klog.Infof("Updating Flavor %s: Availability %t", flavor.Name, flavor.Spec.Availability)
+
+	// TODO: check update is actually working
+	if err := r.Update(ctx, flavor); err != nil {
+		klog.Errorf("Error when updating Flavor %s: %v", flavor.Name, err)
+		return err
 	}
+
+	klog.Info("Flavor availability updated")
+
+	if contract.Spec.Configuration != nil {
+		// Depending on the flavor type we may need to perform different action
+		// Parse Flavor to get Flavor type
+		flavorTypeIdentifier, flavorTypeData, err := nodecorev1alpha1.ParseFlavorType(flavor)
+		if err != nil {
+			klog.Errorf("Error when parsing Flavor %s: %v", flavor.Name, err)
+			return err
+		}
+
+		switch flavorTypeIdentifier {
+		case nodecorev1alpha1.TypeK8Slice:
+			// We are handling a K8Slice type
+			// Force casting
+			k8SliceFlavor := flavorTypeData.(nodecorev1alpha1.K8Slice)
+			// Get configuration from the contract
+			configurationTypeIdentifier, configurationData, err := nodecorev1alpha1.ParseConfiguration(contract.Spec.Configuration)
+			if err != nil {
+				klog.Errorf("Error when parsing Configuration %s: %v", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
+				return err
+			}
+			if configurationTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
+				klog.Errorf("Configuration %s is not a K8Slice type", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
+				return err
+			}
+			// Force casting
+			k8SliceConfiguration := configurationData.(nodecorev1alpha1.K8SliceConfiguration)
+
+			// Compute new Flavor that will be created based on the configuration
+			// Get new K8SliceCharacteristics from the origin and the partition obtained by the K8SliceConfiguration
+			newCharacteristics := computeK8SliceCharacteristics(&k8SliceFlavor.Characteristics, &k8SliceConfiguration)
+
+			// Forge new flavor type
+			newK8Slice := &nodecorev1alpha1.K8Slice{
+				Characteristics: *newCharacteristics,
+				Policies:        *k8SliceFlavor.Policies.DeepCopy(),
+				Properties:      *k8SliceFlavor.Properties.DeepCopy(),
+			}
+
+			// Serialize new K8Slice to fit in the FlavorType->Data field
+			newK8SliceBytes, err := json.Marshal(newK8Slice)
+			if err != nil {
+				klog.Errorf("Error when marshaling new K8Slice %s: %v", contract.Spec.Flavor.Name, err)
+				return err
+			}
+
+			// Create new FlavorType
+			newFlavorType := &nodecorev1alpha1.FlavorType{
+				TypeIdentifier: nodecorev1alpha1.TypeK8Slice,
+				TypeData:       runtime.RawExtension{Raw: newK8SliceBytes},
+			}
+
+			newFlavor := resourceforge.ForgeFlavorFromRef(flavor, newFlavorType)
+
+			// Create new Flavor
+			if err := r.Create(ctx, newFlavor); err != nil {
+				klog.Errorf("Error when creating Flavor %s: %v", newFlavor.Name, err)
+				return err
+			}
+
+			klog.Infof("Flavor %s created", newFlavor.Name)
+		default:
+			klog.Errorf("Flavor type %s is not supported", flavorTypeIdentifier)
+			return nil
+		}
+	}
+
+	klog.Info("No configuration found, no further action needed")
+	return nil
 }
 
 func (r *AllocationReconciler) updateAllocationStatus(ctx context.Context, allocation *nodecorev1alpha1.Allocation) error {
@@ -416,7 +534,7 @@ func (r *AllocationReconciler) fcToAllocation(_ context.Context, o client.Object
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      *allocationName,
-				Namespace: flags.FluidoNamespace,
+				Namespace: flags.FluidosNamespace,
 			},
 		},
 	}

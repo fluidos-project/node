@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,39 +25,39 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
-// FlavourService is the interface that wraps the basic Flavour methods and allows to manage the concurrent access to the Flavour CRs.
-type FlavourService interface {
+// FlavorService is the interface that wraps the basic Flavor methods and allows to manage the concurrent access to the Flavor CRs.
+type FlavorService interface {
 	sync.Mutex
-	GetAllFlavours() ([]nodecorev1alpha1.Flavour, error)
-	GetFlavourByID(flavourID string) (*nodecorev1alpha1.Flavour, error)
+	GetAllFlavors() ([]nodecorev1alpha1.Flavor, error)
+	GetFlavorByID(flavorID string) (*nodecorev1alpha1.Flavor, error)
 }
 
-// GetAllFlavours returns all the Flavours in the cluster.
-func GetAllFlavours(cl client.Client) ([]nodecorev1alpha1.Flavour, error) {
-	var flavourList nodecorev1alpha1.FlavourList
+// GetAllFlavors returns all the Flavors in the cluster.
+func GetAllFlavors(cl client.Client) ([]nodecorev1alpha1.Flavor, error) {
+	var flavorList nodecorev1alpha1.FlavorList
 
-	// List all Flavour CRs
-	err := cl.List(context.Background(), &flavourList)
+	// List all Flavor CRs
+	err := cl.List(context.Background(), &flavorList)
 	if err != nil {
-		klog.Errorf("Error when listing Flavours: %s", err)
+		klog.Errorf("Error when listing Flavors: %s", err)
 		return nil, err
 	}
 
-	return flavourList.Items, nil
+	return flavorList.Items, nil
 }
 
-// GetFlavourByID returns the entire Flavour CR (not only spec) in the cluster that matches the flavourID.
-func GetFlavourByID(flavourID string, cl client.Client) (*nodecorev1alpha1.Flavour, error) {
-	// Get the flavour with the given ID (that is the name of the CR)
-	flavour := &nodecorev1alpha1.Flavour{}
+// GetFlavorByID returns the entire Flavor CR (not only spec) in the cluster that matches the flavorID.
+func GetFlavorByID(flavorID string, cl client.Client) (*nodecorev1alpha1.Flavor, error) {
+	// Get the flavor with the given ID (that is the name of the CR)
+	flavor := &nodecorev1alpha1.Flavor{}
 	err := cl.Get(context.Background(), client.ObjectKey{
-		Namespace: flags.FluidoNamespace,
-		Name:      flavourID,
-	}, flavour)
+		Namespace: flags.FluidosNamespace,
+		Name:      flavorID,
+	}, flavor)
 	if err != nil {
-		klog.Errorf("Error when getting Flavour %s: %s", flavourID, err)
+		klog.Errorf("Error when getting Flavor %s: %s", flavorID, err)
 		return nil, err
 	}
 
-	return flavour, nil
+	return flavor, nil
 }

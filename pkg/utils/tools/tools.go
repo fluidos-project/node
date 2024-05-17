@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,27 @@ func GetTimeNow() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-// CheckExpiration checks if the timestamp has expired.
-func CheckExpiration(timestamp string, expTime time.Duration) bool {
-	t, err := time.Parse(time.RFC3339, timestamp)
+// GetExpirationTime returns the current time plus 24 hours in RFC3339 format.
+func GetExpirationTime() string {
+	return time.Now().Add(time.Hour * 24).Format(time.RFC3339)
+}
+
+// CheckExpiration checks if the expirationTimestamp has already expired.
+func CheckExpiration(expirationTimestamp string) bool {
+	t, err := time.Parse(time.RFC3339, expirationTimestamp)
 	if err != nil {
 		klog.Errorf("Error parsing the transaction start time: %s", err)
 		return false
 	}
-	return time.Since(t) > expTime
+	return time.Now().After(t)
+}
+
+// CheckExpirationSinceTime checks if the expirationTimestamp has already expired.
+func CheckExpirationSinceTime(sinceTimestamp string, expirationLapse time.Duration) bool {
+	t, err := time.Parse(time.RFC3339, sinceTimestamp)
+	if err != nil {
+		klog.Errorf("Error parsing the transaction start time: %s", err)
+		return false
+	}
+	return time.Since(t) > expirationLapse
 }

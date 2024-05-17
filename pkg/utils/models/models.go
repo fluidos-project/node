@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,108 +15,202 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
 
-// Flavour represents a Flavour object with its characteristics and policies.
-type Flavour struct {
-	FlavourID         string          `json:"flavourID"`
-	ProviderID        string          `json:"providerID"`
-	Type              string          `json:"type"`
-	Characteristics   Characteristics `json:"characteristics"`
-	Policy            Policy          `json:"policy"`
-	Owner             NodeIdentity    `json:"owner"`
-	Price             Price           `json:"price"`
-	ExpirationTime    time.Time       `json:"expirationTime"`
-	QuantityAvailable int             `json:"quantityAvailable,omitempty"`
-	OptionalFields    OptionalFields  `json:"optionalFields"`
+// Flavor represents a Flavor object with its characteristics and policies.
+type Flavor struct {
+	FlavorID            string       `json:"flavorID"`
+	ProviderID          string       `json:"providerID"`
+	Type                FlavorType   `json:"type"`
+	NetworkPropertyType string       `json:"networkPropertyType,omitempty"`
+	Timestamp           time.Time    `json:"timestamp"`
+	Location            *Location    `json:"location,omitempty"`
+	Price               Price        `json:"price"`
+	Owner               NodeIdentity `json:"owner"`
+	Availability        bool         `json:"availability"`
 }
 
-// Characteristics represents the characteristics of a Flavour, such as CPU and RAM.
-type Characteristics struct {
-	CPU               resource.Quantity `json:"cpu,omitempty"`
-	Memory            resource.Quantity `json:"memory,omitempty"`
-	Pods              resource.Quantity `json:"pods,omitempty"`
-	PersistentStorage resource.Quantity `json:"storage,omitempty"`
-	EphemeralStorage  resource.Quantity `json:"ephemeralStorage,omitempty"`
-	Gpu               resource.Quantity `json:"gpu,omitempty"`
-	Architecture      string            `json:"architecture,omitempty"`
+const (
+	// RangeMinKey is the key for the identifier of the minimum value in a range.
+	RangeMinKey = "min"
+	// RangeMaxKey is the key for the identifier of the maximum value in a range.
+	RangeMaxKey = "max"
+)
+
+// FlavorType represents the type of a Flavor.
+type FlavorType struct {
+	Name FlavorTypeName  `json:"name"`
+	Data json.RawMessage `json:"data"`
 }
 
-// Policy represents the policy associated with a Flavour, which can be either Partitionable or Aggregatable.
-type Policy struct {
-	Partitionable *Partitionable `json:"partitionable,omitempty"`
-	Aggregatable  *Aggregatable  `json:"aggregatable,omitempty"`
+// FlavorTypeData represents the data of a FlavorType.
+type FlavorTypeData interface {
+	GetFlavorTypeName() FlavorTypeName
 }
 
-// Partitionable represents the partitioning properties of a Flavour, such as the minimum and incremental values of CPU and RAM.
-type Partitionable struct {
-	CPUMinimum    resource.Quantity `json:"cpuMinimum"`
-	MemoryMinimum resource.Quantity `json:"memoryMinimum"`
-	PodsMinimum   resource.Quantity `json:"podsMinimum"`
-	CPUStep       resource.Quantity `json:"cpuStep"`
-	MemoryStep    resource.Quantity `json:"memoryStep"`
-	PodsStep      resource.Quantity `json:"podsStep"`
+// FlavorTypeName represents the name of a FlavorType.
+type FlavorTypeName string
+
+// CarbonFootprint represents the carbon footprint of a Flavor, with embodied and operational values.
+type CarbonFootprint struct {
+	Embodied    int `json:"embodied"`
+	Operational int `json:"operational"`
 }
 
-// Aggregatable represents the aggregation properties of a Flavour, such as the minimum instance count.
-type Aggregatable struct {
-	MinCount int `json:"minCount"`
-	MaxCount int `json:"maxCount"`
+const (
+	// K8SliceNameDefault is the default name for a K8Slice Flavor.
+	K8SliceNameDefault FlavorTypeName = "k8slice"
+	// VMNameDefault is the default name for a VM Flavor.
+	VMNameDefault FlavorTypeName = "vm"
+	// ServiceNameDefault is the default name for a Service Flavor.
+	ServiceNameDefault FlavorTypeName = "service"
+	// SensorNameDefault is the default name for a Sensor Flavor.
+	SensorNameDefault FlavorTypeName = "sensor"
+)
+
+// Location represents the location of a Flavor, with latitude, longitude, altitude, and additional notes.
+type Location struct {
+	Latitude        string `json:"latitude,omitempty"`
+	Longitude       string `json:"longitude,omitempty"`
+	Country         string `json:"altitude,omitempty"`
+	City            string `json:"city,omitempty"`
+	AdditionalNotes string `json:"additionalNotes,omitempty"`
 }
 
-// NodeIdentity represents the owner of a Flavour, with associated ID, IP, and domain name.
+// NodeIdentityAdditionalInfo represents additional information about a NodeIdentity.
+type NodeIdentityAdditionalInfo struct {
+	LiqoID string `json:"liqoID,omitempty"`
+}
+
+// NodeIdentity represents the owner of a Flavor, with associated ID, IP, and domain name.
 type NodeIdentity struct {
-	NodeID string `json:"ID"`
-	IP     string `json:"IP"`
-	Domain string `json:"domain"`
+	NodeID                string                      `json:"ID"`
+	IP                    string                      `json:"IP"`
+	Domain                string                      `json:"domain"`
+	AdditionalInformation *NodeIdentityAdditionalInfo `json:"additionalInformation,omitempty"`
 }
 
-// Price represents the price of a Flavour, with the amount, currency, and period associated.
+// Price represents the price of a Flavor, with the amount, currency, and period associated.
 type Price struct {
 	Amount   string `json:"amount"`
 	Currency string `json:"currency"`
 	Period   string `json:"period"`
 }
 
-// OptionalFields represents the optional fields of a Flavour, such as availability.
-type OptionalFields struct {
-	Availability bool   `json:"availability,omitempty"`
-	WorkerID     string `json:"workerID"`
+// Selector represents the criteria for selecting Flavors.
+type Selector interface {
+	GetSelectorType() FlavorTypeName
 }
 
-// Selector represents the criteria for selecting Flavours.
-type Selector struct {
-	FlavourType   string         `json:"type,omitempty"`
-	Architecture  string         `json:"architecture,omitempty"`
-	RangeSelector *RangeSelector `json:"rangeSelector,omitempty"`
-	MatchSelector *MatchSelector `json:"matchSelector,omitempty"`
+// K8SliceSelector represents the criteria for selecting a K8Slice Flavor.
+type K8SliceSelector struct {
+	CPU     *ResourceQuantityFilter `scheme:"cpu,omitempty"`
+	Memory  *ResourceQuantityFilter `scheme:"memory,omitempty"`
+	Pods    *ResourceQuantityFilter `scheme:"pods,omitempty"`
+	Storage *ResourceQuantityFilter `scheme:"storage,omitempty"`
 }
 
-// MatchSelector represents the criteria for selecting Flavours through a strict match.
-type MatchSelector struct {
-	CPU              resource.Quantity `json:"cpu,omitempty"`
-	Memory           resource.Quantity `json:"memory,omitempty"`
-	Pods             resource.Quantity `json:"pods,omitempty"`
-	Storage          resource.Quantity `json:"storage,omitempty"`
-	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
-	Gpu              resource.Quantity `json:"gpu,omitempty"`
+// GetSelectorType returns the type of the Selector.
+func (ks K8SliceSelector) GetSelectorType() FlavorTypeName {
+	return K8SliceNameDefault
 }
 
-// RangeSelector represents the criteria for selecting Flavours through a range.
-type RangeSelector struct {
-	MinCPU     resource.Quantity `json:"minCpu,omitempty"`
-	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
-	MinPods    resource.Quantity `json:"minPods,omitempty"`
-	MinStorage resource.Quantity `json:"minStorage,omitempty"`
-	MinEph     resource.Quantity `json:"minEph,omitempty"`
-	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
-	MaxCPU     resource.Quantity `json:"maxCpu,omitempty"`
-	MaxMemory  resource.Quantity `json:"maxMemory,omitempty"`
-	MaxPods    resource.Quantity `json:"maxPods,omitempty"`
-	MaxStorage resource.Quantity `json:"maxStorage,omitempty"`
-	MaxEph     resource.Quantity `json:"maxEph,omitempty"`
-	MaxGpu     resource.Quantity `json:"maxGpu,omitempty"`
+// ResourceQuantityFilter represents a filter for a resource quantity.
+type ResourceQuantityFilter struct {
+	Name FilterType      `scheme:"name"`
+	Data json.RawMessage `scheme:"data"`
+}
+
+// ResourceQuantityFilterData represents the data of a ResourceQuantityFilter.
+type ResourceQuantityFilterData interface {
+	GetFilterType() FilterType
+}
+
+// FilterType represents the type of a Filter.
+type FilterType string
+
+const (
+	// MatchFilter is the identifier for a match filter.
+	MatchFilter FilterType = "Match"
+	// RangeFilter is the identifier for a range filter.
+	RangeFilter FilterType = "Range"
+)
+
+// ResourceQuantityMatchFilter represents a match filter for a resource quantity.
+type ResourceQuantityMatchFilter struct {
+	Value resource.Quantity `scheme:"value"`
+}
+
+// GetFilterType returns the type of the Filter.
+func (fq ResourceQuantityMatchFilter) GetFilterType() FilterType {
+	return MatchFilter
+}
+
+// ResourceQuantityRangeFilter represents a range filter for a resource quantity.
+type ResourceQuantityRangeFilter struct {
+	Min *resource.Quantity `scheme:"min,omitempty"`
+	Max *resource.Quantity `scheme:"max,omitempty"`
+}
+
+// GetFilterType returns the type of the Filter.
+func (fq ResourceQuantityRangeFilter) GetFilterType() FilterType {
+	return RangeFilter
+}
+
+// MapToFlavorTypeName maps a nodecorev1alpha1.FlavorTypeIdentifier to a models.FlavorTypeName.
+func MapToFlavorTypeName(flavorType nodecorev1alpha1.FlavorTypeIdentifier) FlavorTypeName {
+	switch flavorType {
+	case nodecorev1alpha1.TypeK8Slice:
+		return K8SliceNameDefault
+	case nodecorev1alpha1.TypeVM:
+		return VMNameDefault
+	case nodecorev1alpha1.TypeService:
+		return ServiceNameDefault
+	default:
+		return ""
+	}
+}
+
+// MapFromFlavorTypeName maps a models.FlavorTypeName to a nodecorev1alpha1.FlavorTypeIdentifier.
+func MapFromFlavorTypeName(flavorType FlavorTypeName) nodecorev1alpha1.FlavorTypeIdentifier {
+	switch flavorType {
+	case K8SliceNameDefault:
+		return nodecorev1alpha1.TypeK8Slice
+	case VMNameDefault:
+		return nodecorev1alpha1.TypeVM
+	case ServiceNameDefault:
+		return nodecorev1alpha1.TypeService
+	default:
+		return ""
+	}
+}
+
+// MapToFilterType maps a nodecorev1alpha1.FilterType to a models.FilterType.
+func MapToFilterType(filterType nodecorev1alpha1.FilterType) FilterType {
+	switch filterType {
+	case nodecorev1alpha1.TypeMatchFilter:
+		return MatchFilter
+	case nodecorev1alpha1.TypeRangeFilter:
+		return RangeFilter
+	default:
+		return ""
+	}
+}
+
+// MapFromFilterType maps a models.FilterType to a nodecorev1alpha1.FilterType.
+func MapFromFilterType(filterType FilterType) nodecorev1alpha1.FilterType {
+	switch filterType {
+	case MatchFilter:
+		return nodecorev1alpha1.TypeMatchFilter
+	case RangeFilter:
+		return nodecorev1alpha1.TypeRangeFilter
+	default:
+		return ""
+	}
 }

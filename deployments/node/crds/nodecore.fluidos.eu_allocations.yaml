@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: AllocationSpec defines the desired state of Allocation
+            description: AllocationSpec defines the desired state of Allocation.
             properties:
               contract:
                 description: This is the reference to the contract related to the
@@ -52,11 +52,6 @@ spec:
                       empty in case of cluster-wide resources.
                     type: string
                 type: object
-              destination:
-                description: This specifies if the destination of the allocation is
-                  local or remote so if the allocation will be used locally or from
-                  a remote cluster
-                type: string
               forwarding:
                 description: |-
                   This flag indicates if the allocation is a forwarding allocation
@@ -67,22 +62,8 @@ spec:
                   This is the ID of the intent for which the allocation was created.
                   It is used by the Node Orchestrator to identify the correct allocation for a given intent
                 type: string
-              nodeName:
-                description: This is the corresponding Node or VirtualNode local name
-                type: string
-              remoteClusterID:
-                description: This is the ID of the cluster that owns the allocation.
-                type: string
-              type:
-                description: 'This specifies the type of the node: Node (Physical
-                  node of the cluster) or VirtualNode (Remote node owned by a different
-                  cluster)'
-                type: string
             required:
-            - destination
             - intentID
-            - nodeName
-            - type
             type: object
           status:
             description: AllocationStatus defines the observed state of Allocation.
