@@ -180,7 +180,13 @@ func (g *Gateway) DiscoverFlavours(ctx context.Context, selector *nodecorev1alph
 			klog.Errorf("Error when searching Flavour: %s", err)
 			return nil, err
 		}
-		flavoursCR = append(flavoursCR, flavour)
+		// Check if the flavour is nil
+		if flavour == nil {
+			klog.Infof("No Flavours found for provider %s", provider)
+		} else {
+			klog.Infof("Flavour found for provider %s", provider)
+			flavoursCR = append(flavoursCR, flavour)
+		}
 	}
 
 	klog.Infof("Found %d flavours", len(flavoursCR))

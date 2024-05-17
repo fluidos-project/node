@@ -47,8 +47,13 @@ func searchFlavourWithSelector(ctx context.Context, selector *models.Selector, a
 
 	defer resp.Body.Close()
 
-	// Check if the response status code is 200 (OK)
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		klog.Infof("Received OK response status code: %d", resp.StatusCode)
+	case http.StatusNoContent:
+		klog.Infof("Received No Content response status code: %d", resp.StatusCode)
+		return nil, nil
+	default:
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
@@ -74,7 +79,12 @@ func searchFlavour(ctx context.Context, addr string) (*nodecorev1alpha1.Flavour,
 	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		break
+	case http.StatusNoContent:
+		return nil, nil
+	default:
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
