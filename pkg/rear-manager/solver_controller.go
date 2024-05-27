@@ -108,8 +108,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// Check if the Solver has expired or failed, in this case do nothing and return
 	if solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseFailed ||
-		solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseTimeout ||
-		solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseSolved {
+		solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseTimeout {
 		return ctrl.Result{}, nil
 	}
 
