@@ -124,11 +124,11 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, nil
 	}
 
 	if solver.Spec.ReserveAndBuy {
-		if findCandidateStatus == nodecorev1alpha1.PhaseSolved && reserveAndBuyStatus != nodecorev1alpha1.PhaseSolved {
+		if (findCandidateStatus == nodecorev1alpha1.PhaseSolved || !solver.Spec.FindCandidate) &&
+			reserveAndBuyStatus != nodecorev1alpha1.PhaseSolved {
 			return r.handleReserveAndBuy(ctx, req, &solver)
 		}
 	} else {
