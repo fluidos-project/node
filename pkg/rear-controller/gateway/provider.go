@@ -160,7 +160,7 @@ func (g *Gateway) getFlavoursBySelector(w http.ResponseWriter, r *http.Request) 
 		klog.Infof("No matching Flavours found")
 		// Return content for empty list
 		emptyList := make([]*nodecorev1alpha1.Flavour, 0)
-		encodeResponse(w, emptyList)
+		encodeResponseStatusCode(w, emptyList, http.StatusNoContent)
 		return
 	}
 
