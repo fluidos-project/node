@@ -1,12 +1,15 @@
 <!-- markdownlint-disable first-line-h1 -->
 <p align="center">
 <a href="https://www.fluidos.eu/"> <img src="./docs/images/fluidoslogo.png" width="150"/> </a>
-<h3 align="center">WP3 - FLUIDOS Node</h3>
+<h3 align="center">FLUIDOS Node</h3>
 </p>
 
 ## What is a FLUIDOS Node?
 
-A FLUIDOS node is orchestrated by a single Kubernetes control plane, and it can be composed of either a single device or a set of devices (e.g., a datacenter). Device homogeneity is desired in order to simplify the management (physical servers can be considered all equals, since they feature a similar amount of hardware resources), but it is not requested within a FLUIDOS node. In other words, a FLUIDOS node corresponds to a *Kubernetes cluster*.
+A FLUIDOS node is a Kubernetes cluster, orchestrated by a single control plane instance, and it can be composed of either a single machine (e.g., an embedded device) or a set of servers (e.g., a datacenter).
+Device homogeneity is desired in order to simplify the management (physical servers can be considered all equals, since they feature a similar amount of hardware resources), but it is not requested within a FLUIDOS node. In other words, a FLUIDOS node corresponds to a *Kubernetes cluster*.
+
+A FLUIDOS node handles problems such as orchestrating computing, storage, network resources and software services within the cluster and, thanks to [Liqo](https://liqo.io), can transparently access to resources and services that are running in another (remote) Kubernetes cluster (a.k.a. remote FLUIDOS node). 
 
 ## What can I find in this repo?
 
