@@ -78,6 +78,9 @@ function install_components() {
     # Get the local resource manager installation boolean from parameters
     local_resource_manager=$4
 
+    # Get the kubernetes clusters type from parameters
+    kubernetes_clusters=$5
+
     helm repo add fluidos https://fluidos-project.github.io/node/
 
     consumer_node_port=30000
@@ -167,18 +170,25 @@ function install_components() {
 
         echo "Providers IPs for cluster $cluster: ${providers_ips[$cluster]}"
 
-        # Set the KUBECONFIG environment variable taking the value
-        export KUBECONFIG
-        KUBECONFIG=$(echo "${clusters[$cluster]}" | jq -r '.kubeconfig')
+        # Get the kubeconfig file which depends on variable kubernetes_clusters
+        KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
+
 
         echo "The KUBECONFIG is $KUBECONFIG"
 
-        # Apply the metrics-server
-        kubectl apply -f "$SCRIPT_DIR"/../../quickstart/utils/metrics-server.yaml --kubeconfig "$KUBECONFIG"
+        # Check if metrics-server is installed
+        echo "Checking if metrics-server is installed"
+        if ! kubectl get deployment metrics-server -n kube-system --kubeconfig "$KUBECONFIG" &>/dev/null; then
+            echo "Metrics-server is not installed. Installing it..."
+            # Apply the metrics-server
+            kubectl apply -f "$SCRIPT_DIR"/../../quickstart/utils/metrics-server.yaml --kubeconfig "$KUBECONFIG"
 
-        # Wait for the metrics-server to be ready
-        echo "Waiting for metrics-server to be ready"
-        kubectl wait --for=condition=ready pod -l k8s-app=metrics-server -n kube-system --timeout=300s --kubeconfig "$KUBECONFIG"
+            # Wait for the metrics-server to be ready
+            echo "Waiting for metrics-server to be ready"
+            kubectl wait --for=condition=ready pod -l k8s-app=metrics-server -n kube-system --timeout=300s --kubeconfig "$KUBECONFIG"
+        else
+            echo "Metrics-server is already installed"
+        fi
 
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
@@ -230,11 +240,13 @@ function install_components() {
         fi
 
         echo "Installing LIQO in cluster $cluster"
-        liqoctl install kind \
+        echo "Cluster type is $kubernetes_clusters"
+        liqoctl install "$kubernetes_clusters" \
         --cluster-name "$cluster" \
         --set controllerManager.config.resourcePluginAddress=node-rear-controller-grpc.fluidos:2710 \
         --set controllerManager.config.enableResourceEnforcement=true \
-        --kubeconfig "$KUBECONFIG"
+        --kubeconfig "$KUBECONFIG" \
+        --verbose
         ) &
 
         # Save the PID of the process
