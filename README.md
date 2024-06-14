@@ -35,3 +35,7 @@ Want to know how to install a FLUIDOS Node? Check out the [**Installation**](./d
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## How to Contribute
+
+Please, refer to the [Contributing](CONTRIBUTING.md) guide on how to contribute.
