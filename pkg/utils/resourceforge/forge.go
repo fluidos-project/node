@@ -147,16 +147,30 @@ func ForgeContract(flavour *nodecorev1alpha1.Flavour, transaction *models.Transa
 	}
 }
 
+// ForgePartitionable creates the partition characteristics of a flavour.
+func ForgePartitionable() (partitionable *nodecorev1alpha1.Partitionable) {
+	return &nodecorev1alpha1.Partitionable{
+		CpuMin:     parseutil.ParseQuantityFromString(flags.CPUMin),
+		MemoryMin:  parseutil.ParseQuantityFromString(flags.MemoryMin),
+		PodsMin:    parseutil.ParseQuantityFromString(flags.PodsMin),
+		CpuStep:    parseutil.ParseQuantityFromString(flags.CPUStep),
+		MemoryStep: parseutil.ParseQuantityFromString(flags.MemoryStep),
+		PodsStep:   parseutil.ParseQuantityFromString(flags.PodsStep),
+	}
+}
+
 // ForgeFlavourFromMetrics creates a new flavour custom resource from the metrics of the node.
 func ForgeFlavourFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdentity) (flavour *nodecorev1alpha1.Flavour) {
+	// TODO MinCount and MaxCount error handeling
 	return &nodecorev1alpha1.Flavour{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeFlavourName(node.UID, "", ni.Domain),
 			Namespace: flags.FluidoNamespace,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
-			ProviderID: ni.NodeID,
-			Type:       nodecorev1alpha1.K8S,
+			ProviderID:        ni.NodeID,
+			Type:              nodecorev1alpha1.K8S,
+			QuantityAvailable: 1,
 			Characteristics: nodecorev1alpha1.Characteristics{
 				Architecture:      node.Architecture,
 				Cpu:               node.ResourceMetrics.CPUAvailable,
@@ -167,14 +181,7 @@ func ForgeFlavourFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIden
 				Gpu:               parseutil.ParseQuantityFromString("0"),
 			},
 			Policy: nodecorev1alpha1.Policy{
-				Partitionable: &nodecorev1alpha1.Partitionable{
-					CpuMin:     parseutil.ParseQuantityFromString(flags.CPUMin),
-					MemoryMin:  parseutil.ParseQuantityFromString(flags.MemoryMin),
-					PodsMin:    parseutil.ParseQuantityFromString(flags.PodsMin),
-					CpuStep:    parseutil.ParseQuantityFromString(flags.CPUStep),
-					MemoryStep: parseutil.ParseQuantityFromString(flags.MemoryStep),
-					PodsStep:   parseutil.ParseQuantityFromString(flags.PodsStep),
-				},
+				Partitionable: ForgePartitionable(),
 				Aggregatable: &nodecorev1alpha1.Aggregatable{
 					MinCount: int(flags.MinCount),
 					MaxCount: int(flags.MaxCount),
@@ -189,6 +196,7 @@ func ForgeFlavourFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIden
 			OptionalFields: nodecorev1alpha1.OptionalFields{
 				Availability: true,
 				// This previously was the node UID that maybe is not the best choice to manage the scheduling
+				// Does this make any sense in the case we want to aggregate the Flavours?
 				WorkerID: node.Name,
 			},
 		},
@@ -203,12 +211,13 @@ func ForgeFlavourFromRef(f *nodecorev1alpha1.Flavour, char *nodecorev1alpha1.Cha
 			Namespace: flags.FluidoNamespace,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
-			ProviderID:      f.Spec.ProviderID,
-			Type:            f.Spec.Type,
-			Characteristics: *char,
-			Policy:          f.Spec.Policy,
-			Owner:           f.Spec.Owner,
-			Price:           f.Spec.Price,
+			ProviderID:        f.Spec.ProviderID,
+			Type:              f.Spec.Type,
+			Characteristics:   *char,
+			Policy:            f.Spec.Policy,
+			Owner:             f.Spec.Owner,
+			Price:             f.Spec.Price,
+			QuantityAvailable: f.Spec.QuantityAvailable,
 			OptionalFields: nodecorev1alpha1.OptionalFields{
 				Availability: true,
 				WorkerID:     f.Spec.OptionalFields.WorkerID,
@@ -359,8 +368,9 @@ func ForgeFlavourFromObj(flavour *models.Flavour) *nodecorev1alpha1.Flavour {
 			Namespace: flags.FluidoNamespace,
 		},
 		Spec: nodecorev1alpha1.FlavourSpec{
-			ProviderID: flavour.Owner.NodeID,
-			Type:       nodecorev1alpha1.K8S,
+			ProviderID:        flavour.Owner.NodeID,
+			Type:              nodecorev1alpha1.K8S,
+			QuantityAvailable: flavour.QuantityAvailable,
 			Characteristics: nodecorev1alpha1.Characteristics{
 				Cpu:               flavour.Characteristics.CPU,
 				Memory:            flavour.Characteristics.Memory,

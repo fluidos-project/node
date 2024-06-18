@@ -137,6 +137,9 @@ type FlavourSpec struct {
 	// This field is used to specify the optional fields that can be retrieved from the Flavour.
 	// In the future it will be expanded to include more optional fields defined in the REAR Protocol or custom ones.
 	OptionalFields OptionalFields `json:"optionalFields"`
+
+	// This field is used to represent the available quantity of transactions of the Flavour.
+	QuantityAvailable int `json:"quantityAvailable,omitempty"`
 }
 
 // FlavourStatus defines the observed state of Flavour.
