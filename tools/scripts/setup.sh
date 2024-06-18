@@ -93,12 +93,12 @@ echo "All the tools are installed."
 # Check if the input is 1, 2 or 3
 if [ "$environment_type" -eq 1 ]; then
     environment_type="customkind"
-    kubernetes_clusters="kind"
+    installation_type="kind"
     # Call create_kind clusters with parameters and save return value into clusters variable
     create_kind_clusters "$consumers_json" "$providers_json" $environment_type 1 1
 elif [ "$environment_type" -eq 2 ]; then
     environment_type="customkind"
-    kubernetes_clusters="kind"
+    installation_type="kind"
     # Ask the user how many consumer and provider clusters they want
     read -r -p "How many consumer clusters do you want? " consumer_clusters
     read -r -p "How many provider clusters do you want? " provider_clusters
@@ -113,15 +113,15 @@ elif [ "$environment_type" -eq 2 ]; then
     create_kind_clusters "$consumers_json" "$providers_json" $environment_type "$consumer_clusters" "$provider_clusters" 
 elif [ "$environment_type" -eq 3 ]; then
     # Ask the user what Kubernetes clusters they want to use between kubeadm and k3s
-    read -r -p "What type of Kubernetes clusters do you want to use? /
-    1. kubeadm /
-    2. k3s /
+    read -r -p "What type of Kubernetes clusters do you want to use? 
+    1. kubeadm 
+    2. k3s 
     Please enter the number of the option you want to use:
-    " kubernetes_clusters
-    if [ "$kubernetes_clusters" -eq 1 ]; then
-        kubernetes_clusters="kubeadm"
-    elif [ "$kubernetes_clusters" -eq 2 ]; then
-        kubernetes_clusters="k3s"
+    " installation_type
+    if [ "$installation_type" -eq 1 ]; then
+        installation_type="kubeadm"
+    elif [ "$installation_type" -eq 2 ]; then
+        installation_type="k3s"
     else
         echo "Invalid option."
         return 1
@@ -133,7 +133,7 @@ else
 fi
 
 # FLUIDOS node installation
-install_components "$consumers_json" "$providers_json" $local_repositories $local_resource_manager $kubernetes_clusters
+install_components "$consumers_json" "$providers_json" $local_repositories $local_resource_manager $installation_type
 
 print_title "Installation completed successfully"
 

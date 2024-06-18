@@ -6,8 +6,6 @@ This section provides guidelines and suggestions for the local development of FL
 
 ## Local development ##
 
-To better articulate the process, here's a refined version:
-
 When developing a new feature, it is beneficial to test changes in a local environment and debug the code to identify potential issues. To facilitate this, you can use the provided setup.sh script for the quick start example. This script helps you create two development clusters using KinD and install FLUIDOS Node along with its dependencies on both clusters.
 
 To get started, follow these steps:
