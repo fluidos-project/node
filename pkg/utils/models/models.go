@@ -22,15 +22,16 @@ import (
 
 // Flavour represents a Flavour object with its characteristics and policies.
 type Flavour struct {
-	FlavourID       string          `json:"flavourID"`
-	ProviderID      string          `json:"providerID"`
-	Type            string          `json:"type"`
-	Characteristics Characteristics `json:"characteristics"`
-	Policy          Policy          `json:"policy"`
-	Owner           NodeIdentity    `json:"owner"`
-	Price           Price           `json:"price"`
-	ExpirationTime  time.Time       `json:"expirationTime"`
-	OptionalFields  OptionalFields  `json:"optionalFields"`
+	FlavourID         string          `json:"flavourID"`
+	ProviderID        string          `json:"providerID"`
+	Type              string          `json:"type"`
+	Characteristics   Characteristics `json:"characteristics"`
+	Policy            Policy          `json:"policy"`
+	Owner             NodeIdentity    `json:"owner"`
+	Price             Price           `json:"price"`
+	ExpirationTime    time.Time       `json:"expirationTime"`
+	QuantityAvailable int             `json:"quantityAvailable,omitempty"`
+	OptionalFields    OptionalFields  `json:"optionalFields"`
 }
 
 // Characteristics represents the characteristics of a Flavour, such as CPU and RAM.

@@ -510,6 +510,11 @@ spec:
                                         ProviderID is the ID of the FLUIDOS Node ID that provides this Flavour.
                                         It can correspond to ID of the owner FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents the entry point to a FLUIDOS Domain
                                       type: string
+                                    quantityAvailable:
+                                      description: This field is used to represent
+                                        the available quantity of transactions of
+                                        the Flavour.
+                                      type: integer
                                     type:
                                       description: Type is the type of the Flavour.
                                         Currently, only K8S is supported.
