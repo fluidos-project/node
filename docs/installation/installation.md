@@ -26,3 +26,14 @@ The option supported are:
   **DISCLAIMER:** in this case all your Kubernetes clusters inserted in the script must have at least one node tagged with `node-role.fluidos.eu/worker: "true"` and at least in the provider clusters, you can choose the nodes that exposes their Kubernetes resources with the label `node-role.fluidos.eu/resources: "true"`.
 
 For each option, you can choose to install from either the official remote FLUIDOS repository or the local repository, by building it at the moment.
+
+## Clean Development Environment
+
+If you installed FLUIDOS Node on kind clusters and want to clean up the entire environment setup, run the following commands:
+
+```bash
+cd tools/scripts
+. ./clean-dev-env.sh
+```
+
+This script will delete both the kind clusters and their corresponding kubeconfig files.
