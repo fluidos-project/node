@@ -266,6 +266,7 @@ function install_components() {
             echo "Installing LIQO in cluster $cluster"
             echo "Cluster type is $installation_type"
             liqoctl install "$installation_type" \
+            --cluster-name "$cluster" \
             --set controllerManager.config.resourcePluginAddress=node-rear-controller-grpc.fluidos:2710 \
             --set controllerManager.config.enableResourceEnforcement=true \
             --kubeconfig "$KUBECONFIG"
