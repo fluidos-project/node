@@ -41,7 +41,7 @@ make manifests
 - **RBAC Updates:** If code changes necessitate new RBAC rules, apply the correct kubebuilder annotation in the code. Subsequently, update the RBAC rules using:
 
 ```bash
-make rbac
+make rbacs
 ```
 
 Additional details on kubebuilder annotations can be found [here](https://book.kubebuilder.io/reference/markers/crd.html).
@@ -89,7 +89,7 @@ Components:
 Upgrade the Helm chart with your custom FLUIDOS Node images:
 
 ```bash
-. .helm.sh <docker_namespace> <version> <component> [<component> ...]
+. ./helm.sh <docker_namespace> <version> <component> [<component> ...]
 ```
 
 Parameters mirror those in Step 1. Note that the list of components in this step should match those from the image build in the previous step. If no component was specified previously, list all components here.
