@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: liqo-controller-manager-rolebinding
+  namespace: liqo
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: fluidos
+roleRef:
+  kind: Role
+  name: liqo-controller-manager-role
+  apiGroup: rbac.authorization.k8s.io

@@ -147,3 +147,5 @@ networkManager:
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
       nodeID: 
+
+provider: "your-provider"

@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-liqo
+  labels:
+    app: liqo
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: configure-liqo
+          image: bitnami/kubectl:latest
+          command: ["/bin/sh", "-c", "cp /scripts/configure-liqo.sh /tmp/configure-liqo.sh && chmod +x /tmp/configure-liqo.sh && /tmp/configure-liqo.sh"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+            - name: tmp-scripts
+              mountPath: /tmp
+      restartPolicy: OnFailure
+      volumes:
+        - name: script
+          configMap:
+            name: configure-liqo-script
+        - name: tmp-scripts
+          emptyDir: {}

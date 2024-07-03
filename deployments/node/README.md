@@ -38,6 +38,7 @@ A Helm chart for Fluidos Node
 | networkManager.pod.labels | object | `{}` | Labels for the network-manager pod. |
 | networkManager.pod.resources | object | `{"limits":{},"requests":{}}` | Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the network-manager pod. |
 | networkManager.replicas | int | `1` | The number of Network Manager, which can be increased for active/passive high availability. |
+| provider | string | `"your-provider"` |  |
 | pullPolicy | string | `"IfNotPresent"` | The pullPolicy for fluidos-node pods. |
 | rearController.imageName | string | `"ghcr.io/fluidos-project/rear-controller"` |  |
 | rearController.pod.annotations | object | `{}` | Annotations for the rear-controller pod. |
