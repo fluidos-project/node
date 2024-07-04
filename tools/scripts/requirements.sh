@@ -163,7 +163,7 @@ function check_liqoctl() {
         # Ask the user if they want to install liqoctl
         read -r -p "Do you want to install liqoctl? (y/n): " install_liqoctl
         if [ "$install_liqoctl" == "y" ]; then
-            install_liqo
+            install_liqoctl
         else
             echo "LIQO is required to continue. Exiting..."
             exit 1

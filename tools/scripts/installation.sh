@@ -173,29 +173,7 @@ function install_components() {
         # Get the kubeconfig file which depends on variable installation_type
         KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
 
-
         echo "The KUBECONFIG is $KUBECONFIG"
-
-        # Skip the installation of the metrics-server if the cluster is a provider and its installation type is not kind
-        if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "provider" ] && [ "$installation_type" != "kind" ]; then
-            echo "Skipping metrics-server installation in a cluster not managed by the user."
-        else
-            # Check if metrics-server is installed
-            echo "Checking if metrics-server is installed"
-            if ! kubectl get deployment metrics-server -n kube-system --kubeconfig "$KUBECONFIG" &>/dev/null; then
-                echo "Metrics-server is not installed. Installing it..."
-                # Apply the metrics-server
-                kubectl apply -f "$SCRIPT_DIR"/../../quickstart/utils/metrics-server.yaml --kubeconfig "$KUBECONFIG"
-
-                # Wait for the metrics-server to be ready
-                echo "Waiting for metrics-server to be ready"
-                kubectl wait --for=condition=ready pod -l k8s-app=metrics-server -n kube-system --timeout=300s --kubeconfig "$KUBECONFIG"
-            else
-                echo "Metrics-server is already installed"
-            fi
-        fi
-        
-
       
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
@@ -228,7 +206,6 @@ function install_components() {
                 fi
         fi
 
-
         # Skipping the installation of the node Helm chart if the cluster is a provider and its installation type is not kind
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "provider" ] && [ "$installation_type" != "kind" ]; then
             echo "Skipping FLUIDOS Node installation in a cluster not managed by the user"
@@ -247,29 +224,18 @@ function install_components() {
                 helm upgrade --install node $SCRIPT_DIR/../../deployments/node \
                 -n fluidos --create-namespace -f $value_file $IMAGE_SET_STRING \
                 --set tag=$VERSION \
+                --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
                 --kubeconfig $KUBECONFIG
             else
                 echo "Installing remote repositories in cluster $cluster with local resource manager"
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
+                --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
                 --kubeconfig "$KUBECONFIG"
             fi
-        fi
-
-        # Skip the installation of LIQO if the cluster is a provider and its installation type is not kind
-        if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "provider" ] && [ "$installation_type" != "kind" ]; then
-            echo "Skipping LIQO installation in a cluster not managed by the user."
-        else
-            echo "Installing LIQO in cluster $cluster"
-            echo "Cluster type is $installation_type"
-            liqoctl install "$installation_type" \
-            --cluster-name "$cluster" \
-            --set controllerManager.config.resourcePluginAddress=node-rear-controller-grpc.fluidos:2710 \
-            --set controllerManager.config.enableResourceEnforcement=true \
-            --kubeconfig "$KUBECONFIG"
         fi
         ) &
         # Save the PID of the process
