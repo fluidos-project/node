@@ -206,6 +206,11 @@ function install_components() {
                 fi
         fi
 
+        # Install liqo
+        chmod +x "$SCRIPT_DIR"/install_liqo.sh
+        "$SCRIPT_DIR"/install_liqo.sh "$installation_type" || { echo "Failed to install Liqo in cluster $cluster"; exit 1; }
+        chmod -x "$SCRIPT_DIR"/install_liqo.sh
+
         # Skipping the installation of the node Helm chart if the cluster is a provider and its installation type is not kind
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "provider" ] && [ "$installation_type" != "kind" ]; then
             echo "Skipping FLUIDOS Node installation in a cluster not managed by the user"
@@ -227,6 +232,7 @@ function install_components() {
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
+                --wait \
                 --kubeconfig $KUBECONFIG
             else
                 echo "Installing remote repositories in cluster $cluster with local resource manager"
@@ -234,6 +240,7 @@ function install_components() {
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
+                --wait \
                 --kubeconfig "$KUBECONFIG"
             fi
         fi
