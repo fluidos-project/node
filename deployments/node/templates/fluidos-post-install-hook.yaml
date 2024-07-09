@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: configure-liqo
+  namespace: {{ .Release.Namespace }}
   labels:
     app: liqo
   annotations:
@@ -10,10 +11,11 @@ metadata:
 spec:
   template:
     spec:
-      serviceAccountName: default
+      serviceAccountName: helm-service-account
+      hostNetwork: true
       containers:
         - name: configure-liqo
-          image: bitnami/kubectl:latest
+          image: dtzar/helm-kubectl:latest
           command: ["/bin/sh", "-c", "cp /scripts/configure-liqo.sh /tmp/configure-liqo.sh && chmod +x /tmp/configure-liqo.sh && /tmp/configure-liqo.sh"]
           volumeMounts:
             - name: script
