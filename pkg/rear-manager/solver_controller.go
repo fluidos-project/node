@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package rearmanager
 
 import (
 	"context"
+	"encoding/json"
 
 	fcutils "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -52,9 +53,9 @@ type SolverReconciler struct {
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=solvers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors/finalizers,verbs=update
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
@@ -105,6 +106,7 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	findCandidateStatus := solver.Status.FindCandidate
 	reserveAndBuyStatus := solver.Status.ReserveAndBuy
+	peeringStatus := solver.Status.Peering
 
 	// Check if the Solver has expired or failed, in this case do nothing and return
 	if solver.Status.SolverPhase.Phase == nodecorev1alpha1.PhaseFailed ||
@@ -142,13 +144,14 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	if solver.Spec.EnstablishPeering {
-		if reserveAndBuyStatus == nodecorev1alpha1.PhaseSolved && findCandidateStatus == nodecorev1alpha1.PhaseSolved {
+	if solver.Spec.EstablishPeering {
+		if reserveAndBuyStatus == nodecorev1alpha1.PhaseSolved && findCandidateStatus == nodecorev1alpha1.PhaseSolved &&
+			peeringStatus != nodecorev1alpha1.PhaseSolved {
 			return r.handlePeering(ctx, req, &solver)
 		}
 	} else {
-		klog.Infof("Solver %s Solved : No need to enstablish a peering", req.NamespacedName.Name)
-		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to enstablish a peering")
+		klog.Infof("Solver %s Solved : No need to establish a peering", req.NamespacedName.Name)
+		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "No need to establish a peering")
 		err := r.updateSolverStatus(ctx, &solver)
 		if err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
@@ -202,6 +205,8 @@ func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Req
 		}
 		// If no PeeringCandidate is available, Create a Discovery
 		klog.Infof("Solver %s has not found any candidate. Trying a Discovery", req.NamespacedName.Name)
+
+		// Change the status of the Solver to Running
 		solver.SetFindCandidateStatus(nodecorev1alpha1.PhaseRunning)
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver is trying a Discovery")
 
@@ -214,7 +219,7 @@ func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Req
 
 	case nodecorev1alpha1.PhaseRunning:
 		// Check solver expiration
-		if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
+		if tools.CheckExpirationSinceTime(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
 			klog.Infof("Solver %s has expired", req.NamespacedName.Name)
 
 			solver.SetPhase(nodecorev1alpha1.PhaseTimeout, "Solver has expired before finding a candidate")
@@ -264,7 +269,7 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 	reserveAndBuyStatus := solver.Status.ReserveAndBuy
 	switch reserveAndBuyStatus {
 	case nodecorev1alpha1.PhaseIdle:
-		var partition *nodecorev1alpha1.Partition
+		var configuration *nodecorev1alpha1.Configuration
 		klog.Infof("Creating the Reservation %s", req.NamespacedName.Name)
 		var pcList []advertisementv1alpha1.PeeringCandidate
 		pc := advertisementv1alpha1.PeeringCandidate{}
@@ -299,14 +304,55 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 
 		if solver.Spec.Selector != nil {
 			// Forge the Partition
-			partition = resourceforge.ForgePartition(solver.Spec.Selector)
+
+			// Parse Solver Selector
+			solverTypeIdentifier, solverTypeData, err := nodecorev1alpha1.ParseSolverSelector(solver.Spec.Selector)
+			if err != nil {
+				klog.Errorf("Error when parsing Solver Selector for Solver %s: %s", solver.Name, err)
+				return ctrl.Result{}, err
+			}
+			if solverTypeIdentifier == nodecorev1alpha1.TypeK8Slice {
+				// Check if the SolverTypeData is not nil, so if the Solver specifies in the selector even filters
+				if solverTypeData != nil {
+					// Forge partition
+					k8sliceSelector := solverTypeData.(nodecorev1alpha1.K8SliceSelector)
+					klog.Infof("K8S Slice Selector: %v", k8sliceSelector)
+
+					// Parse flavor from PeeringCandidate
+					flavorTypeIdentifier, flavorData, err := nodecorev1alpha1.ParseFlavorType(&pc.Spec.Flavor)
+					if err != nil {
+						klog.Errorf("Error when parsing Flavor for Solver %s: %s", solver.Name, err)
+						return ctrl.Result{}, err
+					}
+					if flavorTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
+						klog.Errorf("Flavor type is different from K8Slice as expected by the Solver selector for Solver %s", solver.Name)
+					}
+
+					// Force casting
+					k8slice := flavorData.(nodecorev1alpha1.K8Slice)
+
+					k8slicepartition := resourceforge.ForgeK8SliceConfiguration(k8sliceSelector, &k8slice)
+					// Convert the K8SlicePartition to JSON
+					k8slicepartitionJSON, err := json.Marshal(k8slicepartition)
+					if err != nil {
+						klog.Errorf("Error when marshaling K8SlicePartition for Solver %s: %s", solver.Name, err)
+						return ctrl.Result{}, err
+					}
+					configuration = &nodecorev1alpha1.Configuration{
+						ConfigurationTypeIdentifier: solverTypeIdentifier,
+						// Partition Data is the raw data of the k8slicepartion
+						ConfigurationData: runtime.RawExtension{Raw: k8slicepartitionJSON},
+					}
+				}
+			}
+			// TODO: If not K8Slice, implement the other types partitions if possible
 		}
 
 		// Get the NodeIdentity
 		nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
 
 		// Forge the Reservation
-		reservation := resourceforge.ForgeReservation(&pc, partition, *nodeIdentity)
+		reservation := resourceforge.ForgeReservation(&pc, configuration, *nodeIdentity)
 		if err := r.Client.Create(ctx, reservation); err != nil {
 			klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
 			return ctrl.Result{}, err
@@ -323,7 +369,7 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseRunning:
 		// Check solver expiration
-		if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
+		if tools.CheckExpirationSinceTime(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
 			klog.Infof("Solver %s has expired", req.NamespacedName.Name)
 			solver.SetPhase(nodecorev1alpha1.PhaseTimeout, "Solver has expired before reserving the resources")
 
@@ -335,7 +381,7 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 		}
 
 		reservation := &reservationv1alpha1.Reservation{}
-		resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(solver.Name), Namespace: flags.FluidoNamespace}
+		resNamespaceName := types.NamespacedName{Name: namings.ForgeReservationName(solver.Name), Namespace: flags.FluidosNamespace}
 
 		// Get the Reservation
 		err := r.Get(ctx, resNamespaceName, reservation)
@@ -379,7 +425,7 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 	peeringStatus := solver.Status.Peering
 	switch peeringStatus {
 	case nodecorev1alpha1.PhaseIdle:
-		klog.Infof("Solver %s is trying to enstablish a peering", req.NamespacedName.Name)
+		klog.Infof("Solver %s is trying to establish a peering", req.NamespacedName.Name)
 
 		contractNamespaceName := types.NamespacedName{Name: solver.Status.Contract.Name, Namespace: solver.Status.Contract.Namespace}
 		contract := reservationv1alpha1.Contract{}
@@ -388,8 +434,11 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 			klog.Errorf("Error when getting Contract for Solver %s: %s", solver.Name, err)
 			return ctrl.Result{}, err
 		}
-		vnName := namings.ForgeVirtualNodeName(contract.Spec.SellerCredentials.ClusterName)
-		allocation := resourceforge.ForgeAllocation(&contract, solver.Name, vnName, nodecorev1alpha1.Local, nodecorev1alpha1.VirtualNode)
+		// VirtualNode Name is not used in the current implementation
+		vnName := namings.ForgeVirtualNodeName(contract.Spec.PeeringTargetCredentials.ClusterName)
+		klog.Infof("Virtual Node Name: %s", vnName)
+
+		allocation := resourceforge.ForgeAllocation(&contract, solver.Name)
 		if err := r.Client.Create(ctx, allocation); err != nil {
 			klog.Errorf("Error when creating Allocation for Solver %s: %s", solver.Name, err)
 			return ctrl.Result{}, err
@@ -401,7 +450,7 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 		}
 		solver.SetPeeringStatus(nodecorev1alpha1.PhaseRunning)
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation created")
-		solver.Status.Credentials = contract.Spec.SellerCredentials
+		solver.Status.Credentials = contract.Spec.PeeringTargetCredentials
 		if err := r.updateSolverStatus(ctx, solver); err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
@@ -415,23 +464,25 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.Infof("ForeignCluster %s not found", solver.Status.Credentials.ClusterID)
-			} else {
-				klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
-				solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
+				// Retry later
+				return ctrl.Result{Requeue: true}, nil
 			}
+			klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
+			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
 			if err := r.updateSolverStatus(ctx, solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
+		klog.Infof("ForeignCluster %s found", solver.Status.Credentials.ClusterID)
 		if fcutils.IsOutgoingJoined(fc) &&
 			fcutils.IsAuthenticated(fc) &&
 			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
 			!fcutils.IsUnpeered(fc) {
-			klog.Infof("Solver %s has enstablished a peering", req.NamespacedName.Name)
+			klog.Infof("Solver %s has established a peering", req.NamespacedName.Name)
 			solver.SetPeeringStatus(nodecorev1alpha1.PhaseSolved)
-			solver.SetPhase(nodecorev1alpha1.PhaseSolved, "Solver has enstablished a peering")
+			solver.SetPhase(nodecorev1alpha1.PhaseSolved, "Solver has established a peering")
 			if err := r.updateSolverStatus(ctx, solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -440,7 +491,7 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 		}
 		klog.Infof("Solver %s is still peering", req.NamespacedName.Name)
 		// Check solver expiration
-		if tools.CheckExpiration(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
+		if tools.CheckExpirationSinceTime(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
 			klog.Infof("Solver %s has expired", req.NamespacedName.Name)
 			solver.SetPhase(nodecorev1alpha1.PhaseTimeout, "Solver has expired before reserving the resources")
 			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
@@ -450,14 +501,17 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 			}
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	case nodecorev1alpha1.PhaseFailed:
-		klog.Infof("Solver %s has failed to enstablish a peering", req.NamespacedName.Name)
-		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has failed to enstablish a peering")
+		klog.Infof("Solver %s has failed to establish a peering", req.NamespacedName.Name)
+		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has failed to establish a peering")
 		if err := r.updateSolverStatus(ctx, solver); err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
+	case nodecorev1alpha1.PhaseSolved:
+		klog.Infof("Solver %s has established a peering", req.NamespacedName.Name)
 		return ctrl.Result{}, nil
 	default:
 		solver.SetPeeringStatus(nodecorev1alpha1.PhaseIdle)
@@ -521,9 +575,9 @@ func (r *SolverReconciler) selectAndBookPeeringCandidate(
 	for i := range pcList {
 		pc = &pcList[i]
 		// Select the first PeeringCandidate that is not reserved
+		// TODO: A better default logic should be implemented.
 		if pc.Spec.Available {
 			return pc, nil
-
 		}
 	}
 
@@ -536,7 +590,7 @@ func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context, solver *nod
 
 	// Get the Discovery
 	if err := r.Get(ctx, types.NamespacedName{Name: namings.ForgeDiscoveryName(solver.Name),
-		Namespace: flags.FluidoNamespace}, discovery); client.IgnoreNotFound(err) != nil {
+		Namespace: flags.FluidosNamespace}, discovery); client.IgnoreNotFound(err) != nil {
 		klog.Errorf("Error when getting Discovery for Solver %s: %s", solver.Name, err)
 		return nil, err
 	} else if err != nil {
@@ -566,7 +620,7 @@ func (r *SolverReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		), builder.WithPredicates(reservationPredicate())).
 		Watches(&nodecorev1alpha1.Allocation{}, handler.EnqueueRequestsFromMapFunc(
 			r.allocationToSolver,
-		), builder.WithPredicates(allocationPredicate())).
+		), builder.WithPredicates(allocationPredicate(mgr.GetClient()))).
 		Complete(r)
 }
 
@@ -588,12 +642,12 @@ func reservationPredicate() predicate.Predicate {
 	}
 }
 
-func allocationPredicate() predicate.Predicate {
+func allocationPredicate(c client.Client) predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			return (e.ObjectNew.(*nodecorev1alpha1.Allocation).Status.Status == nodecorev1alpha1.Active ||
 				e.ObjectNew.(*nodecorev1alpha1.Allocation).Status.Status == nodecorev1alpha1.Released) &&
-				e.ObjectNew.(*nodecorev1alpha1.Allocation).Spec.Type == nodecorev1alpha1.VirtualNode &&
+				!IsProvider(context.Background(), e.ObjectNew.(*nodecorev1alpha1.Allocation), c) &&
 				e.ObjectNew.(*nodecorev1alpha1.Allocation).Spec.IntentID != ""
 		},
 	}
@@ -605,7 +659,7 @@ func (r *SolverReconciler) discoveryToSolver(_ context.Context, o client.Object)
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      solverName,
-				Namespace: flags.FluidoNamespace,
+				Namespace: flags.FluidosNamespace,
 			},
 		},
 	}
@@ -617,7 +671,7 @@ func (r *SolverReconciler) reservationToSolver(_ context.Context, o client.Objec
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      solverName,
-				Namespace: flags.FluidoNamespace,
+				Namespace: flags.FluidosNamespace,
 			},
 		},
 	}
@@ -629,8 +683,34 @@ func (r *SolverReconciler) allocationToSolver(_ context.Context, o client.Object
 		{
 			NamespacedName: types.NamespacedName{
 				Name:      solverName,
-				Namespace: flags.FluidoNamespace,
+				Namespace: flags.FluidosNamespace,
 			},
 		},
 	}
+}
+
+// IsProvider returns true if the allocation is a provider allocation base on the contract reference.
+func IsProvider(ctx context.Context, allocation *nodecorev1alpha1.Allocation, c client.Client) bool {
+	// Get the contract reference
+	contractRef := allocation.Spec.Contract
+	// Get the contract
+	contract := &reservationv1alpha1.Contract{}
+	if err := c.Get(ctx, types.NamespacedName{
+		Namespace: contractRef.Namespace,
+		Name:      contractRef.Name,
+	}, contract); err != nil {
+		return false
+	}
+
+	// Get the seller information
+	seller := contract.Spec.Seller
+
+	ni := getters.GetNodeIdentity(ctx, c)
+
+	// Check if the seller is the same as the local node
+	if seller.NodeID != ni.NodeID || seller.IP != ni.IP || seller.Domain != ni.Domain {
+		return false
+	}
+
+	return true
 }

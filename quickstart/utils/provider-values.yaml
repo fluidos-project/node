@@ -39,6 +39,8 @@ localResourceManager:
     nodeResourceLabel: "node-role.fluidos.eu/resources"
     # -- This flag defines the resource type of the generated flavours.
     resourceType: "k8s-fluidos"
+    # -- Enable the auto-discovery of the resources.
+    enableAutoDiscovery: true
     flavour:
       # -- The minimum number of CPUs that can be requested to purchase a flavour.
       cpuMin: "0"
@@ -149,3 +151,13 @@ networkManager:
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
       nodeID: 
+
+webhook:
+  # -- Enable the webhook server for the local-resource-manager.
+  enabled: true
+  # -- Configuration for the webhook server.
+  issuer: "self-signed"
+  # -- Configuration for the webhook server.
+  deployment:
+    # -- The mount path for the webhook certificates.
+    certsMount: "/tmp/k8s-webhook-server/serving-certs/"

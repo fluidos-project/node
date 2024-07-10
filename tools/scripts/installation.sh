@@ -76,7 +76,7 @@ function install_components() {
     local_repositories=$3
 
     # Get the local resource manager installation boolean from parameters
-    local_resource_manager=$4
+    enable_auto_discovery=$4
 
     # Get the kubernetes clusters type from parameters
     installation_type=$5
@@ -178,10 +178,10 @@ function install_components() {
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
             # Check if local resouce manager is enabled
-            if [ "$local_resource_manager" == "true" ]; then
+            if [ "$enable_auto_discovery" == "true" ]; then
                 value_file="$SCRIPT_DIR/../../quickstart/utils/consumer-values.yaml"
             else
-                value_file="$SCRIPT_DIR/../../quickstart/utils/consumer-values-nolrm.yaml"
+                value_file="$SCRIPT_DIR/../../quickstart/utils/consumer-values-no-ad.yaml"
             fi
             # Get cluster IP and port
             ip_value="${clusters[$cluster]}"
@@ -194,10 +194,10 @@ function install_components() {
                 return 0
             else
                 # Check if local resouce manager is enabled
-                if [ "$local_resource_manager" == "true" ]; then
+                if [ "$enable_auto_discovery" == "true" ]; then
                     value_file="$SCRIPT_DIR/../../quickstart/utils/provider-values.yaml"
                 else
-                    value_file="$SCRIPT_DIR/../../quickstart/utils/provider-values-nolrm.yaml"
+                    value_file="$SCRIPT_DIR/../../quickstart/utils/provider-values-no-ad.yaml"
                 fi
                 # Get cluster IP and port
                 ip_value="${clusters[$cluster]}"
@@ -208,7 +208,7 @@ function install_components() {
 
         # Install liqo
         chmod +x "$SCRIPT_DIR"/install_liqo.sh
-                "$SCRIPT_DIR"/install_liqo.sh "$installation_type" "$cluster" "$KUBECONFIG"  || { echo "Failed to install Liqo in cluster $cluster"; exit 1; }
+        "$SCRIPT_DIR"/install_liqo.sh "$installation_type" "$cluster" "$KUBECONFIG"  || { echo "Failed to install Liqo in cluster $cluster"; exit 1; }
         chmod -x "$SCRIPT_DIR"/install_liqo.sh
 
         # Skipping the installation of the node Helm chart if the cluster is a provider and its installation type is not kind

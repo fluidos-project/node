@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package rearcontroller implements the utility functions for the rear controller: contract manager, discovery manager and rear gateway
+// Package rearcontroller implements the utility functions for the rear controller: contract manager, discovery manager and rear gateway
 package rearcontroller

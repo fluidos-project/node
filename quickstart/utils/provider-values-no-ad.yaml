@@ -21,7 +21,7 @@ common:
 
 localResourceManager:
   # -- The number of REAR Controller, which can be increased for active/passive high availability.
-  replicas: 0
+  replicas: 1
   pod:
     # -- Annotations for the local-resource-manager pod.
     annotations: {}
@@ -39,6 +39,8 @@ localResourceManager:
     nodeResourceLabel: "node-role.fluidos.eu/resources"
     # -- This flag defines the resource type of the generated flavours.
     resourceType: "k8s-fluidos"
+    # -- Enable the auto-discovery of the resources.
+    enableAutoDiscovery: false
     flavour:
       # -- The minimum number of CPUs that can be requested to purchase a flavour.
       cpuMin: "0"
@@ -104,7 +106,7 @@ rearController:
       # -- Options valid if service type is NodePort.
       nodePort:
         # -- Force the port used by the NodePort service.
-        port: 30000
+        port: 30001
       # -- Options valid if service type is LoadBalancer.
       loadBalancer:
         # -- Override the IP here if service type is LoadBalancer and you want to use a specific IP address, e.g., because you want a static LB.
@@ -135,7 +137,7 @@ networkManager:
       # -- The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue).
       name: "fluidos-network-manager-config"
       # -- The IP List of Local knwon FLUIDOS Nodes separated by commas.
-      local: 
+      local: "host.docker.internal:9000"
       # -- The IP List of Remote known FLUIDOS Nodes separated by commas.
       remote: 
       # -- The IP List of SuperNodes separated by commas.
@@ -149,3 +151,14 @@ networkManager:
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
       nodeID: 
+
+
+webhook:
+  # -- Enable the webhook server for the local-resource-manager.
+  enabled: true
+  # -- Configuration for the webhook server.
+  issuer: "self-signed"
+  # -- Configuration for the webhook server.
+  deployment:
+    # -- The mount path for the webhook certificates.
+    certsMount: "/tmp/k8s-webhook-server/serving-certs/"

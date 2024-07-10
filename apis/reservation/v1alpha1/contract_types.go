@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@ import (
 
 // ContractSpec defines the desired state of Contract.
 type ContractSpec struct {
-	// This is the flavour on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
-	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
+	// This is the flavor on which the contract is based. It is used to lifetime maintain the critical characteristics of the contract.
+	Flavor nodecorev1alpha1.Flavor `json:"flavor"`
 
 	// TransactionID is the ID of the transaction that this contract is part of
 	TransactionID string `json:"transactionID"`
 
-	// The partition represents the dimension of the resources sold/bought.
+	// The configuration represents the dimension of the resources sold/bought.
 	// So it will reflect the dimension of the resources allocated on the remote cluster and reflected on the local virtual node.
-	Partition *nodecorev1alpha1.Partition `json:"partition,omitempty"`
+	Configuration *nodecorev1alpha1.Configuration `json:"configuration,omitempty"`
 
 	// This is the Node identity of the buyer FLUIDOS Node.
 	Buyer nodecorev1alpha1.NodeIdentity `json:"buyer"`
@@ -42,13 +42,16 @@ type ContractSpec struct {
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
 	// This credentials will be used by the customer to connect and enstablish a peering with the seller FLUIDOS Node through Liqo.
-	SellerCredentials nodecorev1alpha1.LiqoCredentials `json:"sellerCredentials"`
+	PeeringTargetCredentials nodecorev1alpha1.LiqoCredentials `json:"peeringTargetCredentials"`
 
 	// This is the expiration time of the contract. It can be empty if the contract is not time limited.
 	ExpirationTime string `json:"expirationTime,omitempty"`
 
 	// This contains additional information about the contract if needed.
 	ExtraInformation map[string]string `json:"extraInformation,omitempty"`
+
+	// NetworkRequests contains the reference to the resource containing the network requests.
+	NetworkRequests string `json:"networkRequests,omitempty"`
 }
 
 // ContractStatus defines the observed state of Contract.
@@ -61,7 +64,8 @@ type ContractStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// +kubebuilder:printcolumn:name="Flavour ID",type=string,JSONPath=`.spec.flavour.metadata.name`
+// Contract is the Schema for the contracts API.
+// +kubebuilder:printcolumn:name="Flavor ID",type=string,JSONPath=`.spec.flavor.metadata.name`
 // +kubebuilder:printcolumn:name="Buyer Name",type=string,JSONPath=`.spec.buyer.nodeID`
 // +kubebuilder:printcolumn:name="Buyer Domain",type=string,priority=1,JSONPath=`.spec.buyer.domain`
 // +kubebuilder:printcolumn:name="Seller Name",type=string,JSONPath=`.spec.seller.nodeID`
@@ -69,7 +73,6 @@ type ContractStatus struct {
 // +kubebuilder:printcolumn:name="Transaction ID",type=string,priority=1,JSONPath=`.spec.transactionID`
 // +kubebuilder:printcolumn:name="Buyer Liqo ID",type=string,priority=1,JSONPath=`.spec.buyerClusterID`
 // +kubebuilder:printcolumn:name="Expiration Time",type=string,priority=1,JSONPath=`.spec.expirationTime`
-// Contract is the Schema for the contracts API.
 type Contract struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -80,7 +83,7 @@ type Contract struct {
 
 //+kubebuilder:object:root=true
 
-// ContractList contains a list of Contract
+// ContractList contains a list of Contract.
 type ContractList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

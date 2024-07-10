@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,44 +14,63 @@
 
 package models
 
-import "k8s.io/apimachinery/pkg/api/resource"
+import (
+	"encoding/json"
 
-// Partition represents the partitioning properties of a Flavour.
-type Partition struct {
-	Architecture     string            `json:"architecture"`
-	CPU              resource.Quantity `json:"cpu"`
-	Memory           resource.Quantity `json:"memory"`
-	Pods             resource.Quantity `json:"pods"`
-	EphemeralStorage resource.Quantity `json:"ephemeral-storage,omitempty"`
-	Gpu              resource.Quantity `json:"gpu,omitempty"`
-	Storage          resource.Quantity `json:"storage,omitempty"`
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+// Configuration represents the configuration properties of a Flavor.
+type Configuration struct {
+	Type FlavorTypeName  `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
-// Transaction contains information regarding the transaction for a flavour.
+// ConfigurationData represents the data of a Configuration.
+type ConfigurationData interface {
+	GetConfigurationType() FlavorTypeName
+}
+
+// K8SliceConfiguration represents the configuration properties of a K8Slice Flavor.
+type K8SliceConfiguration struct {
+	CPU     resource.Quantity   `json:"cpu"`
+	Memory  resource.Quantity   `json:"memory"`
+	Pods    resource.Quantity   `json:"pods"`
+	Gpu     *GpuCharacteristics `json:"gpu,omitempty"`
+	Storage *resource.Quantity  `json:"storage,omitempty"`
+}
+
+// GetConfigurationType returns the type of the Configuration.
+func (p *K8SliceConfiguration) GetConfigurationType() FlavorTypeName {
+	return K8SliceNameDefault
+}
+
+// Transaction contains information regarding the transaction for a flavor.
 type Transaction struct {
-	TransactionID string       `json:"transactionID"`
-	FlavourID     string       `json:"flavourID"`
-	Partition     *Partition   `json:"partition,omitempty"`
-	Buyer         NodeIdentity `json:"buyer"`
-	ClusterID     string       `json:"clusterID"`
-	StartTime     string       `json:"startTime"`
+	TransactionID  string         `json:"transactionID"`
+	FlavorID       string         `json:"flavorID"`
+	Configuration  *Configuration `json:"configuration,omitempty"`
+	Buyer          NodeIdentity   `json:"buyer"`
+	ClusterID      string         `json:"clusterID"`
+	ExpirationTime string         `json:"expirationTime"`
 }
 
 // Contract represents a Contract object with its characteristics.
 type Contract struct {
-	ContractID        string            `json:"contractID"`
-	TransactionID     string            `json:"transactionID"`
-	Flavour           Flavour           `json:"flavour"`
-	Buyer             NodeIdentity      `json:"buyerID"`
-	BuyerClusterID    string            `json:"buyerClusterID"`
-	Seller            NodeIdentity      `json:"seller"`
-	SellerCredentials LiqoCredentials   `json:"sellerCredentials"`
-	ExpirationTime    string            `json:"expirationTime,omitempty"`
-	ExtraInformation  map[string]string `json:"extraInformation,omitempty"`
-	Partition         *Partition        `json:"partition,omitempty"`
+	ContractID               string            `json:"contractID"`
+	TransactionID            string            `json:"transactionID"`
+	Flavor                   Flavor            `json:"flavor"`
+	Buyer                    NodeIdentity      `json:"buyerID"`
+	BuyerClusterID           string            `json:"buyerClusterID"`
+	Seller                   NodeIdentity      `json:"seller"`
+	PeeringTargetCredentials LiqoCredentials   `json:"sellerCredentials"`
+	ExpirationTime           string            `json:"expirationTime,omitempty"`
+	ExtraInformation         map[string]string `json:"extraInformation,omitempty"`
+	Configuration            *Configuration    `json:"configuration,omitempty"`
+	NetworkRequests          string            `json:"networkAuthorizations,omitempty"`
 }
 
-// LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
+// LiqoCredentials contains the credentials of a Liqo cluster to establish a peering.
 type LiqoCredentials struct {
 	ClusterID   string `json:"clusterID"`
 	ClusterName string `json:"clusterName"`

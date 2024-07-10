@@ -71,14 +71,14 @@ else
     return 1
 fi
 
-# Ask the user if they want to use a local resource manager
-read -r -p "Do you want to use a local resource manager? [y/n] " local_resource_manager
+# Ask the user if they want to use the resource auto discovery from the local resource manager
+read -r -p "Do you want to enable resource auto discovery? [y/n] " enable_auto_discovery
 
 # Check if the input is y or n
-if [ "$local_resource_manager" == "y" ]; then
-    local_resource_manager=true
-elif [ "$local_resource_manager" == "n" ]; then
-    local_resource_manager=false
+if [ "$enable_auto_discovery" == "y" ]; then
+    enable_auto_discovery=true
+elif [ "$enable_auto_discovery" == "n" ]; then
+    enable_auto_discovery=false
 else
     echo "Invalid option."
     return 1
@@ -132,7 +132,7 @@ else
 fi
 
 # FLUIDOS node installation
-install_components "$consumers_json" "$providers_json" $local_repositories $local_resource_manager $installation_type
+install_components "$consumers_json" "$providers_json" $local_repositories $enable_auto_discovery $installation_type
 
 print_title "Installation completed successfully"
 

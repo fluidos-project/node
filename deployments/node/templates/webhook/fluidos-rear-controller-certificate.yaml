@@ -1,0 +1,17 @@
+{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+spec:
+  dnsNames:
+  - {{ include "fluidos.prefixedName" $rearControllerConfig }}.{{ .Release.Namespace }}.svc
+  - {{ include "fluidos.prefixedName" $rearControllerConfig }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ .Values.webhook.Issuer | default "self-signed" }}
+  secretName: {{ include "fluidos.prefixedName" $rearControllerConfig }}

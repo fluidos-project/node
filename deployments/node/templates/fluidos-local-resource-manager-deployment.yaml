@@ -48,19 +48,31 @@ spec:
         args:
           - --node-resource-label={{ .Values.localResourceManager.config.nodeResourceLabel }}
           - --resources-types={{ .Values.localResourceManager.config.resourceType }}
-          - --cpu-min={{ .Values.localResourceManager.config.flavour.cpuMin }}
-          - --memory-min={{ .Values.localResourceManager.config.flavour.memoryMin }}
-          - --cpu-step={{ .Values.localResourceManager.config.flavour.cpuStep }}
-          - --memory-step={{ .Values.localResourceManager.config.flavour.memoryStep }}
+          - --cpu-min={{ .Values.localResourceManager.config.flavor.cpuMin }}
+          - --memory-min={{ .Values.localResourceManager.config.flavor.memoryMin }}
+          - --cpu-step={{ .Values.localResourceManager.config.flavor.cpuStep }}
+          - --memory-step={{ .Values.localResourceManager.config.flavor.memoryStep }}
+          - --enable-webhooks={{ .Values.webhook.enabled | default "true" }}
+          - --enable-auto-discovery={{ .Values.localResourceManager.config.enableAutoDiscovery | default "true" }}
         resources: {{- toYaml .Values.localResourceManager.pod.resources | nindent 10 }}
         ports:
         - name: healthz
           containerPort: 8081
           protocol: TCP
+        - name: webhook
+          containerPort: 9443
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /readyz
             port: healthz
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: {{ .Values.webhook.deployment.certsMount | default "/tmp/k8s-webhook-server/serving-certs/" }}
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: {{ include "fluidos.prefixedName" $resManagerConfig }}
       {{- if ((.Values.common).nodeSelector) }}
       nodeSelector:
       {{- toYaml .Values.common.nodeSelector | nindent 8 }}

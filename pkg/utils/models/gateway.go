@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,17 @@
 
 package models
 
-// PurchaseRequest is the request model for purchasing a Flavour.
+// PurchaseRequest is the request model for purchasing a Flavor.
 type PurchaseRequest struct {
-	TransactionID string `json:"transactionID"`
+	// LiqoCredentials contains the Liqo credentials of the buyer.
+	// This field is optional and should be used only if the buyer is the Liqo peering target cluster, based on the Flavor you are going to purchase.
+	// This field may be dismissed in the future version of Liqo.
+	LiqoCredentials *LiqoCredentials `json:"liqoCredentials,omitempty"`
 }
 
-// ResponsePurchase contain information after purchase a Flavour.
-type ResponsePurchase struct {
-	Contract Contract `json:"contract"`
-	Status   string   `json:"status"`
-}
-
-// ReserveRequest is the request model for reserving a Flavour.
+// ReserveRequest is the request model for reserving a Flavor.
 type ReserveRequest struct {
-	FlavourID string       `json:"flavourID"`
-	Buyer     NodeIdentity `json:"buyerID"`
-	ClusterID string       `json:"clusterID"`
-	Partition *Partition   `json:"partition,omitempty"`
+	FlavorID      string         `json:"flavorID"`
+	Buyer         NodeIdentity   `json:"buyerID"`
+	Configuration *Configuration `json:"configuration,omitempty"`
 }

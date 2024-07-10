@@ -1,0 +1,29 @@
+{{- $rearManagerConfig := (merge (dict "name" "rear-manager" "module" "rear-manager") .) -}}
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearManagerConfig }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "fluidos.prefixedName" $rearManagerConfig }}
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $rearManagerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-nodecore-fluidos-eu-v1alpha1-solver
+  failurePolicy: Fail
+  name: mutate.solver.nodecore.fluidos.eu
+  rules:
+  - apiGroups:
+    - nodecore.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - solvers
+  sideEffects: None

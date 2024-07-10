@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// PeeringCandidateSpec defines the desired state of PeeringCandidate
+// PeeringCandidateSpec defines the desired state of PeeringCandidate.
 type PeeringCandidateSpec struct {
 	SolverID string `json:"solverID"`
 
-	Flavour nodecorev1alpha1.Flavour `json:"flavour"`
+	Flavor nodecorev1alpha1.Flavor `json:"flavor"`
 
 	Available bool `json:"available"`
 }
 
-// PeeringCandidateStatus defines the observed state of PeeringCandidate
+// PeeringCandidateStatus defines the observed state of PeeringCandidate.
 type PeeringCandidateStatus struct {
 
 	// This field represents the creation time of the PeeringCandidate.
@@ -45,7 +45,7 @@ type PeeringCandidateStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// PeeringCandidate is the Schema for the peeringcandidates API
+// PeeringCandidate is the Schema for the peeringcandidates API.
 type PeeringCandidate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -56,7 +56,7 @@ type PeeringCandidate struct {
 
 //+kubebuilder:object:root=true
 
-// PeeringCandidateList contains a list of PeeringCandidate
+// PeeringCandidateList contains a list of PeeringCandidate.
 type PeeringCandidateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

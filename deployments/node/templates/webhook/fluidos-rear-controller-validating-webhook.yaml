@@ -1,0 +1,69 @@
+{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "fluidos.prefixedName" $rearControllerConfig }}
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-reservation-fluidos-eu-v1alpha1-reservation
+  failurePolicy: Fail
+  name: validate.reservation.reservation.fluidos.eu
+  rules:
+  - apiGroups:
+    - reservation.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - reservations
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-reservation-fluidos-eu-v1alpha1-transaction
+  failurePolicy: Fail
+  name: validate.transaction.reservation.fluidos.eu
+  rules:
+  - apiGroups:
+    - reservation.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - transactions
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-reservation-fluidos-eu-v1alpha1-contract
+  failurePolicy: Fail
+  name: validate.contract.reservation.fluidos.eu
+  rules:
+  - apiGroups:
+    - contract.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - contracts
+  sideEffects: None

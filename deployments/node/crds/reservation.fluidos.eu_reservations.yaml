@@ -59,7 +59,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Reservation is the Schema for the reservations API
+        description: Reservation is the Schema for the reservations API.
         properties:
           apiVersion:
             description: |-
@@ -79,7 +79,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ReservationSpec defines the desired state of Reservation
+            description: ReservationSpec defines the desired state of Reservation.
             properties:
               buyer:
                 description: This is the Node identity of the buyer FLUIDOS Node.
@@ -88,6 +88,8 @@ spec:
                     type: string
                   ip:
                     type: string
+                  liqoID:
+                    type: string
                   nodeID:
                     type: string
                 required:
@@ -95,53 +97,20 @@ spec:
                 - ip
                 - nodeID
                 type: object
-              partition:
-                description: Parition is the partition of the flavour that is being
-                  reserved
+              configuration:
+                description: Configuration is the configuration of the flavour that
+                  is being reserved
                 properties:
-                  architecture:
+                  data:
+                    description: ConfigurationData is the data of the configuration.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  type:
+                    description: Identifier is the identifier of the configuration.
                     type: string
-                  cpu:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  ephemeral-storage:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  gpu:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  memory:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  pods:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
-                  storage:
-                    anyOf:
-                    - type: integer
-                    - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                    x-kubernetes-int-or-string: true
                 required:
-                - architecture
-                - cpu
-                - memory
-                - pods
+                - data
+                - type
                 type: object
               peeringCandidate:
                 description: PeeringCandidate is the reference to the PeeringCandidate
@@ -171,6 +140,8 @@ spec:
                     type: string
                   ip:
                     type: string
+                  liqoID:
+                    type: string
                   nodeID:
                     type: string
                 required:
@@ -187,7 +158,7 @@ spec:
             - solverID
             type: object
           status:
-            description: ReservationStatus defines the observed state of Reservation
+            description: ReservationStatus defines the observed state of Reservation.
             properties:
               contract:
                 description: Contract is the reference to the Contract of the Reservation
@@ -211,6 +182,7 @@ spec:
                   message:
                     type: string
                   phase:
+                    description: Phase represents the phase of the solver.
                     type: string
                   startTime:
                     type: string
