@@ -1,0 +1,173 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: flavors.nodecore.fluidos.eu
+spec:
+  group: nodecore.fluidos.eu
+  names:
+    kind: Flavor
+    listKind: FlavorList
+    plural: flavors
+    shortNames:
+    - fl
+    singular: flavor
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.providerID
+      name: Provider ID
+      type: string
+    - jsonPath: .spec.flavorType.typeIdentifier
+      name: Type
+      type: string
+    - jsonPath: .spec.owner.nodeID
+      name: Owner Name
+      priority: 1
+      type: string
+    - jsonPath: .spec.availability
+      name: Available
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .metadata.ownerReferences[0].name
+      name: Kubernetes Node Owner
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Flavor is the Schema for the flavors API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FlavorSpec defines the desired state of Flavor.
+            properties:
+              availability:
+                description: Availability is the availability flag of the Flavor.
+                type: boolean
+              flavorType:
+                description: FlavorType is the type of the Flavor.
+                properties:
+                  typeData:
+                    description: Raw is the raw value of the Flavor.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  typeIdentifier:
+                    description: Type of the Flavor.
+                    type: string
+                required:
+                - typeData
+                - typeIdentifier
+                type: object
+              location:
+                description: Location is the location of the Flavor.
+                properties:
+                  additionalNotes:
+                    description: AdditionalNotes are additional notes of the location.
+                    type: string
+                  city:
+                    description: City is the city of the location.
+                    type: string
+                  country:
+                    description: Country is the country of the location.
+                    type: string
+                  latitude:
+                    description: Latitude is the latitude of the location.
+                    type: string
+                  longitude:
+                    description: Longitude is the longitude of the location.
+                    type: string
+                type: object
+              networkPropertyType:
+                description: NetworkPropertyType is the network property type of the
+                  Flavor.
+                type: string
+              owner:
+                description: Owner contains the identity info of the owner of the
+                  Flavor. It can be unknown if the Flavor is provided by a reseller
+                  or a third party.
+                properties:
+                  domain:
+                    type: string
+                  ip:
+                    type: string
+                  liqoID:
+                    type: string
+                  nodeID:
+                    type: string
+                required:
+                - domain
+                - ip
+                - nodeID
+                type: object
+              price:
+                description: Price contains the price model of the Flavor.
+                properties:
+                  amount:
+                    description: Amount is the amount of the price.
+                    type: string
+                  currency:
+                    description: Currency is the currency of the price.
+                    type: string
+                  period:
+                    description: Period is the period of the price.
+                    type: string
+                required:
+                - amount
+                - currency
+                - period
+                type: object
+              providerID:
+                description: |-
+                  ProviderID is the ID of the FLUIDOS Node ID that provides this Flavor.
+                  It can correspond to ID of the owner FLUIDOS Node or to the ID of a FLUIDOS SuperNode that represents the entry point to a FLUIDOS Domain
+                type: string
+            required:
+            - availability
+            - flavorType
+            - owner
+            - price
+            - providerID
+            type: object
+          status:
+            description: FlavorStatus defines the observed state of Flavor.
+            properties:
+              creationTime:
+                description: This field represents the creation time of the Flavor.
+                type: string
+              expirationTime:
+                description: This field represents the expiration time of the Flavor.
+                  It is used to determine when the Flavor is no longer valid.
+                type: string
+              lastUpdateTime:
+                description: This field represents the last update time of the Flavor.
+                type: string
+            required:
+            - creationTime
+            - expirationTime
+            - lastUpdateTime
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

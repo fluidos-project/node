@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,19 +28,33 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
-func searchFlavourWithSelector(ctx context.Context, selector *models.Selector, addr string) (*nodecorev1alpha1.Flavour, error) {
-	var flavour models.Flavour
+func searchFlavorWithSelector(ctx context.Context, selector models.Selector, addr string) ([]*nodecorev1alpha1.Flavor, error) {
+	var flavors []models.Flavor
 
-	// Marshal the selector into JSON bytes
-	selectorBytes, err := json.Marshal(selector)
+	var url string
+
+	v, err := selectorToQueryParams(selector)
 	if err != nil {
 		return nil, err
 	}
 
-	body := bytes.NewBuffer(selectorBytes)
-	url := fmt.Sprintf("http://%s%s", addr, ListFlavoursBySelectorPath)
+	// Differentiate the URL request based on the selector type
+	switch selector.GetSelectorType() {
+	case models.K8SliceNameDefault:
+		url = fmt.Sprintf("http://%s%s", addr, Routes.K8SliceFlavors)
+		// Convert the selector to query parameters
+	// TODO: Implement the other selector types
 
-	resp, err := makeRequest(ctx, "POST", url, body)
+	default:
+		return nil, fmt.Errorf("unsupported selector type")
+	}
+
+	// Append the query parameters to the URL
+	url += "?" + v
+	klog.Infof("URL: %s", url)
+
+	// Make the request
+	resp, err := makeRequest(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,20 +71,32 @@ func searchFlavourWithSelector(ctx context.Context, selector *models.Selector, a
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&flavour); err != nil {
+	// Print the response body
+	klog.Infof("Response body: %s", resp.Body)
+
+	if err := json.NewDecoder(resp.Body).Decode(&flavors); err != nil {
 		klog.Errorf("Error decoding the response body: %s", err)
 		return nil, err
 	}
 
-	flavourCR := resourceforge.ForgeFlavourFromObj(&flavour)
+	var flavorCRs []*nodecorev1alpha1.Flavor
 
-	return flavourCR, nil
+	for i := range flavors {
+		flavor := &flavors[i]
+		flavorCR, err := resourceforge.ForgeFlavorFromObj(flavor)
+		if err != nil {
+			return nil, err
+		}
+		flavorCRs = append(flavorCRs, flavorCR)
+	}
+
+	return flavorCRs, nil
 }
 
-func searchFlavour(ctx context.Context, addr string) (*nodecorev1alpha1.Flavour, error) {
-	var flavour models.Flavour
+func searchFlavor(ctx context.Context, addr string) ([]*nodecorev1alpha1.Flavor, error) {
+	var flavors []models.Flavor
 
-	url := fmt.Sprintf("http://%s%s", addr, ListFlavoursPath)
+	url := fmt.Sprintf("http://%s%s", addr, ListFlavorsPath)
 
 	resp, err := makeRequest(ctx, "GET", url, nil)
 	if err != nil {
@@ -88,14 +114,23 @@ func searchFlavour(ctx context.Context, addr string) (*nodecorev1alpha1.Flavour,
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&flavour); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&flavors); err != nil {
 		klog.Errorf("Error decoding the response body: %s", err)
 		return nil, err
 	}
 
-	flavourCR := resourceforge.ForgeFlavourFromObj(&flavour)
+	var flavorCRs []*nodecorev1alpha1.Flavor
 
-	return flavourCR, nil
+	for i := range flavors {
+		flavor := &flavors[i]
+		flavorCR, err := resourceforge.ForgeFlavorFromObj(flavor)
+		if err != nil {
+			return nil, err
+		}
+		flavorCRs = append(flavorCRs, flavorCR)
+	}
+
+	return flavorCRs, nil
 }
 
 func makeRequest(ctx context.Context, method, url string, body *bytes.Buffer) (*http.Response, error) {

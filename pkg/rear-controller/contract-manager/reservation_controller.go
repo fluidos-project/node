@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"github.com/fluidos-project/node/pkg/utils/tools"
@@ -175,14 +176,14 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 			return ctrl.Result{}, err
 		}
 
-		flavourID := namings.RetrieveFlavourNameFromPC(reservation.Spec.PeeringCandidate.Name)
-		res, err := r.Gateway.ReserveFlavour(ctx, reservation, flavourID)
+		flavorID := namings.RetrieveFlavorNameFromPC(reservation.Spec.PeeringCandidate.Name)
+		res, err := r.Gateway.ReserveFlavor(ctx, reservation, flavorID)
 		if err != nil {
 			if res != nil {
 				klog.Infof("Transaction is non correctly set, Retrying...")
 				return ctrl.Result{Requeue: true}, nil
 			}
-			klog.Errorf("Error when reserving flavour for Reservation %s: %s", req.NamespacedName, err)
+			klog.Errorf("Error when reserving flavor for Reservation %s: %s", req.NamespacedName, err)
 
 			// Set the peering candidate as available again
 			peeringCandidate.Spec.Available = true
@@ -200,7 +201,7 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 
 			// Set the reservation as failed
 			reservation.SetReserveStatus(nodecorev1alpha1.PhaseFailed)
-			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavour")
+			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when reserving flavor")
 			if err := r.updateReservationStatus(ctx, reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -259,6 +260,34 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 	req ctrl.Request, reservation *reservationv1alpha1.Reservation) (ctrl.Result, error) {
 	purchasePhase := reservation.Status.PurchasePhase
+
+	// Get the flavor from the peering candidate of the reservation
+	var peeringCandidate advertisementv1alpha1.PeeringCandidate
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      reservation.Spec.PeeringCandidate.Name,
+		Namespace: reservation.Spec.PeeringCandidate.Namespace,
+	}, &peeringCandidate); err != nil {
+		klog.Errorf("Error when getting PeeringCandidate %s before reconcile: %s", req.NamespacedName, err)
+		reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when getting PeeringCandidate")
+		if err := r.updateReservationStatus(ctx, reservation); err != nil {
+			klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Get the flavor type identifier from the flavor
+	flavorTypeIdentifier, _, err := nodecorev1alpha1.ParseFlavorType(&peeringCandidate.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing Flavor %s type: %s", req.NamespacedName, err)
+		reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when parsing Flavor type")
+		if err := r.updateReservationStatus(ctx, reservation); err != nil {
+			klog.Errorf("Error when updating Reservation %s status before reconcile: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
 	switch purchasePhase {
 	case nodecorev1alpha1.PhaseIdle:
 		klog.Infof("Purchase phase for the reservation %s idle, starting...", reservation.Name)
@@ -281,9 +310,20 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 		}
 
 		transactionID := reservation.Status.TransactionID
-		resPurchase, err := r.Gateway.PurchaseFlavour(ctx, transactionID, reservation.Spec.Seller)
+		var contract *models.Contract
+		var err error
+
+		// Based on the flavorTypeIdentifier, purchase flavor action may need buyer credentials
+		switch flavorTypeIdentifier {
+		case nodecorev1alpha1.TypeK8Slice:
+			contract, err = r.Gateway.PurchaseFlavor(ctx, transactionID, reservation.Spec.Seller, nil)
+			// TODO: Implement other flavor types if purchase request needs buyer credentials
+		default:
+			klog.Errorf("Flavor type %s not supported", flavorTypeIdentifier)
+		}
+
 		if err != nil {
-			klog.Errorf("Error when purchasing flavour for Reservation %s: %s", req.NamespacedName, err)
+			klog.Errorf("Error when purchasing flavor for Reservation %s: %s", req.NamespacedName, err)
 
 			// Set the PeerCandidate as available again
 			var peeringCandidate advertisementv1alpha1.PeeringCandidate
@@ -315,7 +355,7 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 
 			// Set the reservation as failed
 			reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseFailed)
-			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when purchasing flavour")
+			reservation.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation failed: error when purchasing flavor")
 			if err := r.updateReservationStatus(ctx, reservation); err != nil {
 				klog.Errorf("Error when updating Reservation %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err
@@ -323,22 +363,26 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 			return ctrl.Result{}, err
 		}
 
-		klog.Infof("Purchase completed with status %s", resPurchase.Status)
+		klog.Infof("Purchase completed, got contract ID %s", contract.ContractID)
 
 		// Create a contract CR now that the reservation is solved
-		contract := resourceforge.ForgeContractFromObj(&resPurchase.Contract)
-		err = r.Create(ctx, contract)
-		if errors.IsAlreadyExists(err) {
-			klog.Errorf("Error when creating Contract %s: %s", contract.Name, err)
-		} else if err != nil {
-			klog.Errorf("Error when creating Contract %s: %s", contract.Name, err)
+		contractCR, err := resourceforge.ForgeContractFromObj(contract)
+		if err != nil {
+			klog.Errorf("Error when forging Contract %s: %s", contractCR.Name, err)
 			return ctrl.Result{}, err
 		}
-		klog.Infof("Contract %s created", contract.Name)
+		err = r.Create(ctx, contractCR)
+		if errors.IsAlreadyExists(err) {
+			klog.Errorf("Error when creating Contract %s: %s", contractCR.Name, err)
+		} else if err != nil {
+			klog.Errorf("Error when creating Contract %s: %s", contractCR.Name, err)
+			return ctrl.Result{}, err
+		}
+		klog.Infof("Contract %s created", contractCR.Name)
 
 		reservation.Status.Contract = nodecorev1alpha1.GenericRef{
-			Name:      contract.Name,
-			Namespace: contract.Namespace,
+			Name:      contractCR.Name,
+			Namespace: contractCR.Namespace,
 		}
 		reservation.SetPurchaseStatus(nodecorev1alpha1.PhaseSolved)
 		reservation.SetPhase(nodecorev1alpha1.PhaseSolved, "Reservation solved")

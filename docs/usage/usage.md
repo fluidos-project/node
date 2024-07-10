@@ -4,13 +4,13 @@ In this section we will instruct you on how you can interact with the FLUIDOS No
 
 ## Solver Creation
 
-The first step is to create a `Solver` CR. This CR has different fields in its specification that if set correctly can lead to a custom behaviour of the FLUIDOS Node.
+The first step is to create a `Solver` CR. This CR has different fields in its specification that if set correctly can lead to a custom behavior of the FLUIDOS Node.
 
 Therefore, set the specification of the `Solver` CR as follows:
 
 ```yaml
   reserveAndBuy: false
-  enstablishPeering: false
+  establishPeering: false
 ```
 
 You can find an example here: [solver.yaml](../../deployments/node/samples/solver-custom.yaml)
@@ -18,6 +18,91 @@ You can find an example here: [solver.yaml](../../deployments/node/samples/solve
 Doing so, the FLUIDOS Node, after the creation of the `Solver` CR, will only discover the Peering Candidates adequate for the Solver requests.
 
 Retrieving the `Discovery` CR which contains the SolverID field as the name of the Solver CR, you can see the Peering Candidates discovered by the FLUIDOS Node.
+
+### Selector
+
+In the `Solver` CR you can also set a `Selector` field. This field specifies the requirements that the Peering Candidates must satisfy.
+
+In particular, you have two fields:
+
+- `flavorType`: that specifies the flavor type of the Peering Candidate. The possible values are:
+  - `K8Slice`: for a Peering Candidate that has a Kubernetes Slice flavor.
+  - `VM`: for a Peering Candidate that has a VM flavor.
+  - `Service`: for a Peering Candidate that has a Service flavor.
+  - `Sensor`: for a Peering Candidate that has a Sensor flavor.
+- `filters`: that specifies the filters that the Peering Candidates must satisfy. These filters depends on the flavor type of the Peering Candidate that you want to discover.
+
+### Filter types
+
+Each filter inside a `Selector` field can be of different types. The possible types are:
+
+#### ResourceQuantityFilter
+
+The `ResourceQuantityFilter` is a specific type of filter used by some specific filters in specific selectors. It can be of two types and it is specified by the `name` field. The possible values are:
+
+- `Match`: that specifies the exact value that the Peering Candidate must have.
+- `Range`: that specifies a range of values that the Peering Candidate must have.
+
+The other field is `data` that specifies the effective value of the filter and its structure depends on the type of the filter.
+
+- `Match` filter: Its structure is as follows:
+
+```yaml
+  name: Match
+  data:
+    value: "1000m"
+```
+
+- `Range` filter: Its structure is as follows:
+
+```yaml
+  name: Range
+  data:
+    min: "1Gi"
+    max: "10Gi"
+```
+
+The **Range** filter can have only the `min` field, the `max` field or both.
+
+### Selector types
+
+The `Selector` field can be of different types. The possible types are:
+
+#### K8Slice Filters
+
+K8Slice filters are the filters that you can set for a Peering Candidate that has a Kubernetes Slice flavor. They are specifically fields:
+
+- `CpuFilter`: that specifies the CPU that the Peering Candidate must have. It is a `ResourceQuantityFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+- `MemoryFilter`: that specifies the Memory that the Peering Candidate must have. It is a `ResourceQuantityFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+- `PodsFilter`: that specifies the Architecture that the Peering Candidate must have. It is a `ResourceQuantityFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+- `StorageFilter`: that specifies the Storage that the Peering Candidate must have. It is a `ResourceQuantityFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+
+A structure example of a `K8Slice` filter is as follows:
+
+```yaml
+  cpuFilter:
+    name: Match
+    value: "1000m"
+  memoryFilter:
+    name: Range
+    min: "1Gi"
+    max: "10Gi"
+  podsFilter:
+    name: Range
+    max: 10
+```
+
+#### VM Filters
+
+*Not yet implemented.*
+
+#### Service Filters
+
+*Not yet implemented.*
+
+#### Sensor Filters
+
+*Not yet implemented.*
 
 ## Reservation
 
@@ -33,6 +118,43 @@ If you want to postpone the purchase phase, you need to set the `purchase` field
 ```
 
 Doing so, the FLUIDOS Node will not proceed with the purchase of the Peering Candidate, but you will have a **temporary** reserved Peering Candidate both in the consumer and provider side.
+
+## Configuration
+
+In the `Reservation` CR you can define an optional field called `configuration`. This field is used to specify the configuration of the Peering Candidate that you want to reserve.
+
+The structure of the `configuration` field depends on the flavor type of the Peering Candidate that you want to reserve. In fact, there are two fields that you have to set:
+
+- `type`: that specifies the flavor type of the Configuration. The possible values are:
+  - `K8Slice`: for a Peering Candidate that has a Kubernetes Slice flavor.
+  - `VM`: for a Peering Candidate that has a VM flavor.
+  - `Service`: for a Peering Candidate that has a Service flavor.
+  - `Sensor`: for a Peering Candidate that has a Sensor flavor.
+- `data`: that specifies the specific configuration parameters of the Peering Candidate, related to the type of the Configuration.
+
+### Configuration types
+
+The `configuration` field can be of different types. The possible types are:
+
+#### K8Slice Configuration
+
+K8Slice configuration is the configuration that you can set for a Peering Candidate that has a Kubernetes Slice flavor. The configuration of the K8Slice leads to the creation of a partition of the Peering Candidate. The fields that you have set are:
+
+- `cpu`: that specifies the CPU of the Partition
+- `memory`: that specifies the Memory of the Partition
+- `pods`: that specifies the Pods of the Partition
+- `gpu`: that specifies the GPU of the Partition (Optional, not yet implemented)
+- `storage`: hat specifies the Storage of the Partition (Optional)
+
+A structure example of a `K8Slice` configuration is as follows:
+
+```yaml
+  type: K8Slice
+  data:
+    cpu: "1000m"
+    memory: "1Gi"
+    pods: "10"
+```
 
 ## Purchase
 

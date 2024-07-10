@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 )
 
-// ReservationSpec defines the desired state of Reservation
+// ReservationSpec defines the desired state of Reservation.
 type ReservationSpec struct {
 
 	// SolverID is the ID of the solver that asks for the reservation
@@ -32,8 +32,8 @@ type ReservationSpec struct {
 	// This is the Node identity of the seller FLUIDOS Node.
 	Seller nodecorev1alpha1.NodeIdentity `json:"seller"`
 
-	// Parition is the partition of the flavour that is being reserved
-	Partition *nodecorev1alpha1.Partition `json:"partition,omitempty"`
+	// Configuration is the configuration of the flavour that is being reserved
+	Configuration *nodecorev1alpha1.Configuration `json:"configuration,omitempty"`
 
 	// Reserve indicates if the reservation is a reserve or not
 	Reserve bool `json:"reserve,omitempty"`
@@ -45,7 +45,7 @@ type ReservationSpec struct {
 	PeeringCandidate nodecorev1alpha1.GenericRef `json:"peeringCandidate,omitempty"`
 }
 
-// ReservationStatus defines the observed state of Reservation
+// ReservationStatus defines the observed state of Reservation.
 type ReservationStatus struct {
 	// This is the current phase of the reservation
 	Phase nodecorev1alpha1.PhaseStatus `json:"phase"`
@@ -66,6 +66,7 @@ type ReservationStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// Reservation is the Schema for the reservations API.
 // +kubebuilder:printcolumn:name="Solver ID",type=string,JSONPath=`.spec.solverID`
 // +kubebuilder:printcolumn:name="Reserve",type=boolean,JSONPath=`.spec.reserve`
 // +kubebuilder:printcolumn:name="Purchase",type=boolean,JSONPath=`.spec.purchase`
@@ -78,7 +79,6 @@ type ReservationStatus struct {
 // +kubebuilder:printcolumn:name="Contract Name",type=string,JSONPath=`.status.contract.name`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,priority=1,JSONPath=`.status.phase.message`
-// Reservation is the Schema for the reservations API
 type Reservation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -89,7 +89,7 @@ type Reservation struct {
 
 //+kubebuilder:object:root=true
 
-// ReservationList contains a list of Reservation
+// ReservationList contains a list of Reservation.
 type ReservationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -35,16 +35,18 @@ localResourceManager:
   config:
     # -- Label used to identify the nodes from which resources are collected.
     nodeResourceLabel: "node-role.fluidos.eu/resources"
-    # -- This flag defines the resource type of the generated flavours.
+    # -- This flag defines the resource type of the generated flavors.
     resourceType: "k8s-fluidos"
-    flavour:
-      # -- The minimum number of CPUs that can be requested to purchase a flavour.
+    # -- Enable the auto-discovery of the resources.
+    enableAutoDiscovery: true
+    flavor:
+      # -- The minimum number of CPUs that can be requested to purchase a flavor.
       cpuMin: "0"
-      # -- The minimum amount of memory that can be requested to purchase a flavour.
+      # -- The minimum amount of memory that can be requested to purchase a flavor.
       memoryMin: "0"
-      # -- The CPU step that must be respected when requesting a flavour through a Flavour Selector.
+      # -- The CPU step that must be respected when requesting a flavor through a Flavor Selector.
       cpuStep: "1000m"
-      # -- The memory step that must be respected when requesting a flavour through a Flavour Selector.
+      # -- The memory step that must be respected when requesting a flavor through a Flavor Selector.
       memoryStep: "100Mi"
 
 rearManager:
@@ -149,3 +151,14 @@ networkManager:
       nodeID: 
 
 provider: "your-provider"
+
+webhook:
+  # -- Enable the webhook server for the local-resource-manager.
+  enabled: true
+  # -- Configuration for the webhook server.
+  issuer: "self-signed"
+  # -- Configuration for the webhook server.
+  deployment:
+    # -- The mount path for the webhook certificates.
+    certsMount: "/tmp/k8s-webhook-server/serving-certs/"
+  

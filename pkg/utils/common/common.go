@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
@@ -27,39 +29,135 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
 )
 
-// FilterFlavoursBySelector returns the Flavour CRs in the cluster that match the selector.
-func FilterFlavoursBySelector(flavours []nodecorev1alpha1.Flavour, selector *models.Selector) ([]nodecorev1alpha1.Flavour, error) {
-	var flavoursSelected []nodecorev1alpha1.Flavour
+// FilterFlavorsBySelector returns the Flavor CRs in the cluster that match the selector.
+func FilterFlavorsBySelector(flavors []nodecorev1alpha1.Flavor, selector models.Selector) ([]nodecorev1alpha1.Flavor, error) {
+	var flavorsSelected []nodecorev1alpha1.Flavor
 
-	// Get the Flavours that match the selector
-	for i := range flavours {
-		f := flavours[i]
-		if string(f.Spec.Type) == selector.FlavourType {
-			// filter function
-			if FilterFlavour(selector, &f) {
-				flavoursSelected = append(flavoursSelected, f)
+	klog.Infof("Filtering flavors by selector: %v", selector)
+	klog.Infof("Selector type: %s", selector.GetSelectorType())
+
+	// Map the selector flavor type to the FlavorTypeIdentifier
+	selectorType := models.MapFromFlavorTypeName(selector.GetSelectorType())
+
+	// Get the Flavors that match the selector
+	for i := range flavors {
+		f := flavors[i]
+		if f.Spec.FlavorType.TypeIdentifier == selectorType {
+			klog.Infof("Flavor type matches selector type, which is %s", selector.GetSelectorType())
+			if FilterFlavor(selector, &f) {
+				flavorsSelected = append(flavorsSelected, f)
 			}
 		}
 	}
 
-	return flavoursSelected, nil
+	return flavorsSelected, nil
 }
 
-// FilterFlavour filters the Flavour CRs in the cluster that match the selector.
-func FilterFlavour(selector *models.Selector, f *nodecorev1alpha1.Flavour) bool {
-	if f.Spec.Characteristics.Architecture != selector.Architecture {
-		klog.Infof("Flavour %s has different architecture: %s - Selector: %s", f.Name, f.Spec.Characteristics.Architecture, selector.Architecture)
+// FilterFlavor returns true if the Flavor CR fits the selector.
+func FilterFlavor(selector models.Selector, flavorCR *nodecorev1alpha1.Flavor) bool {
+	flavorTypeIdentifier, flavorTypeData, err := nodecorev1alpha1.ParseFlavorType(flavorCR)
+
+	if err != nil {
+		klog.Errorf("error parsing flavor type: %v", err)
 		return false
 	}
 
-	if selector.MatchSelector != nil {
-		if !filterByMatchSelector(selector, f) {
+	switch flavorTypeIdentifier {
+	case nodecorev1alpha1.TypeK8Slice:
+		// Check if selector type matches flavor type
+		if selector.GetSelectorType() != models.K8SliceNameDefault {
+			klog.Errorf("selector type %s does not match flavor type %s", selector.GetSelectorType(), models.K8SliceNameDefault)
+			return false
+		}
+		// Cast the selector to a K8Slice selector
+		k8sliceSelector := selector.(models.K8SliceSelector)
+		// Cast the flavor type data to a K8Slice CR
+		flavorTypeCR := flavorTypeData.(nodecorev1alpha1.K8Slice)
+		return filterFlavorK8Slice(&k8sliceSelector, &flavorTypeCR)
+	// TODO: Implement other flavor types filtering
+	default:
+		// Flavor type not supported
+		klog.Errorf("flavor type %s not supported", flavorCR.Spec.FlavorType.TypeIdentifier)
+		return false
+	}
+}
+
+func filterResourceQuantityFilter(selectorValue resource.Quantity, filter models.ResourceQuantityFilter) bool {
+	switch filter.Name {
+	case models.MatchFilter:
+		// Parse the filter to a match filter
+		var matchFilter models.ResourceQuantityMatchFilter
+		err := json.Unmarshal(filter.Data, &matchFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling match filter: %v", err)
+			return false
+		}
+		// Check if the selector value matches the filter value
+		if selectorValue.Cmp(matchFilter.Value) != 0 {
+			klog.Infof("Match Filter: %d - Selector Value: %d", matchFilter.Value, selectorValue)
+			return false
+		}
+	case models.RangeFilter:
+		// Parse the filter to a range filter
+		var rangeFilter models.ResourceQuantityRangeFilter
+		err := json.Unmarshal(filter.Data, &rangeFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling range filter: %v", err)
+			return false
+		}
+		// Check if the selector value is within the range
+		// If the rangeFilter.Min exists check if the selector value is greater or equal to it
+		if rangeFilter.Min != nil {
+			if selectorValue.Cmp(*rangeFilter.Min) < 0 {
+				klog.Infof("Range Filter: %d-%d - Selector Value: %d", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				return false
+			}
+		}
+		// If the rangeFilter.Max exists check if the selector value is less or equal to it
+		if rangeFilter.Max != nil {
+			if selectorValue.Cmp(*rangeFilter.Max) > 0 {
+				klog.Infof("Range Filter: %d-%d - Selector Value: %d", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// filterFlavorK8Slice return true if the K8Slice Flavor CR fits the K8Slice selector.
+func filterFlavorK8Slice(k8SliceSelector *models.K8SliceSelector, flavorTypeK8SliceCR *nodecorev1alpha1.K8Slice) bool {
+	// CPU Filter
+	if k8SliceSelector.CPU != nil {
+		// Check if the flavor matches the CPU filter
+		cpuFilterModel := *k8SliceSelector.CPU
+		if !filterResourceQuantityFilter(flavorTypeK8SliceCR.Characteristics.CPU, cpuFilterModel) {
 			return false
 		}
 	}
 
-	if selector.RangeSelector != nil && selector.MatchSelector == nil {
-		if !filterByRangeSelector(selector, f) {
+	// Memory Filter
+	if k8SliceSelector.Memory != nil {
+		// Check if the flavor matches the Memory filter
+		memoryFilterModel := *k8SliceSelector.Memory
+		if !filterResourceQuantityFilter(flavorTypeK8SliceCR.Characteristics.Memory, memoryFilterModel) {
+			return false
+		}
+	}
+
+	// Pods Filter
+	if k8SliceSelector.Pods != nil {
+		// Check if the flavor matches the Pods filter
+		podsFilterModel := *k8SliceSelector.Pods
+		if !filterResourceQuantityFilter(flavorTypeK8SliceCR.Characteristics.Pods, podsFilterModel) {
+			return false
+		}
+	}
+
+	// Storage Filter
+	if k8SliceSelector.Storage != nil {
+		// Check if the flavor matches the Storage filter
+		storageFilterModel := *k8SliceSelector.Storage
+		if !filterResourceQuantityFilter(*flavorTypeK8SliceCR.Characteristics.Storage, storageFilterModel) {
 			return false
 		}
 	}
@@ -67,110 +165,35 @@ func FilterFlavour(selector *models.Selector, f *nodecorev1alpha1.Flavour) bool 
 	return true
 }
 
-func filterByMatchSelector(selector *models.Selector, f *nodecorev1alpha1.Flavour) bool {
-	if selector.MatchSelector.CPU.CmpInt64(0) == 0 && f.Spec.Characteristics.Cpu.Cmp(selector.MatchSelector.CPU) != 0 {
-		klog.Infof("MatchSelector Cpu: %d - Flavour Cpu: %d", selector.MatchSelector.CPU, f.Spec.Characteristics.Cpu)
+// FilterPeeringCandidate filters the peering candidate based on the solver's flavor selector.
+func FilterPeeringCandidate(selector *nodecorev1alpha1.Selector, pc *advertisementv1alpha1.PeeringCandidate) bool {
+	// Parsing the selector
+	if selector == nil {
+		klog.Infof("No selector provided")
+		return true
+	}
+	s, err := parseutil.ParseFlavorSelector(selector)
+	if err != nil {
+		klog.Errorf("Error parsing selector: %v", err)
 		return false
 	}
-
-	if selector.MatchSelector.Memory.CmpInt64(0) == 0 && f.Spec.Characteristics.Memory.Cmp(selector.MatchSelector.Memory) != 0 {
-		klog.Infof("MatchSelector Memory: %d - Flavour Memory: %d", selector.MatchSelector.Memory, f.Spec.Characteristics.Memory)
-		return false
-	}
-
-	if selector.MatchSelector.Pods.CmpInt64(0) == 0 && f.Spec.Characteristics.Pods.Cmp(selector.MatchSelector.Pods) != 0 {
-		klog.Infof("MatchSelector Pods: %d - Flavour Pods: %d", selector.MatchSelector.Pods, f.Spec.Characteristics.Pods)
-		return false
-	}
-
-	if selector.MatchSelector.EphemeralStorage.CmpInt64(0) == 0 &&
-		f.Spec.Characteristics.EphemeralStorage.Cmp(selector.MatchSelector.EphemeralStorage) != 0 {
-		klog.Infof("MatchSelector EphemeralStorage: %d - Flavour EphemeralStorage: %d",
-			selector.MatchSelector.EphemeralStorage, f.Spec.Characteristics.EphemeralStorage)
-		return false
-	}
-
-	if selector.MatchSelector.Storage.CmpInt64(0) == 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.MatchSelector.Storage) != 0 {
-		klog.Infof("MatchSelector Storage: %d - Flavour Storage: %d", selector.MatchSelector.Storage, f.Spec.Characteristics.PersistentStorage)
-		return false
-	}
-
-	if selector.MatchSelector.Gpu.CmpInt64(0) == 0 && f.Spec.Characteristics.Gpu.Cmp(selector.MatchSelector.Gpu) != 0 {
-		klog.Infof("MatchSelector GPU: %d - Flavour GPU: %d", selector.MatchSelector.Gpu, f.Spec.Characteristics.Gpu)
-		return false
-	}
-	return true
-}
-
-func filterByRangeSelector(selector *models.Selector, f *nodecorev1alpha1.Flavour) bool {
-	if selector.RangeSelector.MinCPU.CmpInt64(0) != 0 && f.Spec.Characteristics.Cpu.Cmp(selector.RangeSelector.MinCPU) < 0 {
-		klog.Infof("RangeSelector MinCpu: %d - Flavour Cpu: %d", selector.RangeSelector.MinCPU, f.Spec.Characteristics.Cpu)
-		return false
-	}
-
-	if selector.RangeSelector.MinMemory.CmpInt64(0) != 0 && f.Spec.Characteristics.Memory.Cmp(selector.RangeSelector.MinMemory) < 0 {
-		klog.Infof("RangeSelector MinMemory: %d - Flavour Memory: %d", selector.RangeSelector.MinMemory, f.Spec.Characteristics.Memory)
-		return false
-	}
-
-	if selector.RangeSelector.MinPods.CmpInt64(0) != 0 && f.Spec.Characteristics.Pods.Cmp(selector.RangeSelector.MinPods) < 0 {
-		klog.Infof("RangeSelector MinPods: %d - Flavour Pods: %d", selector.RangeSelector.MinPods, f.Spec.Characteristics.Pods)
-		return false
-	}
-
-	if selector.RangeSelector.MinEph.CmpInt64(0) != 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.RangeSelector.MinEph) < 0 {
-		klog.Infof("RangeSelector MinEph: %d - Flavour EphemeralStorage: %d", selector.RangeSelector.MinEph, f.Spec.Characteristics.EphemeralStorage)
-		return false
-	}
-
-	if selector.RangeSelector.MinStorage.CmpInt64(0) != 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.RangeSelector.MinStorage) < 0 {
-		klog.Infof("RangeSelector MinStorage: %d - Flavour Storage: %d", selector.RangeSelector.MinStorage, f.Spec.Characteristics.PersistentStorage)
-		return false
-	}
-
-	if selector.RangeSelector.MinGpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Gpu.Cmp(selector.RangeSelector.MinGpu) < 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxCPU.CmpInt64(0) != 0 && f.Spec.Characteristics.Cpu.Cmp(selector.RangeSelector.MaxCPU) > 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxMemory.CmpInt64(0) != 0 && f.Spec.Characteristics.Memory.Cmp(selector.RangeSelector.MaxMemory) > 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxPods.CmpInt64(0) != 0 && f.Spec.Characteristics.Pods.Cmp(selector.RangeSelector.MaxPods) > 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxEph.CmpInt64(0) != 0 && f.Spec.Characteristics.EphemeralStorage.Cmp(selector.RangeSelector.MaxEph) > 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxStorage.CmpInt64(0) != 0 && f.Spec.Characteristics.PersistentStorage.Cmp(selector.RangeSelector.MaxStorage) > 0 {
-		return false
-	}
-
-	if selector.RangeSelector.MaxGpu.CmpInt64(0) != 0 && f.Spec.Characteristics.Gpu.Cmp(selector.RangeSelector.MaxGpu) > 0 {
-		return false
-	}
-	return true
-}
-
-// FilterPeeringCandidate filters the peering candidate based on the solver's flavour selector.
-func FilterPeeringCandidate(selector *nodecorev1alpha1.FlavourSelector, pc *advertisementv1alpha1.PeeringCandidate) bool {
-	s := parseutil.ParseFlavourSelector(selector)
-	return FilterFlavour(s, &pc.Spec.Flavour)
+	// Filter the peering candidate based on its flavor
+	return FilterFlavor(s, &pc.Spec.Flavor)
 }
 
 // CheckSelector ia a func to check if the syntax of the Selector is right.
 // Strict and range syntax cannot be used together.
-func CheckSelector(selector *models.Selector) error {
-	if selector.MatchSelector != nil && selector.RangeSelector != nil {
-		return fmt.Errorf("selector syntax error: strict and range syntax cannot be used together")
+func CheckSelector(selector models.Selector) error {
+	// Parse the selector to check the syntax
+	switch selector.GetSelectorType() {
+	case models.K8SliceNameDefault:
+		k8sliceSelector := selector.(models.K8SliceSelector)
+		klog.Infof("Checking K8Slice selector: %v", k8sliceSelector)
+		// Nothing is compulsory in the K8Slice selector
+		return nil
+	default:
+		return fmt.Errorf("selector type %s not supported", selector.GetSelectorType())
 	}
-	return nil
 }
 
 // SOLVER PHASE SETTERS
@@ -208,19 +231,19 @@ func DiscoveryStatusCheck(solver *nodecorev1alpha1.Solver, discovery *advertisem
 // ReservationStatusCheck checks the status of the reservation.
 func ReservationStatusCheck(solver *nodecorev1alpha1.Solver, reservation *reservationv1alpha1.Reservation) {
 	klog.Infof("Reservation %s is in phase %s", reservation.Name, reservation.Status.Phase.Phase)
-	flavourName := namings.RetrieveFlavourNameFromPC(reservation.Spec.PeeringCandidate.Name)
+	flavorName := namings.RetrieveFlavorNameFromPC(reservation.Spec.PeeringCandidate.Name)
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseSolved {
-		klog.Infof("Reservation %s has reserved and purchase the flavour %s", reservation.Name, flavourName)
+		klog.Infof("Reservation %s has reserved and purchase the flavor %s", reservation.Name, flavorName)
 		solver.Status.ReservationPhase = nodecorev1alpha1.PhaseSolved
 		solver.Status.ReserveAndBuy = nodecorev1alpha1.PhaseSolved
 		solver.Status.Contract = reservation.Status.Contract
-		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation: Flavour reserved and purchased")
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation: Flavor reserved and purchased")
 	}
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseFailed {
 		klog.Infof("Reservation %s has failed. Reason: %s", reservation.Name, reservation.Status.Phase.Message)
 		solver.Status.ReservationPhase = nodecorev1alpha1.PhaseFailed
 		solver.Status.ReserveAndBuy = nodecorev1alpha1.PhaseFailed
-		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation: Flavour reservation and purchase failed")
+		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Reservation: Flavor reservation and purchase failed")
 	}
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseRunning {
 		if reservation.Status.ReservePhase == nodecorev1alpha1.PhaseRunning {

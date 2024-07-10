@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,19 +19,7 @@ import (
 )
 
 //nolint:revive // Do not need to repeat the same comment
-type NodeType string
-
-//nolint:revive // Do not need to repeat the same comment
 type Status string
-
-//nolint:revive // Do not need to repeat the same comment
-type Destination string
-
-// NodeType is the type of the node: Node (Physical node of the cluster) or VirtualNode (Remote node owned by a different cluster).
-const (
-	Node        NodeType = "Node"
-	VirtualNode NodeType = "VirtualNode"
-)
 
 // Status is the status of the allocation.
 const (
@@ -42,30 +30,11 @@ const (
 	Error    Status = "Error"
 )
 
-// Destination is the destination of the allocation: Local (the allocation will be used locally)
-// or Remote (the allocation will be used from a remote cluster).
-const (
-	Remote Destination = "Remote"
-	Local  Destination = "Local"
-)
-
-// AllocationSpec defines the desired state of Allocation
+// AllocationSpec defines the desired state of Allocation.
 type AllocationSpec struct {
-	// This is the ID of the cluster that owns the allocation.
-	RemoteClusterID string `json:"remoteClusterID,omitempty"`
-
 	// This is the ID of the intent for which the allocation was created.
 	// It is used by the Node Orchestrator to identify the correct allocation for a given intent
 	IntentID string `json:"intentID"`
-
-	// This is the corresponding Node or VirtualNode local name
-	NodeName string `json:"nodeName"`
-
-	// This specifies the type of the node: Node (Physical node of the cluster) or VirtualNode (Remote node owned by a different cluster)
-	Type NodeType `json:"type"`
-
-	// This specifies if the destination of the allocation is local or remote so if the allocation will be used locally or from a remote cluster
-	Destination Destination `json:"destination"`
 
 	// This flag indicates if the allocation is a forwarding allocation
 	// if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
@@ -102,7 +71,7 @@ type Allocation struct {
 
 //+kubebuilder:object:root=true
 
-// AllocationList contains a list of Allocation
+// AllocationList contains a list of Allocation.
 type AllocationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

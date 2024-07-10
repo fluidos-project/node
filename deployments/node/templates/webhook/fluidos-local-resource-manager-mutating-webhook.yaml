@@ -1,0 +1,29 @@
+{{- $resManagerConfig := (merge (dict "name" "local-resource-manager" "module" "local-resource-manager") .) -}}
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "fluidos.prefixedName" $resManagerConfig }}
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-nodecore-fluidos-eu-v1alpha1-flavor
+  failurePolicy: Fail
+  name: mutate.flavor.nodecore.fluidos.eu
+  rules:
+  - apiGroups:
+    - nodecore.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - flavors
+  sideEffects: None

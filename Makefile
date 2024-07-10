@@ -22,6 +22,7 @@ docs: helm-docs
 manifests: controller-gen
 	rm -f deployments/node/crds/*
 	$(CONTROLLER_GEN) paths="./apis/..." crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=deployments/node/crds
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 #Generate RBAC for each controller
 rbacs: controller-gen

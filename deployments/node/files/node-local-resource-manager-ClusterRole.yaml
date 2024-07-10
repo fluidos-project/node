@@ -34,7 +34,7 @@ rules:
 - apiGroups:
   - nodecore.fluidos.eu
   resources:
-  - flavours
+  - flavors
   verbs:
   - create
   - delete
