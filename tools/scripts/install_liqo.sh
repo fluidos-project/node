@@ -22,14 +22,17 @@ fi
 check_and_install_liqoctl
 
 # Get the provider parameter
+# Get the provider parameter
 PROVIDER=$1
 
-control_plane_node=$(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].metadata.name}')
-cluster_name=${control_plane_node%-control-plane}
+# Get the cluster name
+CLUSTER_NAME=$2
 
+# Get the Kubeconfig
+KUBECONFIG_LIQO=$3
 
 # Install Liqo based on the provider
-liqoctl install "$PROVIDER" --cluster-name "$cluster_name" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
+liqoctl install "$PROVIDER" --cluster-name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG_LIQO" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
 # liqoctl install "$PROVIDER" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
 
 echo "Liqo installation for provider $PROVIDER completed successfully."
