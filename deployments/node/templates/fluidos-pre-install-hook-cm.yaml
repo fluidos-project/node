@@ -52,27 +52,27 @@ data:
     }
 
     # Function to install liqo if not installed
-    install_liqo() {
-        local provider=$1
+    # install_liqo() {
+    #     local provider=$1
 
-        if [ -z "$provider" ]; then
-            echo "Provider not specified for liqo. Usage: $0 <provider>"
-            exit 1
-        fi
+    #     if [ -z "$provider" ]; then
+    #         echo "Provider not specified for liqo. Usage: $0 <provider>"
+    #         exit 1
+    #     fi
 
-        if ! is_helm_installed "default" "liqo" && ! is_k8s_resource_present "deployment/liqo" "liqo"; then
-            echo "Installing liqo with provider $provider..."
-            curl -sL https://github.com/liqotech/liqo/releases/download/v0.4.0/liqoctl-linux-amd64 -o /usr/local/bin/liqoctl
-            chmod +x /usr/local/bin/liqoctl
-            liqoctl install $provider --cluster-name $provider --only-output-values --dump-values-path="values-liqo.yaml"
-            helm repo add liqo https://helm.liqo.io/
-            helm repo update
-            helm install liqo liqo/liqo -f values-liqo.yaml -n liqo --set discovery.config.enableAdvertisement=false --create-namespace --kubeconfig "$KUBECONFIG"
-            rm values-liqo.yaml
-        else
-            echo "liqo is already installed."
-        fi
-    }
+    #     if ! is_helm_installed "default" "liqo" && ! is_k8s_resource_present "deployment/liqo" "liqo"; then
+    #         echo "Installing liqo with provider $provider..."
+    #         curl -sL https://github.com/liqotech/liqo/releases/download/v0.4.0/liqoctl-linux-amd64 -o /usr/local/bin/liqoctl
+    #         chmod +x /usr/local/bin/liqoctl
+    #         liqoctl install $provider --cluster-name $provider --only-output-values --dump-values-path="values-liqo.yaml"
+    #         helm repo add liqo https://helm.liqo.io/
+    #         helm repo update
+    #         helm install liqo liqo/liqo -f values-liqo.yaml -n liqo --set discovery.config.enableAdvertisement=false --create-namespace --kubeconfig "$KUBECONFIG"
+    #         rm values-liqo.yaml
+    #     else
+    #         echo "liqo is already installed."
+    #     fi
+    # }
 
     # Main script
     main() {

@@ -208,7 +208,7 @@ function install_components() {
 
         # Install liqo
         chmod +x "$SCRIPT_DIR"/install_liqo.sh
-        "$SCRIPT_DIR"/install_liqo.sh "$installation_type" || { echo "Failed to install Liqo in cluster $cluster"; exit 1; }
+                "$SCRIPT_DIR"/install_liqo.sh "$installation_type" "$cluster" "$KUBECONFIG"  || { echo "Failed to install Liqo in cluster $cluster"; exit 1; }
         chmod -x "$SCRIPT_DIR"/install_liqo.sh
 
         # Skipping the installation of the node Helm chart if the cluster is a provider and its installation type is not kind
