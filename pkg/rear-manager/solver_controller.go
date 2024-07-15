@@ -464,6 +464,8 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.Infof("ForeignCluster %s not found", solver.Status.Credentials.ClusterID)
+				// Retry later
+				return ctrl.Result{Requeue: true}, nil
 			} else {
 				klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
 				solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
@@ -474,6 +476,7 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 			}
 			return ctrl.Result{}, nil
 		}
+		klog.Infof("ForeignCluster %s found", solver.Status.Credentials.ClusterID)
 		if fcutils.IsOutgoingJoined(fc) &&
 			fcutils.IsAuthenticated(fc) &&
 			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
@@ -499,7 +502,7 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 			}
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	case nodecorev1alpha1.PhaseFailed:
 		klog.Infof("Solver %s has failed to establish a peering", req.NamespacedName.Name)
 		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has failed to establish a peering")
@@ -645,7 +648,7 @@ func allocationPredicate(c client.Client) predicate.Predicate {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			return (e.ObjectNew.(*nodecorev1alpha1.Allocation).Status.Status == nodecorev1alpha1.Active ||
 				e.ObjectNew.(*nodecorev1alpha1.Allocation).Status.Status == nodecorev1alpha1.Released) &&
-				IsProvider(context.Background(), e.ObjectNew.(*nodecorev1alpha1.Allocation), c) &&
+				!IsProvider(context.Background(), e.ObjectNew.(*nodecorev1alpha1.Allocation), c) &&
 				e.ObjectNew.(*nodecorev1alpha1.Allocation).Spec.IntentID != ""
 		},
 	}
