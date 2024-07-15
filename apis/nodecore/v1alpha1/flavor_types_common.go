@@ -16,8 +16,8 @@ package v1alpha1
 
 // CarbonFootprint represents the carbon footprint of a Flavor.
 type CarbonFootprint struct {
-	Embodied    int `json:"embodied"`
-	Operational int `json:"operational"`
+	Embodied    int   `json:"embodied"`
+	Operational []int `json:"operational"`
 }
 
 // Properties represents the properties of a Flavor.
