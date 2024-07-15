@@ -72,9 +72,9 @@ Please, note that you need to pass a few parameters.
 
 - "provider": this parameter depends on your Kubernetes installation.
     We currently test it on the following providers:
-      1. kubeadm
-      2. k3s
-      3. kind
+    1. kubeadm
+    2. k3s
+    3. kind
 - "cluster-name": this is the name you want to give to your Liqo local cluster (e.g.: `fluidos-turin-1`)
 
 - $KUBECONFIG: it is the typical environment variable that points to the path of your Kubernetes cluster configuration.
