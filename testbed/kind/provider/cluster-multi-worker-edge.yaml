@@ -1,0 +1,46 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  disableDefaultCNI: true # disable kindnet
+  podSubnet: "10.244.0.0/16"  # This is the default subnet used by Flannel 
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.28.0
+    extraMounts:
+      # hostPath auto-calculated by the setup script"
+    - hostPath: 
+      containerPath: /opt/cni/bin
+    extraPortMappings:
+      - containerPort: 10000
+        hostPort: 10000
+        protocol: TCP
+      - containerPort: 10001
+        hostPort: 10001
+        protocol: TCP
+      - containerPort: 10002
+        hostPort: 10002
+        protocol: TCP
+      - containerPort: 10003
+        hostPort: 10003
+        protocol: TCP
+      - containerPort: 10004
+        hostPort: 10004
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.28.0
+    labels:
+      node-role.fluidos.eu/resources: "true"
+      node-role.fluidos.eu/worker: "true"
+    extraMounts:
+      # hostPath auto-calculate dfilled by the setup script"
+    - hostPath: 
+      containerPath: /opt/cni/bin
+  - role: worker
+    image: kindest/node:v1.28.0
+    labels:
+      node-role.fluidos.eu/resources: "true"
+    extraMounts:
+      # hostPath auto-calculated filled by the setup script"
+    - hostPath: 
+      containerPath: /opt/cni/bin
+

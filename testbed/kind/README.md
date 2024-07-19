@@ -19,6 +19,12 @@ This guide will create two different Kubernetes clusters:
 
 - **fluidos-provider**: This cluster (a.k.a. FLUIDOS node) will act as a provider of FLUIDOS resources. It will offer its own Flavours on the specific request made by the consumer, reserving and selling it.
 
+During the setup process, if you select to support edge worker nodes, the script will automatically install CloudCore at the fluidos-provider cluster, which will be accessible over the host's network interface. Any edge worker node with access to the KIND testbet host machine network may join the cluster.
+<p align="center">
+<img src="../..//docs/images/fluidos-testbed-edge.png"/>
+<h3 align="center">FLUIDOS Node - Testbed (KIND)</h3>
+</p>
+
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
@@ -26,6 +32,7 @@ This guide will create two different Kubernetes clusters:
 - [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
 - [Helm](https://helm.sh/docs/intro/install/)
 - [Liqo CLI tool](https://docs.liqo.io/en/v0.10.1/installation/liqoctl.html)
+- Git
 
 ## Common issues with KIND
 
