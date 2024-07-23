@@ -20,6 +20,14 @@ type CarbonFootprint struct {
 	Operational []int `json:"operational"`
 }
 
+// NetworkAuthorizations represents the network authorization of a Flavor.
+type NetworkAuthorizations struct {
+	// DeniedCommunications represents the network communications that are denied by the K8Slice Flavor.
+	DeniedCommunications []NetworkIntent `json:"deniedCommunications"`
+	// MandatoryCommunications represents the network communications that are mandatory by the K8Slice Flavor.
+	MandatoryCommunications []NetworkIntent `json:"mandatoryCommunications"`
+}
+
 // Properties represents the properties of a Flavor.
 type Properties struct {
 	// Latency to reach the K8Slice Flavor
@@ -28,4 +36,6 @@ type Properties struct {
 	SecurityStandards []string `json:"securityStandards,omitempty"`
 	// Carbon footprint of the K8Slice Flavor
 	CarbonFootprint *CarbonFootprint `json:"carbon-footprint,omitempty"`
+	// Network authorization policies of the K8Slice Flavor
+	NetworkAuthorizations *NetworkAuthorizations `json:"networkAuthorizations,omitempty"`
 }

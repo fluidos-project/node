@@ -18,6 +18,9 @@ import "k8s.io/klog/v2"
 
 // K8SliceSelector is the selector for a K8Slice.
 type K8SliceSelector struct {
+	// ArchitectureFilter is the Architecture filter of the K8SliceSelector.
+	ArchitectureFilter *StringFilter `json:"architectureFilter,omitempty"`
+
 	// CPUFilter is the CPU filter of the K8SliceSelector.
 	CPUFilter *ResourceQuantityFilter `json:"cpuFilter,omitempty"`
 
@@ -39,6 +42,15 @@ func (*K8SliceSelector) GetFlavorTypeSelector() FlavorTypeIdentifier {
 // ParseK8SliceSelector parses the K8SliceSelector into a map of filters.
 func ParseK8SliceSelector(k8SliceSelector *K8SliceSelector) (map[FilterType]interface{}, error) {
 	filters := make(map[FilterType]interface{})
+	if k8SliceSelector.ArchitectureFilter != nil {
+		klog.Info("Parsing Architecture filter")
+		// Parse Architecture filter
+		architectureFilterType, architectureFilterData, err := ParseStringFilter(k8SliceSelector.ArchitectureFilter)
+		if err != nil {
+			return nil, err
+		}
+		filters[architectureFilterType] = architectureFilterData
+	}
 	if k8SliceSelector.CPUFilter != nil {
 		klog.Info("Parsing CPU filter")
 		// Parse CPU filter

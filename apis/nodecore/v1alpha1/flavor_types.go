@@ -15,7 +15,6 @@
 package v1alpha1
 
 import (
-	"encoding/json"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,9 +152,14 @@ func ParseFlavorType(flavor *Flavor) (FlavorTypeIdentifier, interface{}, error) 
 	switch flavor.Spec.FlavorType.TypeIdentifier {
 	case TypeK8Slice:
 
-		var k8slice K8Slice
-		validationErr = json.Unmarshal(flavor.Spec.FlavorType.TypeData.Raw, &k8slice)
-		return TypeK8Slice, k8slice, validationErr
+		var k8slice *K8Slice
+		// Parse K8Slice flavor
+		k8slice, err := ParseK8SliceFlavor(flavor.Spec.FlavorType)
+		if err != nil {
+			return "", nil, err
+		}
+
+		return TypeK8Slice, *k8slice, validationErr
 
 	case TypeVM:
 		// TODO: Implement VM flavor parsing

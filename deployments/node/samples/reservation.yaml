@@ -12,12 +12,12 @@ spec:
     type: K8Slice
     # Be sure to use values that are in the range of the peeringCandidate
     data:
-      cpu: 100m
+      cpu: 1000m
       memory: 1Gi
       pods: "110"
   # Retrieve from PeeringCandidate chosen to reserve
   peeringCandidate:
-    name: peeringcandidate-fluidos.eu-k8slice-2a528297186cb85ed12a6a704a3d1563
+    name: peeringcandidate-fluidos.eu-k8slice-24f77877ba11ce29a25f95ec33a244c5
     namespace: fluidos
   # Set it to reserve
   reserve: true
@@ -26,10 +26,10 @@ spec:
   # Retrieve from PeeringCandidate Flavor Owner field    
   seller:
     domain: fluidos.eu
-    ip: 172.18.0.6:30001
-    nodeID: fxzpcumzuj
+    ip: 172.18.0.7:30001
+    nodeID: ac7jspin96
   # Retrieve from configmap
   buyer:
     domain: fluidos.eu
     ip: 172.18.0.5:30000
-    nodeID: jdsoju5mtk
+    nodeID: 4sqa7o2wsh

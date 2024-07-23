@@ -17,6 +17,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
@@ -124,8 +125,56 @@ func filterResourceQuantityFilter(selectorValue resource.Quantity, filter models
 	return true
 }
 
+func filterStringFilter(selectorValue string, filter models.StringFilter) bool {
+	switch filter.Name {
+	case models.MatchFilter:
+		// Parse the filter to a match filter
+		var matchFilter models.StringMatchFilter
+		err := json.Unmarshal(filter.Data, &matchFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling match filter: %v", err)
+			return false
+		}
+		// Check if the selector value matches the filter value
+		if selectorValue != matchFilter.Value {
+			klog.Infof("Match Filter: %s - Selector Value: %s", matchFilter.Value, selectorValue)
+			return false
+		}
+	case models.RangeFilter:
+		// Parse the filter to a range filter
+		var rangeFilter models.StringRangeFilter
+		err := json.Unmarshal(filter.Data, &rangeFilter)
+		if err != nil {
+			klog.Errorf("Error unmarshalling range filter: %v", err)
+			return false
+		}
+		// Check if the selector value matches the regex
+		match, err := regexp.MatchString(rangeFilter.Regex, selectorValue)
+		if err != nil {
+			klog.Errorf("Error matching regex: %v", err)
+			return false
+		}
+		if !match {
+			klog.Infof("Range Filter: %s - Selector Value: %s", rangeFilter.Regex, selectorValue)
+			return false
+		}
+	default:
+		klog.Errorf("Filter name %s not supported", filter.Name)
+		return false
+	}
+	return true
+}
+
 // filterFlavorK8Slice return true if the K8Slice Flavor CR fits the K8Slice selector.
 func filterFlavorK8Slice(k8SliceSelector *models.K8SliceSelector, flavorTypeK8SliceCR *nodecorev1alpha1.K8Slice) bool {
+	// Architecture Filter
+	if k8SliceSelector.Architecture != nil {
+		// Check if the flavor matches the Architecture filter
+		architectureFilterModel := *k8SliceSelector.Architecture
+		if !filterStringFilter(flavorTypeK8SliceCR.Characteristics.Architecture, architectureFilterModel) {
+			return false
+		}
+	}
 	// CPU Filter
 	if k8SliceSelector.CPU != nil {
 		// Check if the flavor matches the CPU filter

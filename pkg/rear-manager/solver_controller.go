@@ -466,10 +466,9 @@ func (r *SolverReconciler) handlePeering(ctx context.Context, req ctrl.Request, 
 				klog.Infof("ForeignCluster %s not found", solver.Status.Credentials.ClusterID)
 				// Retry later
 				return ctrl.Result{Requeue: true}, nil
-			} else {
-				klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
-				solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
 			}
+			klog.Errorf("Error when getting ForeignCluster %s: %v", solver.Status.Credentials.ClusterID, err)
+			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
 			if err := r.updateSolverStatus(ctx, solver); err != nil {
 				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 				return ctrl.Result{}, err

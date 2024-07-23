@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +33,26 @@ const (
 
 // FilterType is the type of filter that can be applied to a resource quantity.
 type FilterType string
+
+// StringFilter is a filter that can be applied to a string.
+type StringFilter struct {
+	// Name indicates the type of the filter
+	Name FilterType `json:"name"`
+	// Filter data
+	Data runtime.RawExtension `json:"data"`
+}
+
+// StringMatchSelector is a filter that selects strings that match a specific value.
+type StringMatchSelector struct {
+	// Value is the value to match
+	Value string `json:"value"`
+}
+
+// StringRangeSelector is a filter that selects strings within a range.
+type StringRangeSelector struct {
+	// Regex is the regular expression to match
+	Regex string `json:"regex"`
+}
 
 // ResourceQuantityFilter is a filter that can be applied to a resource quantity.
 type ResourceQuantityFilter struct {
@@ -91,5 +112,41 @@ func ParseResourceQuantityFilter(rqf *ResourceQuantityFilter) (FilterType, inter
 		return TypeRangeFilter, rrs, validationErr
 	default:
 		return "", nil, fmt.Errorf("unknown filter type %s", rqf.Name)
+	}
+}
+
+// ParseStringFilter parses a StringFilter into a FilterType and the corresponding filter data.
+// It also provides a set of validation rules for the filter data.
+// Particularly for the StringRangeSelector, it checks that regex is set.
+func ParseStringFilter(sf *StringFilter) (FilterType, interface{}, error) {
+	var validationErr error
+
+	klog.Infof("Parsing StringFilter %v - Name: %s", sf, sf.Name)
+
+	switch sf.Name {
+	case TypeMatchFilter:
+		// Unmarshal the data into a StringMatchSelector
+		var sms StringMatchSelector
+		validationErr = json.Unmarshal(sf.Data.Raw, &sms)
+		return TypeMatchFilter, sms, validationErr
+	case TypeRangeFilter:
+		// Unmarshal the data into a StringRangeSelector
+		var srs StringRangeSelector
+		validationErr = json.Unmarshal(sf.Data.Raw, &srs)
+
+		klog.Infof("StringRangeSelector: %v", srs)
+		// Check that regex is set
+		if srs.Regex == "" {
+			klog.Error("regex must be set")
+			validationErr = fmt.Errorf("regex must be set")
+		}
+		// Check that regex is a valid regular expression
+		if _, err := regexp.Compile(srs.Regex); err != nil {
+			klog.Errorf("invalid regular expression %s: %v", srs.Regex, err)
+			validationErr = fmt.Errorf("invalid regular expression %s: %w", srs.Regex, err)
+		}
+		return TypeRangeFilter, srs, validationErr
+	default:
+		return "", nil, fmt.Errorf("unknown filter type %s", sf.Name)
 	}
 }

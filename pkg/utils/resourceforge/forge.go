@@ -162,10 +162,11 @@ func ForgeFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 	ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor) {
 	k8SliceType := nodecorev1alpha1.K8Slice{
 		Characteristics: nodecorev1alpha1.K8SliceCharacteristics{
-			CPU:     node.ResourceMetrics.CPUAvailable,
-			Memory:  node.ResourceMetrics.MemoryAvailable,
-			Pods:    node.ResourceMetrics.PodsAvailable,
-			Storage: &node.ResourceMetrics.EphemeralStorage,
+			Architecture: node.Architecture,
+			CPU:          node.ResourceMetrics.CPUAvailable,
+			Memory:       node.ResourceMetrics.MemoryAvailable,
+			Pods:         node.ResourceMetrics.PodsAvailable,
+			Storage:      &node.ResourceMetrics.EphemeralStorage,
 			Gpu: &nodecorev1alpha1.GPU{
 				Model:  node.ResourceMetrics.GPU.Model,
 				Cores:  node.ResourceMetrics.GPU.CoresAvailable,
@@ -435,6 +436,143 @@ func ForgeConfiguration(configuration models.Configuration) (*nodecorev1alpha1.C
 	}
 }
 
+// ForgeResourceSelectorFromObj creates a ResourceSelector CR from a ResourceSelector Object.
+func ForgeResourceSelectorFromObj(resourceSelector *models.ResourceSelector) *nodecorev1alpha1.ResourceSelector {
+	// Parse ResourceSelector
+	switch resourceSelector.TypeIdentifier {
+	case models.CIDRSelectorType:
+		// unmarshal CIDRSelector
+		var resourceSelectorStruct models.CIDRSelector
+		err := json.Unmarshal(resourceSelector.Selector, &resourceSelectorStruct)
+		if err != nil {
+			klog.Errorf("Error when unmarshaling CIDRSelector: %s", err)
+			return nil
+		}
+		// Create CIDRSelector nodecorev1alpha1
+		cidrSelectorCR := nodecorev1alpha1.CIDRSelector(resourceSelectorStruct)
+		// Marshal CIDRSelector to JSON
+		resourceSelectorData, err := json.Marshal(cidrSelectorCR)
+		if err != nil {
+			klog.Errorf("Error when marshaling CIDRSelector: %s", err)
+			return nil
+		}
+		return &nodecorev1alpha1.ResourceSelector{
+			TypeIdentifier: nodecorev1alpha1.CIDRSelectorType,
+			Selector:       runtime.RawExtension{Raw: resourceSelectorData},
+		}
+	case models.PodNamespaceSelectorType:
+		// Force casting of resourceSelector to PodNamespaceSelector type
+		var resourceSelectorStruct models.PodNamespaceSelector
+		err := json.Unmarshal(resourceSelector.Selector, &resourceSelectorStruct)
+		if err != nil {
+			klog.Errorf("Error when unmarshaling PodNamespaceSelector: %s", err)
+			return nil
+		}
+		// Create PodNamespaceSelector nodecorev1alpha1
+		podNamespaceSelectorCR := nodecorev1alpha1.PodNamespaceSelector{
+			// Copy map of models.PodNamespaceSelector.Pod to nodecorev1alpha1.PodNamespaceSelector.Pod
+			Pod: func() map[string]string {
+				podMap := make(map[string]string)
+				for i := range resourceSelectorStruct.Pod {
+					keyValuePair := resourceSelectorStruct.Pod[i]
+					podMap[keyValuePair.Key] = keyValuePair.Value
+				}
+				return podMap
+			}(),
+			// Copy map of models.PodNamespaceSelector.Namespace to nodecorev1alpha1.PodNamespaceSelector.Namespace
+			Namespace: func() map[string]string {
+				namespaceMap := make(map[string]string)
+				for i := range resourceSelectorStruct.Namespace {
+					keyValuePair := resourceSelectorStruct.Namespace[i]
+					namespaceMap[keyValuePair.Key] = keyValuePair.Value
+				}
+				return namespaceMap
+			}(),
+		}
+		// Marshal PodNamespaceSelector to JSON
+		resourceSelectorData, err := json.Marshal(podNamespaceSelectorCR)
+		if err != nil {
+			klog.Errorf("Error when marshaling PodNamespaceSelector: %s", err)
+			return nil
+		}
+		return &nodecorev1alpha1.ResourceSelector{
+			TypeIdentifier: nodecorev1alpha1.PodNamespaceSelectorType,
+			Selector:       runtime.RawExtension{Raw: resourceSelectorData},
+		}
+	default:
+		klog.Errorf("Resource selector type not recognized")
+		return nil
+	}
+}
+
+// ForgeSourceDestinationFromObj creates a SourceDestination CR from a SourceDestination Object.
+func ForgeSourceDestinationFromObj(sourceDestination *models.SourceDestination) *nodecorev1alpha1.SourceDestination {
+	// Parse ResourceSelector
+	resourceSelector := ForgeResourceSelectorFromObj(&sourceDestination.ResourceSelector)
+	if resourceSelector == nil {
+		klog.Errorf("Error when parsing resource selector from source destination")
+		return nil
+	}
+	return &nodecorev1alpha1.SourceDestination{
+		IsHotCluster:     sourceDestination.IsHotCluster,
+		ResourceSelector: *resourceSelector,
+	}
+}
+
+// ForgeNetworkIntentFromObj creates a NetworkIntent CR from a NetworkIntent Object.
+func ForgeNetworkIntentFromObj(networkIntent *models.NetworkIntent) *nodecorev1alpha1.NetworkIntent {
+	// Parse NetworkIntent
+	source := ForgeSourceDestinationFromObj(&networkIntent.Source)
+	if source == nil {
+		klog.Errorf("Error when parsing source from network intent")
+		return nil
+	}
+	destination := ForgeSourceDestinationFromObj(&networkIntent.Destination)
+	if destination == nil {
+		klog.Errorf("Error when parsing destination from network intent")
+		return nil
+	}
+	return &nodecorev1alpha1.NetworkIntent{
+		Name:            networkIntent.Name,
+		Source:          *source,
+		Destination:     *destination,
+		DestinationPort: networkIntent.DestinationPort,
+		ProtocolType:    networkIntent.ProtocolType,
+	}
+}
+
+// ForgeNetworkAuthorizationsFromObj creates a NetworkAuthorizations CR from a NetworkAuthorizations Object.
+func ForgeNetworkAuthorizationsFromObj(networkAuthorizations *models.NetworkAuthorizations) *nodecorev1alpha1.NetworkAuthorizations {
+	// DeniedCommunications
+	var deniedCommunicationsModel []nodecorev1alpha1.NetworkIntent
+	var mandatoryCommunicationsModel []nodecorev1alpha1.NetworkIntent
+	for i := range networkAuthorizations.DeniedCommunications {
+		deniedCommunication := networkAuthorizations.DeniedCommunications[i]
+		// Parse the DeniedCommunication
+		ni := ForgeNetworkIntentFromObj(&deniedCommunication)
+		if ni == nil {
+			klog.Errorf("Error when parsing denied communication from network authorizations")
+		} else {
+			deniedCommunicationsModel = append(deniedCommunicationsModel, *ni)
+		}
+	}
+	// MandatoryCommunications
+	for i := range networkAuthorizations.MandatoryCommunications {
+		mandatoryCommunication := networkAuthorizations.MandatoryCommunications[i]
+		// Parse the MandatoryCommunication
+		ni := ForgeNetworkIntentFromObj(&mandatoryCommunication)
+		if ni == nil {
+			klog.Errorf("Error when parsing mandatory communication from network authorizations")
+		} else {
+			mandatoryCommunicationsModel = append(mandatoryCommunicationsModel, *ni)
+		}
+	}
+	return &nodecorev1alpha1.NetworkAuthorizations{
+		DeniedCommunications:    deniedCommunicationsModel,
+		MandatoryCommunications: mandatoryCommunicationsModel,
+	}
+}
+
 // ForgeFlavorFromObj creates a Flavor CR from a Flavor Object (REAR).
 func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error) {
 	var flavorType nodecorev1alpha1.FlavorType
@@ -450,10 +588,11 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 		}
 		flavorTypeData := nodecorev1alpha1.K8Slice{
 			Characteristics: nodecorev1alpha1.K8SliceCharacteristics{
-				CPU:     flavorTypeDataModel.Characteristics.CPU,
-				Memory:  flavorTypeDataModel.Characteristics.Memory,
-				Pods:    flavorTypeDataModel.Characteristics.Pods,
-				Storage: flavorTypeDataModel.Characteristics.Storage,
+				Architecture: flavorTypeDataModel.Characteristics.Architecture,
+				CPU:          flavorTypeDataModel.Characteristics.CPU,
+				Memory:       flavorTypeDataModel.Characteristics.Memory,
+				Pods:         flavorTypeDataModel.Characteristics.Pods,
+				Storage:      flavorTypeDataModel.Characteristics.Storage,
 				Gpu: func() *nodecorev1alpha1.GPU {
 					if flavorTypeDataModel.Characteristics.Gpu != nil {
 						return &nodecorev1alpha1.GPU{
@@ -474,6 +613,12 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 							Embodied:    flavorTypeDataModel.Properties.CarbonFootprint.Embodied,
 							Operational: flavorTypeDataModel.Properties.CarbonFootprint.Operational,
 						}
+					}
+					return nil
+				}(),
+				NetworkAuthorizations: func() *nodecorev1alpha1.NetworkAuthorizations {
+					if flavorTypeDataModel.Properties.NetworkAuthorizations != nil {
+						return ForgeNetworkAuthorizationsFromObj(flavorTypeDataModel.Properties.NetworkAuthorizations)
 					}
 					return nil
 				}(),

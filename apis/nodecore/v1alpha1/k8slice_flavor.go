@@ -15,6 +15,9 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -35,6 +38,8 @@ func (k8s *K8Slice) GetFlavorType() FlavorTypeIdentifier {
 
 // K8SliceCharacteristics represents the characteristics of a K8Slice Flavor, such as the CPU, RAM, and storage.
 type K8SliceCharacteristics struct {
+	// Architecture is the architecture of the K8Slice Flavor.
+	Architecture string `json:"architecture"`
 	// CPU is the number of CPU cores of the K8Slice Flavor.
 	CPU resource.Quantity `json:"cpu"`
 	// Memory is the amount of RAM of the K8Slice Flavor.
@@ -81,4 +86,57 @@ type Partitionability struct {
 	PodsStep resource.Quantity `json:"podsStep"`
 	// GpuStep is the incremental value of GPU cores in which the K8Slice Flavor can be partitioned.
 	GpuStep resource.Quantity `json:"gpuStep,omitempty"`
+}
+
+// ParseK8SliceFlavor parses the K8Slice Flavor.
+func ParseK8SliceFlavor(flavorType FlavorType) (*K8Slice, error) {
+	k8s := &K8Slice{}
+	// Check type of the Flavor
+	if flavorType.TypeIdentifier != TypeK8Slice {
+		return nil, fmt.Errorf("flavor type is not a K8Slice")
+	}
+
+	// Unmarshal the raw data into the K8Slice struct
+	if err := json.Unmarshal(flavorType.TypeData.Raw, k8s); err != nil {
+		return nil, err
+	}
+
+	// Parse the possible NetworkAuthorization to validate the ResourceSelectors
+	if k8s.Properties.NetworkAuthorizations != nil {
+		// Parse the NetworkAuthorizations
+		// Check DeniedCommunications
+		for i := range k8s.Properties.NetworkAuthorizations.DeniedCommunications {
+			deniedCommunicationItem := k8s.Properties.NetworkAuthorizations.DeniedCommunications[i]
+			source := deniedCommunicationItem.Source
+			destination := deniedCommunicationItem.Destination
+			// Parse the source resource selector
+			_, _, err := ParseResourceSelector(source.ResourceSelector)
+			if err != nil {
+				return nil, err
+			}
+			// Parse the destination resource selector
+			_, _, err = ParseResourceSelector(destination.ResourceSelector)
+			if err != nil {
+				return nil, err
+			}
+		}
+		// Check MandatoryCommunications
+		for i := range k8s.Properties.NetworkAuthorizations.MandatoryCommunications {
+			mandatoryCommunicationItem := k8s.Properties.NetworkAuthorizations.MandatoryCommunications[i]
+			source := mandatoryCommunicationItem.Source
+			destination := mandatoryCommunicationItem.Destination
+			// Parse the source resource selector
+			_, _, err := ParseResourceSelector(source.ResourceSelector)
+			if err != nil {
+				return nil, err
+			}
+			// Parse the destination resource selector
+			_, _, err = ParseResourceSelector(destination.ResourceSelector)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return k8s, nil
 }

@@ -42,10 +42,11 @@ func ParseFlavorSelector(selector *nodecorev1alpha1.Selector) (models.Selector, 
 		// Check if the selectorStruct is nil
 		if selectorStruct == nil {
 			return models.K8SliceSelector{
-				CPU:     nil,
-				Memory:  nil,
-				Pods:    nil,
-				Storage: nil,
+				Architecture: nil,
+				CPU:          nil,
+				Memory:       nil,
+				Pods:         nil,
+				Storage:      nil,
 			}, nil
 		}
 		// Force casting of selectorStruct to K8Slice
@@ -145,12 +146,89 @@ func ParseResourceQuantityFilter(filter *nodecorev1alpha1.ResourceQuantityFilter
 	return filterModel, nil
 }
 
+// ParseStringFilter parses a filter of type StringFilter into a StringFilter model.
+func ParseStringFilter(filter *nodecorev1alpha1.StringFilter) (models.StringFilter, error) {
+	var filterModel models.StringFilter
+
+	if filter == nil {
+		return filterModel, nil
+	}
+
+	klog.Infof("Parsing the filter %s", filter.Name)
+	switch filter.Name {
+	case nodecorev1alpha1.TypeMatchFilter:
+		klog.Info("Parsing the filter as a MatchFilter")
+		// Unmarshal the data into a StringMatchSelector
+		var matchFilter nodecorev1alpha1.StringMatchSelector
+		err := json.Unmarshal(filter.Data.Raw, &matchFilter)
+		if err != nil {
+			return filterModel, err
+		}
+
+		matchFilterData := models.StringMatchFilter{
+			Value: matchFilter.Value,
+		}
+		// Marshal the filter data into JSON
+		matchFilterDataJSON, err := json.Marshal(matchFilterData)
+		if err != nil {
+			return filterModel, err
+		}
+
+		// Generate the model for the filter
+		filterModel = models.StringFilter{
+			Name: models.MatchFilter,
+			Data: matchFilterDataJSON,
+		}
+		klog.Infof("Filter model: %v", filterModel)
+	case nodecorev1alpha1.TypeRangeFilter:
+		klog.Info("Parsing the filter as a RangeFilter")
+		// Unmarshal the data into a StringRangeSelector
+		var rangeFilter nodecorev1alpha1.StringRangeSelector
+		err := json.Unmarshal(filter.Data.Raw, &rangeFilter)
+		if err != nil {
+			return filterModel, err
+		}
+
+		rangeFilterData := models.StringRangeFilter{
+			Regex: rangeFilter.Regex,
+		}
+
+		// Marshal the filter data into JSON
+		rangeFilterDataJSON, err := json.Marshal(rangeFilterData)
+		if err != nil {
+			return filterModel, err
+		}
+
+		// Generate the model for the filter
+		filterModel = models.StringFilter{
+			Name: models.RangeFilter,
+			Data: rangeFilterDataJSON,
+		}
+		klog.Infof("Filter model: %v", filterModel)
+	default:
+		return filterModel, fmt.Errorf("unknown filter type")
+	}
+
+	return filterModel, nil
+}
+
 func parseK8SliceFilters(k8sSelector *nodecorev1alpha1.K8SliceSelector) (*models.K8SliceSelector, error) {
+	var architectureFilterModel models.StringFilter
 	var cpuFilterModel, memoryFilterModel, podsFilterModel, storageFilterModel models.ResourceQuantityFilter
+
+	// Parse the Architecture filter
+	klog.Info("Parsing the Architecture filter")
+	architectureFilterModel, err := ParseStringFilter(k8sSelector.ArchitectureFilter)
+	if err != nil {
+		return nil, err
+	}
+	if architectureFilterModel.Data == nil {
+		klog.Info("Architecture filter is nil")
+	}
 
 	// Parse the CPU filter
 	klog.Info("Parsing the CPU filter")
-	cpuFilterModel, err := ParseResourceQuantityFilter(k8sSelector.CPUFilter)
+	cpuFilterModel, err = ParseResourceQuantityFilter(k8sSelector.CPUFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -158,182 +236,44 @@ func parseK8SliceFilters(k8sSelector *nodecorev1alpha1.K8SliceSelector) (*models
 		klog.Info("CPU filter is nil")
 	}
 
-	if k8sSelector.MemoryFilter != nil {
-		klog.Info("Parsing the Memory filter")
-		// Parse the Memory filter
-		switch k8sSelector.MemoryFilter.Name {
-		case nodecorev1alpha1.TypeMatchFilter:
-			klog.Info("Parsing the Memory filter as a MatchFilter")
-			// Unmarshal the data into a ResourceMatchSelector
-			var memoryFilter nodecorev1alpha1.ResourceMatchSelector
-			err := json.Unmarshal(k8sSelector.MemoryFilter.Data.Raw, &memoryFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			memoryFilterData := models.ResourceQuantityMatchFilter{
-				Value: memoryFilter.Value.DeepCopy(),
-			}
-			// Marshal the Memory filter data into JSON
-			memoryFilterDataJSON, err := json.Marshal(memoryFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Memory filter
-			memoryFilterModel = models.ResourceQuantityFilter{
-				Name: models.MatchFilter,
-				Data: memoryFilterDataJSON,
-			}
-			klog.Infof("Memory filter model: %v", memoryFilterModel)
-		case nodecorev1alpha1.TypeRangeFilter:
-			klog.Info("Parsing the Memory filter as a RangeFilter")
-			// Unmarshal the data into a ResourceRangeSelector
-			var memoryFilter nodecorev1alpha1.ResourceRangeSelector
-			err := json.Unmarshal(k8sSelector.MemoryFilter.Data.Raw, &memoryFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			memoryFilterData := models.ResourceQuantityRangeFilter{
-				Min: memoryFilter.Min,
-				Max: memoryFilter.Max,
-			}
-			// Marshal the Memory filter data into JSON
-			memoryFilterDataJSON, err := json.Marshal(memoryFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Memory filter
-			memoryFilterModel = models.ResourceQuantityFilter{
-				Name: models.RangeFilter,
-				Data: memoryFilterDataJSON,
-			}
-			klog.Infof("Memory filter model: %v", memoryFilterModel)
-		default:
-			return nil, fmt.Errorf("unknown filter type")
-		}
+	// Parse the Memory filter
+	klog.Info("Parsing the Memory filter")
+	memoryFilterModel, err = ParseResourceQuantityFilter(k8sSelector.MemoryFilter)
+	if err != nil {
+		return nil, err
+	}
+	if memoryFilterModel.Data == nil {
+		klog.Info("Memory filter is nil")
 	}
 
-	if k8sSelector.PodsFilter != nil {
-		klog.Info("Parsing the Pods filter")
-		// Parse the Pods filter
-		switch k8sSelector.PodsFilter.Name {
-		case nodecorev1alpha1.TypeMatchFilter:
-			klog.Info("Parsing the Pods filter as a MatchFilter")
-			// Unmarshal the data into a ResourceMatchSelector
-			var podsFilter nodecorev1alpha1.ResourceMatchSelector
-			err := json.Unmarshal(k8sSelector.PodsFilter.Data.Raw, &podsFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			podsFilterData := models.ResourceQuantityMatchFilter{
-				Value: podsFilter.Value.DeepCopy(),
-			}
-			// Marshal the Pods filter data into JSON
-			podsFilterDataJSON, err := json.Marshal(podsFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Pods filter
-			podsFilterModel = models.ResourceQuantityFilter{
-				Name: models.MatchFilter,
-				Data: podsFilterDataJSON,
-			}
-			klog.Infof("Pods filter model: %v", podsFilterModel)
-		case nodecorev1alpha1.TypeRangeFilter:
-			klog.Info("Parsing the Pods filter as a RangeFilter")
-			// Unmarshal the data into a ResourceRangeSelector
-			var podsFilter nodecorev1alpha1.ResourceRangeSelector
-			err := json.Unmarshal(k8sSelector.PodsFilter.Data.Raw, &podsFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			podsFilterData := models.ResourceQuantityRangeFilter{
-				Min: podsFilter.Min,
-				Max: podsFilter.Max,
-			}
-			// Marshal the Pods filter data into JSON
-			podsFilterDataJSON, err := json.Marshal(podsFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Pods filter
-			podsFilterModel = models.ResourceQuantityFilter{
-				Name: models.RangeFilter,
-				Data: podsFilterDataJSON,
-			}
-			klog.Infof("Pods filter model: %v", podsFilterModel)
-		default:
-			return nil, fmt.Errorf("unknown filter type")
-		}
+	// Parse the Pods filter
+	klog.Info("Parsing the Pods filter")
+	podsFilterModel, err = ParseResourceQuantityFilter(k8sSelector.PodsFilter)
+	if err != nil {
+		return nil, err
+	}
+	if podsFilterModel.Data == nil {
+		klog.Info("Pods filter is nil")
 	}
 
-	if k8sSelector.StorageFilter != nil {
-		klog.Info("Parsing the Storage filter")
-		// Parse the Storage filter
-		switch k8sSelector.StorageFilter.Name {
-		case nodecorev1alpha1.TypeMatchFilter:
-			klog.Info("Parsing the Storage filter as a MatchFilter")
-			// Unmarshal the data into a ResourceMatchSelector
-			var storageFilter nodecorev1alpha1.ResourceMatchSelector
-			err := json.Unmarshal(k8sSelector.StorageFilter.Data.Raw, &storageFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			storageFilterData := models.ResourceQuantityMatchFilter{
-				Value: storageFilter.Value.DeepCopy(),
-			}
-			// Marshal the Storage filter data into JSON
-			storageFilterDataJSON, err := json.Marshal(storageFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Storage filter
-			storageFilterModel = models.ResourceQuantityFilter{
-				Name: models.MatchFilter,
-				Data: storageFilterDataJSON,
-			}
-			klog.Infof("Storage filter model: %v", storageFilterModel)
-		case nodecorev1alpha1.TypeRangeFilter:
-			klog.Info("Parsing the Storage filter as a RangeFilter")
-			// Unmarshal the data into a ResourceRangeSelector
-			var storageFilter nodecorev1alpha1.ResourceRangeSelector
-			err := json.Unmarshal(k8sSelector.StorageFilter.Data.Raw, &storageFilter)
-			if err != nil {
-				return nil, err
-			}
-
-			storageFilterData := models.ResourceQuantityRangeFilter{
-				Min: storageFilter.Min,
-				Max: storageFilter.Max,
-			}
-			// Marshal the Storage filter data into JSON
-			storageFilterDataJSON, err := json.Marshal(storageFilterData)
-			if err != nil {
-				return nil, err
-			}
-
-			// Generate the model for the Storage filter
-			storageFilterModel = models.ResourceQuantityFilter{
-				Name: models.RangeFilter,
-				Data: storageFilterDataJSON,
-			}
-			klog.Infof("Storage filter model: %v", storageFilterModel)
-		default:
-			return nil, fmt.Errorf("unknown filter type")
-		}
+	// Parse the Storage filter
+	klog.Info("Parsing the Storage filter")
+	storageFilterModel, err = ParseResourceQuantityFilter(k8sSelector.StorageFilter)
+	if err != nil {
+		return nil, err
+	}
+	if storageFilterModel.Data == nil {
+		klog.Info("Storage filter is nil")
 	}
 
 	// Generate the model for the K8Slice selector
 	k8SliceSelector := models.K8SliceSelector{
+		Architecture: func() *models.StringFilter {
+			if k8sSelector.ArchitectureFilter != nil {
+				return &architectureFilterModel
+			}
+			return nil
+		}(),
 		CPU: func() *models.ResourceQuantityFilter {
 			if k8sSelector.CPUFilter != nil {
 				return &cpuFilterModel
@@ -416,6 +356,103 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 	}
 }
 
+// ParseSourceDestination creates a SourceDestination Object from a SourceDestination CR.
+func ParseSourceDestination(sourceDestination nodecorev1alpha1.SourceDestination) (*models.SourceDestination, error) {
+	var resourceSelector models.ResourceSelector
+	// Parse the ResourceSelector
+	typeIdentifier, selector, err := nodecorev1alpha1.ParseResourceSelector(sourceDestination.ResourceSelector)
+	if err != nil {
+		return nil, err
+	}
+	switch typeIdentifier {
+	case nodecorev1alpha1.CIDRSelectorType:
+		// Force casting of selector to CIDRSelector
+		cidrSelector := selector.(nodecorev1alpha1.CIDRSelector)
+		// Marshal the CIDRSelector to JSON
+		cidrSelectorData, err := json.Marshal(cidrSelector)
+		if err != nil {
+			return nil, err
+		}
+		resourceSelector = models.ResourceSelector{
+			TypeIdentifier: models.CIDRSelectorType,
+			Selector:       cidrSelectorData,
+		}
+	case nodecorev1alpha1.PodNamespaceSelectorType:
+		// Force casting of selector to PodNamespaceSelector
+		podNamespaceSelector := selector.(nodecorev1alpha1.PodNamespaceSelector)
+		// Marshal the PodNamespaceSelector to JSON
+		podNamespaceSelectorData, err := json.Marshal(podNamespaceSelector)
+		if err != nil {
+			return nil, err
+		}
+		resourceSelector = models.ResourceSelector{
+			TypeIdentifier: models.CIDRSelectorType,
+			Selector:       podNamespaceSelectorData,
+		}
+	default:
+		return nil, fmt.Errorf("unknown resource selector type")
+	}
+	sourceDestinationModel := models.SourceDestination{
+		IsHotCluster:     sourceDestination.IsHotCluster,
+		ResourceSelector: resourceSelector,
+	}
+
+	return &sourceDestinationModel, nil
+}
+
+// ParseNetworkAuthorizations creates a NetworkAuthorizations Object from a NetworkAuthorizations CR.
+func ParseNetworkAuthorizations(networkAuthorizations *nodecorev1alpha1.NetworkAuthorizations) (*models.NetworkAuthorizations, error) {
+	var deniedCommunications []models.NetworkIntent
+	var mandatoryCommunications []models.NetworkIntent
+
+	// DeniedCommuncations
+	for i := range networkAuthorizations.DeniedCommunications {
+		// Parse the NetworkIntent
+		networkIntent := networkAuthorizations.DeniedCommunications[i]
+		source, err := ParseSourceDestination(networkIntent.Source)
+		if err != nil {
+			return nil, err
+		}
+		destination, err := ParseSourceDestination(networkIntent.Destination)
+		if err != nil {
+			return nil, err
+		}
+		deniedCommunications = append(deniedCommunications, models.NetworkIntent{
+			Name:            networkIntent.Name,
+			Source:          *source,
+			Destination:     *destination,
+			DestinationPort: networkIntent.DestinationPort,
+			ProtocolType:    networkIntent.ProtocolType,
+		})
+	}
+
+	// MandatoryCommunications
+	for i := range networkAuthorizations.MandatoryCommunications {
+		// Parse the NetworkIntent
+		networkIntent := networkAuthorizations.MandatoryCommunications[i]
+		source, err := ParseSourceDestination(networkIntent.Source)
+		if err != nil {
+			return nil, err
+		}
+		destination, err := ParseSourceDestination(networkIntent.Destination)
+		if err != nil {
+			return nil, err
+		}
+		mandatoryCommunications = append(mandatoryCommunications, models.NetworkIntent{
+			Name:            networkIntent.Name,
+			Source:          *source,
+			Destination:     *destination,
+			DestinationPort: networkIntent.DestinationPort,
+			ProtocolType:    networkIntent.ProtocolType,
+		})
+	}
+
+	return &models.NetworkAuthorizations{
+		DeniedCommunications:    deniedCommunications,
+		MandatoryCommunications: mandatoryCommunications,
+	}, nil
+}
+
 // ParseFlavor creates a Flavor Object from a Flavor CR.
 func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 	var modelFlavor models.Flavor
@@ -433,9 +470,10 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 		flavorTypeStruct := flavorTypeStruct.(nodecorev1alpha1.K8Slice)
 		modelFlavorTypeData := models.K8Slice{
 			Characteristics: models.K8SliceCharacteristics{
-				CPU:    flavorTypeStruct.Characteristics.CPU,
-				Memory: flavorTypeStruct.Characteristics.Memory,
-				Pods:   flavorTypeStruct.Characteristics.Pods,
+				Architecture: flavorTypeStruct.Characteristics.Architecture,
+				CPU:          flavorTypeStruct.Characteristics.CPU,
+				Memory:       flavorTypeStruct.Characteristics.Memory,
+				Pods:         flavorTypeStruct.Characteristics.Pods,
 				Gpu: func() *models.GpuCharacteristics {
 					if flavorTypeStruct.Characteristics.Gpu != nil {
 						return &models.GpuCharacteristics{
@@ -457,6 +495,16 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 							Embodied:    flavorTypeStruct.Properties.CarbonFootprint.Embodied,
 							Operational: flavorTypeStruct.Properties.CarbonFootprint.Operational,
 						}
+					}
+					return nil
+				}(),
+				NetworkAuthorizations: func() *models.NetworkAuthorizations {
+					if flavorTypeStruct.Properties.NetworkAuthorizations != nil {
+						na, err := ParseNetworkAuthorizations(flavorTypeStruct.Properties.NetworkAuthorizations)
+						if err != nil {
+							return nil
+						}
+						return na
 					}
 					return nil
 				}(),

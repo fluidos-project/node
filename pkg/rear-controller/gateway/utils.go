@@ -115,6 +115,13 @@ func encodeResponseStatusCode(w http.ResponseWriter, data interface{}, statusCod
 func encodeK8SliceSelector(selector models.K8SliceSelector) (string, error) {
 	var values string
 
+	if selector.Architecture != nil {
+		klog.Info("Encoding Architecture")
+		architectureEncoded := encodeStringFilter(reflect.ValueOf(selector.Architecture))
+		for key, value := range architectureEncoded {
+			values += fmt.Sprintf("filter[architecture]%s=%s&", key, value)
+		}
+	}
 	if selector.CPU != nil {
 		klog.Info("Encoding CPU")
 		cpuEncoded := encoderResourceQuantityFilter(reflect.ValueOf(selector.CPU))
@@ -194,6 +201,68 @@ func encoderResourceQuantityFilter(v reflect.Value) map[string]string {
 		return nil
 	}
 	return values
+}
+
+func encodeStringFilter(v reflect.Value) map[string]string {
+	filter, ok := v.Interface().(*models.StringFilter)
+	if filter == nil {
+		return nil
+	}
+	if !ok {
+		klog.Warning("Not a StringFilter")
+		return nil
+	}
+
+	var values = map[string]string{}
+
+	switch filter.Name {
+	case models.MatchFilter:
+		var matchFilter models.StringMatchFilter
+		klog.Info("MatchFilter")
+		if err := json.Unmarshal(filter.Data, &matchFilter); err != nil {
+			return nil
+		}
+		value := matchFilter.Value
+		values["[match]"] = value
+	default:
+		klog.Warningf("Unsupported filter type: %s", filter.Name)
+		return nil
+	}
+	return values
+}
+
+func decodeStringFilter(filterTypeName models.FilterType,
+	original *models.StringFilter, value []string) (*models.StringFilter, error) {
+	var result = models.StringFilter{}
+
+	switch filterTypeName {
+	case models.MatchFilter:
+		// Check you can't have multiple match filters for the same resource in the same selector
+		if original != nil {
+			return nil, fmt.Errorf("multiple match filters for the same resource")
+		}
+		// Set the match filter
+		matchFilter := models.StringMatchFilter{
+			Value: value[0],
+		}
+		// Encode the match filter to a json.RawMessage
+		matchFilterBytes, err := json.Marshal(matchFilter)
+		if err != nil {
+			return nil, err
+		}
+
+		result = models.StringFilter{
+			Name: models.MatchFilter,
+			Data: matchFilterBytes,
+		}
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", filterTypeName)
+	}
+
+	klog.Infof("Decoded filter: %v", result)
+	klog.Infof("Decoded filter type: %v", result.Name)
+
+	return &result, nil
 }
 
 func decodeResourceQuantityFilter(filterTypeName models.FilterType,
@@ -319,7 +388,7 @@ func decodeK8SliceSelector(values url.Values) (*models.K8SliceSelector, error) {
 	selector := models.K8SliceSelector{}
 
 	// Define the regex pattern for the expected keys
-	keyPattern := regexp.MustCompile(`^filter\[(cpu|memory|pods|storage)\]\[(match|range)\](?:\[(min|max)\])?$`)
+	keyPattern := regexp.MustCompile(`^filter\[(architecture|cpu|memory|pods|storage)\]\[(match|range)\](?:\[(min|max|regex)\])?$`)
 
 	for key, value := range values {
 		// Check if the key matches the expected pattern
@@ -345,6 +414,13 @@ func decodeK8SliceSelector(values url.Values) (*models.K8SliceSelector, error) {
 		}
 
 		switch resource {
+		case "architecture":
+			filter, err := decodeStringFilter(filterTypeName, selector.Architecture, value)
+			if err != nil {
+				return nil, err
+			}
+			selector.Architecture = filter
+			klog.Infof("Selector Architecture: %v", selector.Architecture)
 		case "cpu":
 			filter, err := decodeResourceQuantityFilter(filterTypeName, selector.CPU, parts, value)
 			if err != nil {

@@ -110,10 +110,11 @@ type Selector interface {
 
 // K8SliceSelector represents the criteria for selecting a K8Slice Flavor.
 type K8SliceSelector struct {
-	CPU     *ResourceQuantityFilter `scheme:"cpu,omitempty"`
-	Memory  *ResourceQuantityFilter `scheme:"memory,omitempty"`
-	Pods    *ResourceQuantityFilter `scheme:"pods,omitempty"`
-	Storage *ResourceQuantityFilter `scheme:"storage,omitempty"`
+	Architecture *StringFilter           `json:"architecture,omitempty"`
+	CPU          *ResourceQuantityFilter `scheme:"cpu,omitempty"`
+	Memory       *ResourceQuantityFilter `scheme:"memory,omitempty"`
+	Pods         *ResourceQuantityFilter `scheme:"pods,omitempty"`
+	Storage      *ResourceQuantityFilter `scheme:"storage,omitempty"`
 }
 
 // GetSelectorType returns the type of the Selector.
@@ -129,6 +130,17 @@ type ResourceQuantityFilter struct {
 
 // ResourceQuantityFilterData represents the data of a ResourceQuantityFilter.
 type ResourceQuantityFilterData interface {
+	GetFilterType() FilterType
+}
+
+// StringFilter represents a filter for a string.
+type StringFilter struct {
+	Name FilterType      `scheme:"name"`
+	Data json.RawMessage `scheme:"data"`
+}
+
+// StringFilterData represents the data of a StringFilter.
+type StringFilterData interface {
 	GetFilterType() FilterType
 }
 
@@ -161,6 +173,21 @@ type ResourceQuantityRangeFilter struct {
 // GetFilterType returns the type of the Filter.
 func (fq ResourceQuantityRangeFilter) GetFilterType() FilterType {
 	return RangeFilter
+}
+
+// StringMatchFilter represents a match filter for a string.
+type StringMatchFilter struct {
+	Value string `scheme:"value"`
+}
+
+// GetFilterType returns the type of the Filter.
+func (fq StringMatchFilter) GetFilterType() FilterType {
+	return MatchFilter
+}
+
+// StringRangeFilter represents a range filter for a string.
+type StringRangeFilter struct {
+	Regex string `scheme:"regex"`
 }
 
 // MapToFlavorTypeName maps a nodecorev1alpha1.FlavorTypeIdentifier to a models.FlavorTypeName.

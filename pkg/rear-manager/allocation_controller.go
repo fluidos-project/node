@@ -376,9 +376,10 @@ func computeK8SliceCharacteristics(origin *nodecorev1alpha1.K8SliceCharacteristi
 	newPods.Sub(part.Pods)
 
 	return &nodecorev1alpha1.K8SliceCharacteristics{
-		CPU:    newCPU,
-		Memory: newMemory,
-		Pods:   newPods,
+		Architecture: origin.Architecture,
+		CPU:          newCPU,
+		Memory:       newMemory,
+		Pods:         newPods,
 		Gpu: func() *nodecorev1alpha1.GPU {
 			switch {
 			case part.Gpu != nil && origin != nil:
