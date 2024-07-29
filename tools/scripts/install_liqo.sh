@@ -31,7 +31,10 @@ CLUSTER_NAME=$2
 # Get the Kubeconfig
 KUBECONFIG_LIQO=$3
 
+helm repo update
+
 # Install Liqo based on the provider
+liqoctl install "$PROVIDER" --cluster-name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG_LIQO" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
 liqoctl install "$PROVIDER" --cluster-name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG_LIQO" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
 # liqoctl install "$PROVIDER" || { echo "Failed to install Liqo for provider: $PROVIDER"; exit 1; }
 

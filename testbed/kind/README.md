@@ -15,9 +15,9 @@ This guide has been made only for testing purposes. If you want to install FLUID
 
 This guide will create two different Kubernetes clusters:
 
-- **fluidos-consumer**: This cluster (a.k.a., FLUIDOS node) will act as a consumer of FLUIDOS resources. It will be used to deploy a `solver` example CR that will simulate an _Intent resolution_ request. This cluster will use the REAR protocol to communicate with the Provider cluster and to receive available Flavours, reserving the one that best fits the request and purchasing it.
+- **fluidos-consumer**: This cluster (a.k.a., FLUIDOS node) will act as a consumer of FLUIDOS resources. It will be used to deploy a `solver` example CR that will simulate an _Intent resolution_ request. This cluster will use the REAR protocol to communicate with the Provider cluster and to receive available Flavors, reserving the one that best fits the request and purchasing it.
 
-- **fluidos-provider**: This cluster (a.k.a. FLUIDOS node) will act as a provider of FLUIDOS resources. It will offer its own Flavours on the specific request made by the consumer, reserving and selling it.
+- **fluidos-provider**: This cluster (a.k.a. FLUIDOS node) will act as a provider of FLUIDOS resources. It will offer its own Flavors on the specific request made by the consumer, reserving and selling it.
 
 ### Prerequisites
 
@@ -95,10 +95,10 @@ This allows for convenient monitoring of both consumer and provider clusters wit
 - `node-rear-manager-<random>`
 - `node-rear-controller-<random>`
 
-7. You can also check the status of the generated flavours with the following command:
+7. You can also check the status of the generated flavors with the following command:
 
 ```sh
-kubectl get flavours.nodecore.fluidos.eu -n fluidos
+kubectl get flavors.nodecore.fluidos.eu -n fluidos
 ```
 
 The result should be something like this:
@@ -152,7 +152,7 @@ fluidos     solver-sample   intent-sample   true             true              f
 5. Other resources have been created, you can check them with the following commands:
 
 ```sh
-kubectl get flavours.nodecore.fluidos.eu -n fluidos
+kubectl get flavors.nodecore.fluidos.eu -n fluidos
 kubectl get discoveries.advertisement.fluidos.eu -n fluidos
 kubectl get reservations.reservation.fluidos.eu -n fluidos
 kubectl get contracts.reservation.fluidos.eu -n fluidos

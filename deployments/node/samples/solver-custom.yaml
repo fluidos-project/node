@@ -4,21 +4,43 @@ metadata:
   name: solver-sample
   namespace: fluidos
 spec:
-  # This is the Selector used to find a Flavour (FLUIDOS node) that matches the requirements
+  # This is the Selector used to find a Flavor (FLUIDOS node) that matches the requirements
   selector:
-    # ONLY k8s-fluidos is supported at the moment
-    type: k8s-fluidos
-    # REMEMBER: the architecture is the one of the node, not the one of the container. Change it accordingly
-    architecture: amd64
-    # ONLY rangeSelector is supported at the moment
-    rangeSelector:
-      minCpu: "1000m"
-      minMemory: "1Gi"
-      minPods: "50"
+    # The flavorType is the type of the Flavor (FLUIDOS node) that the solver should find
+    flavorType: K8Slice
+    # The filters are used to filter the Flavors (FLUIDOS nodes) that the solver should consider
+    filters:
+      # The architectureFilter is used to filter the Flavors (FLUIDOS nodes) based on the Architecture
+      architectureFilter:
+        # This filter specifies that the Flavors (FLUIDOS nodes) should have the x86_64 architecture
+        # In demo environments, be careful with the architecture, it may be different
+        name: Match
+        data:
+          value: "amd64"
+      # The cpuFilter is used to filter the Flavors (FLUIDOS nodes) based on the CPU
+      cpuFilter:
+        # This filter specifies that the Flavors (FLUIDOS nodes) should have at least 100m of CPU
+        name: Range
+        data:
+          min: "1000m"
+      # The memoryFilter is used to filter the Flavors (FLUIDOS nodes) based on the Memory
+      memoryFilter:
+        # This filter specifies that the Flavors (FLUIDOS nodes) should have at least 1Gi of Memory, but no more than 100Gi
+        name: Range
+        data:
+          min: "1Gi"
+          max: "100Gi"
+      # The podsFilter is used to filter the Flavors (FLUIDOS nodes) based on the Pods
+      podsFilter:
+        # This filter specifies that the Flavors (FLUIDOS nodes) should have exactly 110 Pods
+        name: Match
+        data:
+          value: 110
+  # The intentID is the ID of the intent that the solver should satisfy
   intentID: "intent-sample"
   # This flag is used to indicate that the solver should find a candidate (FLUIDOS node)
   findCandidate: true
   # This flag is used to indicate that the solver should reserve and buy the resources from the candidate (FLUIDOS node)
   reserveAndBuy: false
   # This flag is used to indicate that the solver should establish peering with the candidate (FLUIDOS node)
-  enstablishPeering: false
+  establishPeering: false

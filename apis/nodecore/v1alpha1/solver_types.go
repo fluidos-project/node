@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,15 @@
 package v1alpha1
 
 import (
-	resource "k8s.io/apimachinery/pkg/api/resource"
+	"encoding/json"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 )
 
+// Phase represents the phase of the solver.
 type Phase string
 
 // PhaseStatus represents the status of a phase of the solver. I.e. the status of the REAR phases.
@@ -30,44 +35,21 @@ type PhaseStatus struct {
 	EndTime        string `json:"endTime,omitempty"`
 }
 
-type FlavourSelector struct {
-	FlavourType   string         `json:"type"`
-	Architecture  string         `json:"architecture"`
-	RangeSelector *RangeSelector `json:"rangeSelector,omitempty"`
-	MatchSelector *MatchSelector `json:"matchSelector,omitempty"`
+// Selector defines the constraints of the flavor that the solver is looking for.
+// The FlavorType is compulsory, while the Filters are optional.
+type Selector struct {
+	// FlavorType is the type of the Flavor that the solver is looking for.
+	FlavorType FlavorTypeIdentifier `json:"flavorType"`
+
+	// Filters contains the filters that the solver is using to refining the research.
+	Filters *runtime.RawExtension `json:"filters,omitempty"`
 }
 
-// MatchSelector represents the criteria for selecting Flavours through a strict match.
-type MatchSelector struct {
-	CPU              resource.Quantity `json:"cpu,omitempty"`
-	Memory           resource.Quantity `json:"memory,omitempty"`
-	Pods             resource.Quantity `json:"pods,omitempty"`
-	Storage          resource.Quantity `json:"storage,omitempty"`
-	EphemeralStorage resource.Quantity `json:"ephemeralStorage,omitempty"`
-	Gpu              resource.Quantity `json:"gpu,omitempty"`
-}
-
-// RangeSelector represents the criteria for selecting Flavours through a range.
-type RangeSelector struct {
-	MinCpu     resource.Quantity `json:"minCpu,omitempty"`
-	MinMemory  resource.Quantity `json:"minMemory,omitempty"`
-	MinPods    resource.Quantity `json:"minPods,omitempty"`
-	MinEph     resource.Quantity `json:"minEph,omitempty"`
-	MinStorage resource.Quantity `json:"minStorage,omitempty"`
-	MinGpu     resource.Quantity `json:"minGpu,omitempty"`
-	MaxCpu     resource.Quantity `json:"MaxCpu,omitempty"`
-	MaxMemory  resource.Quantity `json:"MaxMemory,omitempty"`
-	MaxPods    resource.Quantity `json:"MaxPods,omitempty"`
-	MaxEph     resource.Quantity `json:"MaxEph,omitempty"`
-	MaxStorage resource.Quantity `json:"MaxStorage,omitempty"`
-	MaxGpu     resource.Quantity `json:"MaxGpu,omitempty"`
-}
-
-// SolverSpec defines the desired state of Solver
+// SolverSpec defines the desired state of Solver.
 type SolverSpec struct {
 
-	// Selector contains the flavour requirements for the solver.
-	Selector *FlavourSelector `json:"selector,omitempty"`
+	// Selector contains the flavor requirements for the solver.
+	Selector *Selector `json:"selector,omitempty"`
 
 	// IntentID is the ID of the intent that the Node Orchestrator is trying to solve.
 	// It is used to link the solver with the intent.
@@ -79,27 +61,27 @@ type SolverSpec struct {
 	// ReserveAndBuy is a flag that indicates if the solver should reserve and buy the resources on the candidate.
 	ReserveAndBuy bool `json:"reserveAndBuy,omitempty"`
 
-	// EnstablishPeering is a flag that indicates if the solver should enstablish a peering with the candidate.
-	EnstablishPeering bool `json:"enstablishPeering,omitempty"`
+	// EstablishPeering is a flag that indicates if the solver should enstablish a peering with the candidate.
+	EstablishPeering bool `json:"establishPeering,omitempty"`
 }
 
-// SolverStatus defines the observed state of Solver
+// SolverStatus defines the observed state of Solver.
 type SolverStatus struct {
 
 	// FindCandidate describes the status of research of the candidate.
-	// Rear Manager is looking for the best candidate Flavour to solve the Node Orchestrator request.
+	// Rear Manager is looking for the best candidate Flavor to solve the Node Orchestrator request.
 	FindCandidate Phase `json:"findCandidate,omitempty"`
 
-	// ReserveAndBuy describes the status of the reservation and purchase of selected Flavour.
+	// ReserveAndBuy describes the status of the reservation and purchase of selected Flavor.
 	// Rear Manager is trying to reserve and purchase the resources on the candidate FLUIDOS Node.
 	ReserveAndBuy Phase `json:"reserveAndBuy,omitempty"`
 
 	// Peering describes the status of the peering with the candidate.
-	// Rear Manager is trying to enstablish a peering with the candidate FLUIDOS Node.
+	// Rear Manager is trying to establish a peering with the candidate FLUIDOS Node.
 	Peering Phase `json:"peering,omitempty"`
 
 	// DiscoveryPhase describes the status of the Discovery where the Discovery Manager
-	// is looking for matching flavours outside the FLUIDOS Node
+	// is looking for matching flavors outside the FLUIDOS Node
 	DiscoveryPhase Phase `json:"discoveryPhase,omitempty"`
 
 	// ReservationPhase describes the status of the Reservation where the Contract Manager
@@ -111,12 +93,12 @@ type SolverStatus struct {
 	ConsumePhase Phase `json:"consumePhase,omitempty"`
 
 	// SolverPhase describes the status of the Solver generated by the Node Orchestrator.
-	// It is usefull to understand if the solver is still running or if it has finished or failed.
+	// It is useful to understand if the solver is still running or if it has finished or failed.
 	SolverPhase PhaseStatus `json:"solverPhase,omitempty"`
 
 	// Allocation contains the allocation that the solver has eventually created for the intent.
 	// It can correspond to a virtual node
-	// The Node Orchestrator will use this allocation to fullfill the intent.
+	// The Node Orchestrator will use this allocation to fulfill the intent.
 	Allocation GenericRef `json:"allocation,omitempty"`
 
 	// Contract contains the Contract that the Contract Manager has eventually created with the candidate.
@@ -133,14 +115,14 @@ type SolverStatus struct {
 // +kubebuilder:printcolumn:name="Intent ID",type=string,JSONPath=`.spec.intentID`
 // +kubebuilder:printcolumn:name="Find Candidate",type=boolean,JSONPath=`.spec.findCandidate`
 // +kubebuilder:printcolumn:name="Reserve and Buy",type=boolean,JSONPath=`.spec.reserveAndBuy`
-// +kubebuilder:printcolumn:name="Peering",type=boolean,JSONPath=`.spec.enstablishPeering`
+// +kubebuilder:printcolumn:name="Peering",type=boolean,JSONPath=`.spec.establishPeering`
 // +kubebuilder:printcolumn:name="Candidate Phase",type=string,priority=1,JSONPath=`.status.findCandidate`
 // +kubebuilder:printcolumn:name="Reserving Phase",type=string,priority=1,JSONPath=`.status.reserveAndBuy`
 // +kubebuilder:printcolumn:name="Peering Phase",type=string,priority=1,JSONPath=`.status.peering`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.solverPhase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.solverPhase.message`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
-// Solver is the Schema for the solvers API
+// Solver is the Schema for the solvers API.
 type Solver struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -151,7 +133,7 @@ type Solver struct {
 
 //+kubebuilder:object:root=true
 
-// SolverList contains a list of Solver
+// SolverList contains a list of Solver.
 type SolverList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -160,4 +142,39 @@ type SolverList struct {
 
 func init() {
 	SchemeBuilder.Register(&Solver{}, &SolverList{})
+}
+
+// ParseSolverSelector is a utility function that extracts the SolverTypeIdentifier and the SolverTypeData from the Solver.
+// It provides a set of validation for nested data, so the nested filters, if present, are validated as well.
+// ATTENTION: This function can return a nil interface{} if the SolverTypeData is not present.
+func ParseSolverSelector(s *Selector) (FlavorTypeIdentifier, interface{}, error) {
+	switch s.FlavorType {
+	case TypeK8Slice:
+		var k8sliceFilter K8SliceSelector
+		klog.Info("Parsing K8Slice selector")
+		if s.Filters == nil {
+			klog.Info("No specific filters found")
+			return TypeK8Slice, nil, nil
+		}
+		if err := json.Unmarshal(s.Filters.Raw, &k8sliceFilter); err != nil {
+			return "", nil, err
+		}
+
+		// Parse the filters
+		filters, err := ParseK8SliceSelector(&k8sliceFilter)
+		if err != nil {
+			return "", nil, err
+		}
+		klog.Infof("K8Slice Selector owns %d filters", len(filters))
+
+		return TypeK8Slice, k8sliceFilter, nil
+	case TypeVM:
+		// TODO: Implement the function
+		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)
+	case TypeService:
+		// TODO: Implement the function
+		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)
+	default:
+		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,25 +37,25 @@ import (
 
 // clusterRole
 //	+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=contracts,verbs=get;list;watch;create;update;patch;delete
-//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours,verbs=get;list;watch;create;update;patch;delete
-//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/status,verbs=get;update;patch
-//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavours/finalizers,verbs=update
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors,verbs=get;list;watch;create;update;patch;delete
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors/status,verbs=get;update;patch
+//	+kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=flavors/finalizers,verbs=update
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
 //	+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch
 
 const (
-	// ListFlavoursPath is the path to get the list of flavours.
-	ListFlavoursPath = "/api/listflavours"
-	// ListFlavourByIDPath is the path to get a flavour by ID.
-	ListFlavourByIDPath = "/api/listflavours/"
-	// ReserveFlavourPath is the path to reserve a flavour.
-	ReserveFlavourPath = "/api/reserveflavour/"
-	// PurchaseFlavourPath is the path to purchase a flavour.
-	PurchaseFlavourPath = "/api/purchaseflavour/"
-	// ListFlavoursBySelectorPath is the path to get the list of flavours by selector.
-	ListFlavoursBySelectorPath = "/api/listflavours/selector"
+	// ListFlavorsPath is the path to get the list of flavors.
+	ListFlavorsPath = "/api/listflavors"
+	// ListFlavorByIDPath is the path to get a flavor by ID.
+	ListFlavorByIDPath = "/api/listflavors/"
+	// ReserveFlavorPath is the path to reserve a flavor.
+	ReserveFlavorPath = "/api/reserveflavor/"
+	// PurchaseFlavorPath is the path to purchase a flavor.
+	PurchaseFlavorPath = "/api/purchaseflavor/"
+	// ListFlavorsBySelectorPath is the path to get the list of flavors by selector.
+	ListFlavorsBySelectorPath = "/api/listflavors/selector"
 )
 
 // Gateway is the object that contains all the logical data stractures of the REAR Gateway.
@@ -64,7 +64,7 @@ type Gateway struct {
 	ID *nodecorev1alpha1.NodeIdentity
 
 	// Transactions is a map of Transaction
-	Transactions map[string]models.Transaction
+	Transactions map[string]*models.Transaction
 
 	// client is the Kubernetes client
 	client client.Client
@@ -80,7 +80,7 @@ type Gateway struct {
 func NewGateway(c client.Client) *Gateway {
 	return &Gateway{
 		client:       c,
-		Transactions: make(map[string]models.Transaction),
+		Transactions: make(map[string]*models.Transaction),
 		LiqoReady:    false,
 		ClusterID:    "",
 	}
@@ -107,12 +107,11 @@ func (g *Gateway) Start(ctx context.Context) error {
 	router.Use(g.readinessMiddleware)
 
 	// Gateway endpoints
-	router.HandleFunc(ListFlavoursPath, g.getFlavours).Methods("GET")
-	//nolint:gocritic // For the moment we are not using this endpoint
-	// router.HandleFunc(LIST_FLAVOUR_BY_ID_PATH+"{flavourID}", g.getFlavourByID).Methods("GET")
-	router.HandleFunc(ListFlavoursBySelectorPath, g.getFlavoursBySelector).Methods("POST")
-	router.HandleFunc(ReserveFlavourPath+"{flavourID}", g.reserveFlavour).Methods("POST")
-	router.HandleFunc(PurchaseFlavourPath+"{transactionID}", g.purchaseFlavour).Methods("POST")
+	router.HandleFunc(Routes.Flavors, g.getFlavors).Methods("GET")
+	router.HandleFunc(Routes.K8SliceFlavors, g.getK8SliceFlavorsBySelector).Methods("GET")
+	// TODO: Implement the other selector types
+	router.HandleFunc(Routes.Reserve, g.reserveFlavor).Methods("POST")
+	router.HandleFunc(Routes.Purchase, g.purchaseFlavor).Methods("POST")
 
 	// Configure the HTTP server
 	//nolint:gosec // we are not using a TLS certificate
@@ -155,7 +154,7 @@ func (g *Gateway) CacheRefresher(interval time.Duration) func(ctx context.Contex
 func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
 	klog.Infof("Refreshing cache")
 	for transactionID, transaction := range g.Transactions {
-		if tools.CheckExpiration(transaction.StartTime, flags.ExpirationTransaction) {
+		if tools.CheckExpiration(transaction.ExpirationTime) {
 			klog.Infof("Transaction %s expired, removing it from cache...", transactionID)
 			g.removeTransaction(transactionID)
 			return false, nil

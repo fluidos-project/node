@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,15 @@ type NodeInfo struct {
 	ResourceMetrics ResourceMetrics `json:"resources"`
 }
 
+// GPUMetrics represents GPU metrics.
+type GPUMetrics struct {
+	Model           string            `json:"model"`
+	CoresTotal      resource.Quantity `json:"totalCores"`
+	CoresAvailable  resource.Quantity `json:"availableCores"`
+	MemoryTotal     resource.Quantity `json:"totalMemory"`
+	MemoryAvailable resource.Quantity `json:"availableMemory"`
+}
+
 // ResourceMetrics represents resources of a certain node.
 type ResourceMetrics struct {
 	CPUTotal         resource.Quantity `json:"totalCPU"`
@@ -36,4 +45,5 @@ type ResourceMetrics struct {
 	PodsTotal        resource.Quantity `json:"totalPods"`
 	PodsAvailable    resource.Quantity `json:"availablePods"`
 	EphemeralStorage resource.Quantity `json:"ephemeralStorage"`
+	GPU              GPUMetrics        `json:"gpu"`
 }
