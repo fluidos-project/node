@@ -79,6 +79,7 @@ type ReservationStatus struct {
 // +kubebuilder:printcolumn:name="Contract Name",type=string,JSONPath=`.status.contract.name`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,priority=1,JSONPath=`.status.phase.message`
+// +kubebuilder:resource:shortName=res
 type Reservation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

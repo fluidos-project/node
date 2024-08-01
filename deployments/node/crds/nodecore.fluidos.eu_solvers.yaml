@@ -11,6 +11,8 @@ spec:
     kind: Solver
     listKind: SolverList
     plural: solvers
+    shortNames:
+    - sol
     singular: solver
   scope: Namespaced
   versions:

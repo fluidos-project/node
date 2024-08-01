@@ -11,6 +11,8 @@ spec:
     kind: Contract
     listKind: ContractList
     plural: contracts
+    shortNames:
+    - contr
     singular: contract
   scope: Namespaced
   versions:

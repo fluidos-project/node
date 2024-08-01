@@ -11,6 +11,9 @@ spec:
     kind: Allocation
     listKind: AllocationList
     plural: allocations
+    shortNames:
+    - alloc
+    - allocs
     singular: allocation
   scope: Namespaced
   versions:

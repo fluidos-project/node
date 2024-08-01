@@ -11,6 +11,8 @@ spec:
     kind: Reservation
     listKind: ReservationList
     plural: reservations
+    shortNames:
+    - res
     singular: reservation
   scope: Namespaced
   versions:

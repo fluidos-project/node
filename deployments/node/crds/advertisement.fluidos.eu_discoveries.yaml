@@ -11,6 +11,8 @@ spec:
     kind: Discovery
     listKind: DiscoveryList
     plural: discoveries
+    shortNames:
+    - dis
     singular: discovery
   scope: Namespaced
   versions:
