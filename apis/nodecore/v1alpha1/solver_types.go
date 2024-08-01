@@ -122,6 +122,7 @@ type SolverStatus struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.solverPhase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.solverPhase.message`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:resource:shortName=sol
 // Solver is the Schema for the solvers API.
 type Solver struct {
 	metav1.TypeMeta   `json:",inline"`

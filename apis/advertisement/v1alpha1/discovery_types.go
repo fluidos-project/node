@@ -59,6 +59,7 @@ type DiscoveryStatus struct {
 // +kubebuilder:printcolumn:name="PC Name",type=string,JSONPath=`.status.peeringCandidate.name`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase.phase`
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.phase.message`
+// +kubebuilder:resource:shortName=dis
 type Discovery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

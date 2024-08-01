@@ -11,6 +11,8 @@ spec:
     kind: Transaction
     listKind: TransactionList
     plural: transactions
+    shortNames:
+    - tr
     singular: transaction
   scope: Namespaced
   versions:

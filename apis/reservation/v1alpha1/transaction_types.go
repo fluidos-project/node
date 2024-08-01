@@ -54,6 +54,7 @@ type TransactionStatus struct {
 // +kubebuilder:printcolumn:name="Buyer Domain",type="string",priority=1,JSONPath=".spec.buyer.domain"
 // +kubebuilder:printcolumn:name="Cluster ID",type="string",JSONPath=".spec.clusterID"
 // +kubebuilder:printcolumn:name="Start Time",type="string",JSONPath=".spec.startTime"
+// +kubebuilder:resource:shortName=tr
 type Transaction struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

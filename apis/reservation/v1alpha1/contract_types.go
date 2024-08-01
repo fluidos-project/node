@@ -73,6 +73,7 @@ type ContractStatus struct {
 // +kubebuilder:printcolumn:name="Transaction ID",type=string,priority=1,JSONPath=`.spec.transactionID`
 // +kubebuilder:printcolumn:name="Buyer Liqo ID",type=string,priority=1,JSONPath=`.spec.buyerClusterID`
 // +kubebuilder:printcolumn:name="Expiration Time",type=string,priority=1,JSONPath=`.spec.expirationTime`
+// +kubebuilder:resource:shortName=contr
 type Contract struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

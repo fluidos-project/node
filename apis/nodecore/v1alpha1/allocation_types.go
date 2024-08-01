@@ -59,6 +59,7 @@ type AllocationStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:shortName=alloc;allocs
 
 // Allocation is the Schema for the allocations API.
 type Allocation struct {
