@@ -110,13 +110,59 @@ func main() {
 		return []string{contract.Spec.BuyerClusterID}
 	}
 
-	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.transactionID", indexFuncTransaction); err != nil {
+	indexFuncBuyerLiqoID := func(obj client.Object) []string {
+		contract := obj.(*reservationv1alpha1.Contract)
+		if contract.Spec.Buyer.AdditionalInformation == nil {
+			return []string{}
+		}
+		return []string{contract.Spec.Buyer.AdditionalInformation.LiqoID}
+	}
+
+	indexFuncSellerLiqoID := func(obj client.Object) []string {
+		contract := obj.(*reservationv1alpha1.Contract)
+		if contract.Spec.Seller.AdditionalInformation == nil {
+			return []string{}
+		}
+		return []string{contract.Spec.Seller.AdditionalInformation.LiqoID}
+	}
+
+	if err := cache.IndexField(
+		context.Background(),
+		&reservationv1alpha1.Contract{},
+		"spec.transactionID",
+		indexFuncTransaction,
+	); err != nil {
 		setupLog.Error(err, "unable to create index for field", "field", "spec.transactionID")
 		os.Exit(1)
 	}
 
-	if err := cache.IndexField(context.Background(), &reservationv1alpha1.Contract{}, "spec.buyerClusterID", indexFuncClusterID); err != nil {
+	if err := cache.IndexField(
+		context.Background(),
+		&reservationv1alpha1.Contract{},
+		"spec.buyerClusterID",
+		indexFuncClusterID,
+	); err != nil {
 		setupLog.Error(err, "unable to create index for field", "field", "spec.buyerClusterID")
+		os.Exit(1)
+	}
+
+	if err := cache.IndexField(
+		context.Background(),
+		&reservationv1alpha1.Contract{},
+		"spec.buyer.additionalInformation.liqoID",
+		indexFuncBuyerLiqoID,
+	); err != nil {
+		setupLog.Error(err, "unable to create index for field", "field", "spec.buyer.additionalInformation.liqoID")
+		os.Exit(1)
+	}
+
+	if err := cache.IndexField(
+		context.Background(),
+		&reservationv1alpha1.Contract{},
+		"spec.seller.additionalInformation.liqoID",
+		indexFuncSellerLiqoID,
+	); err != nil {
+		setupLog.Error(err, "unable to create index for field", "field", "spec.seller.additionalInformation.liqoID")
 		os.Exit(1)
 	}
 

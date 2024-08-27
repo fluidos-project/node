@@ -162,7 +162,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *NodeReconciler) createFlavor(ctx context.Context, nodeInfo *models.NodeInfo,
 	nodeIdentity nodecorev1alpha1.NodeIdentity, ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor, err error) {
 	// Forge the Flavor from the NodeInfo and NodeIdentity
-	flavorResult := resourceforge.ForgeFlavorFromMetrics(nodeInfo, nodeIdentity, ownerReferences)
+	flavorResult := resourceforge.ForgeK8SliceFlavorFromMetrics(nodeInfo, nodeIdentity, ownerReferences)
 
 	// Create the Flavor
 	err = r.Create(ctx, flavorResult)

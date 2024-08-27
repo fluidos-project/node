@@ -46,6 +46,29 @@ func GetAllFlavors(cl client.Client) ([]nodecorev1alpha1.Flavor, error) {
 	return flavorList.Items, nil
 }
 
+// GetAvailableFlavors returns all the available Flavors in the cluster.
+func GetAvailableFlavors(cl client.Client) ([]nodecorev1alpha1.Flavor, error) {
+	flavors, err := GetAllFlavors(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	klog.Infof("Found %d Flavors in the cluster", len(flavors))
+
+	availableFlavors := make([]nodecorev1alpha1.Flavor, 0)
+
+	// Filtering only the available flavors
+	for i := range flavors {
+		if flavors[i].Spec.Availability {
+			availableFlavors = append(availableFlavors, flavors[i])
+		}
+	}
+
+	klog.Infof("Found %d available Flavors in the cluster", len(availableFlavors))
+
+	return availableFlavors, nil
+}
+
 // GetFlavorByID returns the entire Flavor CR (not only spec) in the cluster that matches the flavorID.
 func GetFlavorByID(flavorID string, cl client.Client) (*nodecorev1alpha1.Flavor, error) {
 	// Get the flavor with the given ID (that is the name of the CR)

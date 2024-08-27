@@ -71,11 +71,30 @@ func FilterFlavor(selector models.Selector, flavorCR *nodecorev1alpha1.Flavor) b
 			return false
 		}
 		// Cast the selector to a K8Slice selector
-		k8sliceSelector := selector.(models.K8SliceSelector)
+		k8sliceFilters := selector.(models.K8SliceSelector)
 		// Cast the flavor type data to a K8Slice CR
 		flavorTypeCR := flavorTypeData.(nodecorev1alpha1.K8Slice)
-		return filterFlavorK8Slice(&k8sliceSelector, &flavorTypeCR)
-	// TODO: Implement other flavor types filtering
+		return filterFlavorK8Slice(&k8sliceFilters, &flavorTypeCR)
+	case nodecorev1alpha1.TypeService:
+		// Check if selector type matches flavor type
+		if selector.GetSelectorType() != models.ServiceNameDefault {
+			klog.Errorf("selector type %s does not match flavor type %s", selector.GetSelectorType(), models.ServiceNameDefault)
+			return false
+		}
+		// Cast the selector to a Service selector
+		serviceFilters := selector.(models.ServiceSelector)
+		// Cast the flavor type data to a Service CR
+		flavorTypeCR := flavorTypeData.(nodecorev1alpha1.ServiceFlavor)
+		// Check if the flavor matches the Service selector
+		return filterFlavorService(&serviceFilters, &flavorTypeCR)
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement VM filtering
+		klog.Errorf("VM filtering not implemented")
+		return false
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement Sensor filtering
+		klog.Errorf("Sensor filtering not implemented")
+		return false
 	default:
 		// Flavor type not supported
 		klog.Errorf("flavor type %s not supported", flavorCR.Spec.FlavorType.TypeIdentifier)
@@ -214,6 +233,51 @@ func filterFlavorK8Slice(k8SliceSelector *models.K8SliceSelector, flavorTypeK8Sl
 	return true
 }
 
+// filterFlavorService return true if the Service Flavor CR fits the Service selector.
+func filterFlavorService(serviceSelector *models.ServiceSelector, flavorTypeServiceCR *nodecorev1alpha1.ServiceFlavor) bool {
+	// Category Filter
+	if serviceSelector.Category != nil {
+		// Check if the flavor matches the Category filter
+		categoryFilterModel := *serviceSelector.Category
+		if !filterStringFilter(flavorTypeServiceCR.Category, categoryFilterModel) {
+			return false
+		}
+	}
+
+	// Tags Filter
+	if serviceSelector.Tags != nil {
+		// Check if the flavor matches the Tags filter
+		tagsFilterModel := *serviceSelector.Tags
+		tagsCheck := false
+		// For each tag in the flavor, check if any of them matches the filter
+		for _, tag := range flavorTypeServiceCR.Tags {
+			if filterStringFilter(tag, tagsFilterModel) {
+				tagsCheck = true
+				break
+			}
+		}
+		if !tagsCheck {
+			return false
+		}
+	}
+
+	return true
+}
+
+/* filterFlavorVM return true if the VM Flavor CR fits the VM selector.
+func filterFlavorVM(vmSelector *models.VMSelector, flavorTypeVMCR *nodecorev1alpha1.VMFlavor) bool {
+	// TODO (VM): Implement VM filtering
+	klog.Errorf("VM filtering not implemented")
+	return false
+}
+
+// filterFlavorSensor return true if the Sensor Flavor CR fits the Sensor selector.
+func filterFlavorSensor(sensorSelector *models.SensorSelector, flavorTypeSensorCR *nodecorev1alpha1.SensorFlavor) bool {
+	// TODO (Sensor): Implement Sensor filtering
+	klog.Errorf("Sensor filtering not implemented")
+	return false
+}*/
+
 // FilterPeeringCandidate filters the peering candidate based on the solver's flavor selector.
 func FilterPeeringCandidate(selector *nodecorev1alpha1.Selector, pc *advertisementv1alpha1.PeeringCandidate) bool {
 	// Parsing the selector
@@ -239,6 +303,20 @@ func CheckSelector(selector models.Selector) error {
 		k8sliceSelector := selector.(models.K8SliceSelector)
 		klog.Infof("Checking K8Slice selector: %v", k8sliceSelector)
 		// Nothing is compulsory in the K8Slice selector
+		return nil
+	case models.VMNameDefault:
+		// TODO (VM): Implement VM selector syntax check
+		klog.Errorf("VM selector syntax check not implemented")
+		return nil
+	case models.ServiceNameDefault:
+		serviceSelector := selector.(models.ServiceSelector)
+		klog.Infof("Checking Service selector: %v", serviceSelector)
+		// Nothing is compulsory in the Service selector
+		// TODO (Service): Implement Service selector syntax check if needed
+		return nil
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement Sensor selector syntax check
+		klog.Errorf("Sensor selector syntax check not implemented")
 		return nil
 	default:
 		return fmt.Errorf("selector type %s not supported", selector.GetSelectorType())
@@ -306,5 +384,45 @@ func ReservationStatusCheck(solver *nodecorev1alpha1.Solver, reservation *reserv
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseIdle {
 		klog.Infof("Reservation %s is idle", reservation.Name)
 		solver.SetReservationStatus(nodecorev1alpha1.PhaseIdle)
+	}
+}
+
+// AllocationStatusCheck checks the status of the allocation.
+func AllocationStatusCheck(solver *nodecorev1alpha1.Solver, allocation *nodecorev1alpha1.Allocation) {
+	klog.Infof("Allocation %s is in phase %s", allocation.Name, allocation.Status.Status)
+	if allocation.Status.Status == nodecorev1alpha1.Active {
+		klog.Infof("Allocation %s is active", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseSolved
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: active")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.Provisioning {
+		klog.Infof("Allocation %s is provisioning", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseRunning
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: provisioning")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.ResourceCreation {
+		klog.Infof("Allocation %s is creating resources", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseRunning
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: creating resources")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.Peering {
+		klog.Infof("Allocation %s is peering", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseRunning
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: peering")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.Released {
+		klog.Infof("Allocation %s is released", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseSolved
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: released")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.Inactive {
+		klog.Infof("Allocation %s is inactive", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseRunning
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation: inactive")
+	}
+	if allocation.Status.Status == nodecorev1alpha1.Error {
+		klog.Infof("Allocation %s is in error", allocation.Name)
+		solver.Status.Peering = nodecorev1alpha1.PhaseFailed
+		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Allocation: error")
 	}
 }

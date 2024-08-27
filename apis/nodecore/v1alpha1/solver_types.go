@@ -159,10 +159,30 @@ func ParseSolverSelector(s *Selector) (FlavorTypeIdentifier, interface{}, error)
 
 		return TypeK8Slice, k8sliceFilter, nil
 	case TypeVM:
-		// TODO: Implement the function
+		// TODO (VM): implement the VM selector parsing
 		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)
 	case TypeService:
-		// TODO: Implement the function
+		var serviceFilter ServiceSelector
+		klog.Info("Parsing Service selector")
+		if s.Filters == nil {
+			klog.Info("No specific filters found")
+			return TypeService, nil, nil
+		}
+		if err := json.Unmarshal(s.Filters.Raw, &serviceFilter); err != nil {
+			return "", nil, err
+		}
+
+		// Parse the filters
+		filters, err := ParseServiceSelector(&serviceFilter)
+		if err != nil {
+			return "", nil, err
+		}
+		klog.Infof("K8Slice Selector owns %d filters", len(filters))
+
+		return TypeService, serviceFilter, nil
+
+	case TypeSensor:
+		// TODO (Sensor): implement the Sensor selector parsing
 		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)
 	default:
 		return "", nil, fmt.Errorf("solver type %s not supported", s.FlavorType)

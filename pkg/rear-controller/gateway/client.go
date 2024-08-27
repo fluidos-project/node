@@ -29,10 +29,12 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
 // ReserveFlavor reserves a flavor with the given flavorID.
-func (g *Gateway) ReserveFlavor(ctx context.Context, reservation *reservationv1alpha1.Reservation, flavorID string) (*models.Transaction, error) {
+func (g *Gateway) ReserveFlavor(ctx context.Context,
+	reservation *reservationv1alpha1.Reservation, flavor *nodecorev1alpha1.Flavor) (*models.Transaction, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
@@ -46,6 +48,8 @@ func (g *Gateway) ReserveFlavor(ctx context.Context, reservation *reservationv1a
 
 	var transaction models.Transaction
 
+	flavorID := flavor.Name
+
 	body := models.ReserveRequest{
 		FlavorID: flavorID,
 		Buyer: models.NodeIdentity{
@@ -57,13 +61,22 @@ func (g *Gateway) ReserveFlavor(ctx context.Context, reservation *reservationv1a
 			},
 		},
 		Configuration: func() *models.Configuration {
+			klog.Infof("Reservation configuration is %v", reservation.Spec.Configuration)
 			if reservation.Spec.Configuration != nil {
-				configuration := parseutil.ParseConfiguration(reservation.Spec.Configuration)
+				klog.Infof("Configuration found in the reservation %s", reservation.Name)
+				configuration, err := parseutil.ParseConfiguration(reservation.Spec.Configuration, flavor)
+				if err != nil {
+					klog.Errorf("Error when parsing configuration: %s", err)
+					return nil
+				}
 				return configuration
 			}
+			klog.Infof("No configuration found in the reservation %s", reservation.Name)
 			return nil
 		}(),
 	}
+
+	klog.Infof("Reserve request: %v", body)
 
 	klog.Infof("Reservation %s for flavor %s", reservation.Name, flavorID)
 
@@ -110,14 +123,14 @@ func (g *Gateway) ReserveFlavor(ctx context.Context, reservation *reservationv1a
 
 	klog.Infof("Flavor %s reserved: transaction ID %s", flavorID, transaction.TransactionID)
 
-	g.addNewTransacion(&transaction)
+	g.addNewTransaction(&transaction)
 
 	return &transaction, nil
 }
 
 // PurchaseFlavor purchases a flavor with the given flavorID.
 func (g *Gateway) PurchaseFlavor(ctx context.Context, transactionID string,
-	seller nodecorev1alpha1.NodeIdentity, buyerLiqoCredentials *models.LiqoCredentials) (*models.Contract, error) {
+	seller nodecorev1alpha1.NodeIdentity, buyerLiqoCredentials *nodecorev1alpha1.LiqoCredentials) (*models.Contract, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
@@ -133,8 +146,17 @@ func (g *Gateway) PurchaseFlavor(ctx context.Context, transactionID string,
 
 	klog.Infof("Transaction %s for flavor %s", transactionID, transaction.FlavorID)
 
+	var liqoCredentials *models.LiqoCredentials
+
+	if buyerLiqoCredentials != nil {
+		liqoCredentials, err = resourceforge.ForgeLiqoCredentialsObj(buyerLiqoCredentials)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	body := models.PurchaseRequest{
-		LiqoCredentials: buyerLiqoCredentials,
+		LiqoCredentials: liqoCredentials,
 	}
 
 	selectorBytes, err := json.Marshal(body)

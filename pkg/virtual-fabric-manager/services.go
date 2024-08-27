@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	discoveryv1alpha1 "github.com/liqotech/liqo/apis/discovery/v1alpha1"
+	offloadingv1alpha1 "github.com/liqotech/liqo/apis/offloading/v1alpha1"
 	"github.com/liqotech/liqo/pkg/discovery"
 	"github.com/liqotech/liqo/pkg/utils"
 	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
@@ -159,4 +160,46 @@ func createAuthTokenSecret(ctx context.Context, cl client.Client,
 	}
 
 	return nil
+}
+
+// OffloadNamespace creates a NamespaceOffloading inside the specified namespace with given pod offloading strategy and cluster selector.
+func OffloadNamespace(ctx context.Context, cl client.Client, namespaceName string, strategy offloadingv1alpha1.PodOffloadingStrategyType,
+	clusterTargetID string) (*offloadingv1alpha1.NamespaceOffloading, error) {
+	nodeValues := make([]string, 0)
+	nodeValues = append(nodeValues, clusterTargetID)
+
+	// Create a NamespaceOffloading
+	namespaceOffloading := &offloadingv1alpha1.NamespaceOffloading{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "offloading",
+			Namespace: namespaceName,
+		},
+		Spec: offloadingv1alpha1.NamespaceOffloadingSpec{
+			NamespaceMappingStrategy: offloadingv1alpha1.EnforceSameNameMappingStrategyType,
+			PodOffloadingStrategy:    strategy,
+			ClusterSelector: corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      consts.LiqoRemoteClusterIDLabel,
+								Operator: corev1.NodeSelectorOpIn,
+								Values:   nodeValues,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	klog.Infof("Creating NamespaceOffloading %s in namespace %s", namespaceOffloading.Name, namespaceOffloading.Namespace)
+
+	err := cl.Create(ctx, namespaceOffloading)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	return namespaceOffloading, nil
 }

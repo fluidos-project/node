@@ -1,0 +1,97 @@
+apiVersion: nodecore.fluidos.eu/v1alpha1
+kind: ServiceBlueprint
+metadata:
+  name: mq-rabbitmq
+  namespace: fluidos
+spec:
+  # The name of the service blueprint
+  name: mq
+  # The description of the service blueprint
+  description: A message queue service blueprint
+  # The type of the service blueprint
+  category: message-queue
+  # The tags of the service blueprint
+  tags:
+    - message-queue
+    - rabbitmq
+    - mqtt
+  hostingPolicies:
+    #- Provider
+    - Consumer
+  # The service blueprint's configuration
+  templates:
+    - name: secret
+      description: A secret containing the message queue credentials
+      serviceData:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: mq-credentials
+        type: Opaque
+        stringData:
+          username: "{{ .username }}"
+          password: "{{ .password }}"
+
+    - name: service
+      description: A service to expose the message queue
+      serviceData:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: mq-service
+          labels:
+            nodecore.fluidos.eu/flavor-service-endpoint: "true"
+        spec:
+          selector:
+            app: mq
+          ports:
+            - protocol: TCP
+              port: 5672
+              targetPort: 5672
+              name: amqp
+            - protocol: TCP
+              port: 15672
+              targetPort: 15672
+              name: management
+
+    - name: deployment
+      description: A deployment for the message queue service blueprint
+      serviceData:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: mq
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: mq
+          template:
+            metadata:
+              labels:
+                app: mq
+            spec:
+              containers:
+                - name: rabbitmq
+                  image: rabbitmq:3.8.3-management
+                  ports:
+                    - containerPort: 5672
+                    - containerPort: 15672
+                  env:
+                    - name: RABBITMQ_DEFAULT_USER
+                      valueFrom:
+                        secretKeyRef:
+                          name: mq-credentials
+                          key: username
+                    - name: RABBITMQ_DEFAULT_PASS
+                      valueFrom:
+                        secretKeyRef:
+                          name: mq-credentials
+                          key: password
+                  resources:
+                    limits:
+                      cpu: "500m"
+                      memory: "512Mi"
+                    requests:
+                      cpu: "100m"
+                      memory: "256Mi"
