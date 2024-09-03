@@ -73,15 +73,16 @@ func ForgePeeringCandidate(flavorPeeringCandidate *nodecorev1alpha1.Flavor,
 			Available: available,
 		},
 	}
-	pc.Spec.SolverID = solverID
+	pc.Spec.InterestedSolverIDs = append(pc.Spec.InterestedSolverIDs, solverID)
 	return
 }
 
 // ForgeReservation creates a Reservation CR from a PeeringCandidate.
 func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 	configuration *nodecorev1alpha1.Configuration,
-	ni nodecorev1alpha1.NodeIdentity) *reservationv1alpha1.Reservation {
-	solverID := pc.Spec.SolverID
+	ni nodecorev1alpha1.NodeIdentity,
+	reservingSolver string) *reservationv1alpha1.Reservation {
+	solverID := reservingSolver
 	reservation := &reservationv1alpha1.Reservation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeReservationName(solverID),
@@ -825,14 +826,13 @@ func ForgeK8SliceConfiguration(selector nodecorev1alpha1.K8SliceSelector, flavor
 }
 
 // ForgeAllocation creates an Allocation from a Contract.
-func ForgeAllocation(contract *reservationv1alpha1.Contract, intentID string) *nodecorev1alpha1.Allocation {
+func ForgeAllocation(contract *reservationv1alpha1.Contract) *nodecorev1alpha1.Allocation {
 	return &nodecorev1alpha1.Allocation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeAllocationName(contract.Spec.Flavor.Name),
 			Namespace: flags.FluidosNamespace,
 		},
 		Spec: nodecorev1alpha1.AllocationSpec{
-			IntentID:   intentID,
 			Forwarding: false,
 			Contract: nodecorev1alpha1.GenericRef{
 				Name:      contract.Name,

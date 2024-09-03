@@ -115,57 +115,11 @@ spec:
           status:
             description: SolverStatus defines the observed state of Solver.
             properties:
-              allocation:
-                description: |-
-                  Allocation contains the allocation that the solver has eventually created for the intent.
-                  It can correspond to a virtual node
-                  The Node Orchestrator will use this allocation to fulfill the intent.
-                properties:
-                  name:
-                    description: The name of the resource to be referenced.
-                    type: string
-                  namespace:
-                    description: |-
-                      The namespace containing the resource to be referenced. It should be left
-                      empty in case of cluster-wide resources.
-                    type: string
-                type: object
               consumePhase:
                 description: |-
                   ConsumePhase describes the status of the Consume phase where the VFM (Liqo) is enstablishing
                   a peering with the candidate node.
                 type: string
-              contract:
-                description: Contract contains the Contract that the Contract Manager
-                  has eventually created with the candidate.
-                properties:
-                  name:
-                    description: The name of the resource to be referenced.
-                    type: string
-                  namespace:
-                    description: |-
-                      The namespace containing the resource to be referenced. It should be left
-                      empty in case of cluster-wide resources.
-                    type: string
-                type: object
-              credentials:
-                description: Credentials contains the LiqoCredentials found in the
-                  Contract.
-                properties:
-                  clusterID:
-                    type: string
-                  clusterName:
-                    type: string
-                  endpoint:
-                    type: string
-                  token:
-                    type: string
-                required:
-                - clusterID
-                - clusterName
-                - endpoint
-                - token
-                type: object
               discoveryPhase:
                 description: |-
                   DiscoveryPhase describes the status of the Discovery where the Discovery Manager

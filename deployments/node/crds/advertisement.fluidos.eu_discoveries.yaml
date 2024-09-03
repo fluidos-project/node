@@ -314,12 +314,14 @@ spec:
                                   - lastUpdateTime
                                   type: object
                               type: object
-                            solverID:
-                              type: string
+                            interestedSolverIDs:
+                              items:
+                                type: string
+                              type: array
                           required:
                           - available
                           - flavor
-                          - solverID
+                          - interestedSolverIDs
                           type: object
                         status:
                           description: PeeringCandidateStatus defines the observed

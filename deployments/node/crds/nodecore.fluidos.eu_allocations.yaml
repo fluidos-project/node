@@ -60,13 +60,6 @@ spec:
                   This flag indicates if the allocation is a forwarding allocation
                   if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
                 type: boolean
-              intentID:
-                description: |-
-                  This is the ID of the intent for which the allocation was created.
-                  It is used by the Node Orchestrator to identify the correct allocation for a given intent
-                type: string
-            required:
-            - intentID
             type: object
           status:
             description: AllocationStatus defines the observed state of Allocation.

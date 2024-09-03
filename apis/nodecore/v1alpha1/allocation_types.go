@@ -32,10 +32,6 @@ const (
 
 // AllocationSpec defines the desired state of Allocation.
 type AllocationSpec struct {
-	// This is the ID of the intent for which the allocation was created.
-	// It is used by the Node Orchestrator to identify the correct allocation for a given intent
-	IntentID string `json:"intentID"`
-
 	// This flag indicates if the allocation is a forwarding allocation
 	// if true it represents only a placeholder to undertand that the cluster is just a proxy to another cluster
 	Forwarding bool `json:"forwarding,omitempty"`
