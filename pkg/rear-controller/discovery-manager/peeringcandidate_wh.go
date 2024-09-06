@@ -69,12 +69,12 @@ func (v *PCValidator) HandleCreate(_ context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering candidate: %w", err))
 	}
 
-	if !pc.Spec.Available && pc.Spec.SolverID == "" {
-		return admission.Denied("If peering candidate is not available, solver ID must be set")
+	if pc.Spec.Available && len(pc.Spec.InterestedSolverIDs) == 0 {
+		return admission.Denied("Can't create a peering candidate wihout a triggering solver")
 	}
 
-	if pc.Spec.Available && pc.Spec.SolverID != "" {
-		return admission.Denied("If peering candidate is available, solver ID must not be set")
+	if !pc.Spec.Available {
+		return admission.Denied("Can't create a peering candidate with Available flag set to false")
 	}
 
 	return admission.Allowed("")
@@ -108,20 +108,12 @@ func (v *PCValidator) HandleUpdate(_ context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode peering old candidate: %w", err))
 	}
 
-	// PC can be updated only if:
-	// - both Reserved flag and SolverID are not set (i.e. it is not reserved)
-	// - both Reserved flag and SolverID are set and you want to clear both in the same time
-
-	if !pcOld.Spec.Available && pcOld.Spec.SolverID == "" {
-		return admission.Allowed("")
-	}
-
-	if !pcOld.Spec.Available && pcOld.Spec.SolverID != "" && pc.Spec.Available && pc.Spec.SolverID == "" {
-		return admission.Allowed("")
+	if !pcOld.Spec.Available && !pc.Spec.Available {
+		return admission.Denied("Peering candidate can be updated if Available flag is changed from false to true")
 	}
 
 	//nolint:lll // This is a long line
-	return admission.Denied("peering candidate can be updated only if it is not reserved or if both Reserved flag and SolverID are set and you want to clear both in the same time")
+	return admission.Allowed("")
 }
 
 // DecodePeeringCandidate decodes the PeeringCandidate.

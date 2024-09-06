@@ -285,7 +285,6 @@ func ReservationStatusCheck(solver *nodecorev1alpha1.Solver, reservation *reserv
 		klog.Infof("Reservation %s has reserved and purchase the flavor %s", reservation.Name, flavorName)
 		solver.Status.ReservationPhase = nodecorev1alpha1.PhaseSolved
 		solver.Status.ReserveAndBuy = nodecorev1alpha1.PhaseSolved
-		solver.Status.Contract = reservation.Status.Contract
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation: Flavor reserved and purchased")
 	}
 	if reservation.Status.Phase.Phase == nodecorev1alpha1.PhaseFailed {

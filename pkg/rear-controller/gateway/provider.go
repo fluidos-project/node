@@ -349,7 +349,7 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 
 	// Create allocation
 	klog.Infof("Creating allocation...")
-	allocation := *resourceforge.ForgeAllocation(&contract, "")
+	allocation := *resourceforge.ForgeAllocation(&contract)
 	err = g.client.Create(context.Background(), &allocation)
 	if err != nil {
 		klog.Errorf("Error creating the Allocation: %s", err)
