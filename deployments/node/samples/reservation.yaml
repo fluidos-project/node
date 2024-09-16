@@ -1,7 +1,7 @@
 apiVersion: reservation.fluidos.eu/v1alpha1
 kind: Reservation
 metadata:
-  name: reservation-solver-sample-2
+  name: reservation-solver-sample
   namespace: fluidos
 spec:
   solverID: solver-sample-2
@@ -17,7 +17,7 @@ spec:
       pods: "110"
   # Retrieve from PeeringCandidate chosen to reserve
   peeringCandidate:
-    name: peeringcandidate-fluidos.eu-k8slice-7413576d05fe8e93c719e13eab156c5c
+    name: peeringcandidate-fluidos.eu-k8slice-0e682ec3133811bb0d52b6373c339f81
     namespace: fluidos
   # Set it to reserve
   reserve: true
@@ -26,10 +26,11 @@ spec:
   # Retrieve from PeeringCandidate Flavor Owner field    
   seller:
     domain: fluidos.eu
-    ip: 172.19.0.2:30001
-    nodeID: ejbbzmacn0
+    ip: 172.19.0.4:30001
+    nodeID: 4ahrqttvng
   # Retrieve from configmap
   buyer:
     domain: fluidos.eu
     ip: 172.19.0.5:30000
-    nodeID: e9d2mzsbcf
+    nodeID: rd5ks7x9yz
+    
