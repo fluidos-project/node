@@ -10,3 +10,4 @@ spec:
   contract:
     name: contract-fluidos.eu-k8slice-7413576d05fe8e93c719e13eab156c5c-ae7e
     namespace: fluidos
+    

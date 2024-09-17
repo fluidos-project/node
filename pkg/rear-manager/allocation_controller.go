@@ -320,29 +320,46 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 
 		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
 		credentials := contract.Spec.PeeringTargetCredentials
-
-		// Establish peering
-		klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterName)
-		_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
-			credentials.ClusterName, credentials.Endpoint, credentials.Token)
+		// Check if a Liqo peering has been already established
+		_, err := fcutils.GetForeignClusterByID(ctx, r.Client, credentials.ClusterID)
 		if err != nil {
-			klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterName, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterName)
-			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, err
-		}
-		// Peering established
-		klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+			if apierrors.IsNotFound(err) {
+				// Establish peering
+				klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterName)
+				_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
+					credentials.ClusterName, credentials.Endpoint, credentials.Token)
+				if err != nil {
+					klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterName, err)
+					allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterName)
+					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+						klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, err
+				}
+				// Peering established
+				klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
 
-		// Change the status of the Allocation to Active
-		allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
-		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-			return ctrl.Result{}, err
+				// Change the status of the Allocation to Active
+				allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
+				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+			} else {
+				klog.Errorf("Error when getting ForeignCluster %s: %v", credentials.ClusterID, err)
+				allocation.SetStatus(nodecorev1alpha1.Error, "Error when getting ForeignCluster")
+				if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+					klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			// Peering already established
+			klog.Infof("Allocation %s has already peered with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+			return ctrl.Result{}, nil
 		}
+
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.Released:
 		// The Allocation is released,

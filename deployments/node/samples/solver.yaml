@@ -1,7 +1,7 @@
 apiVersion: nodecore.fluidos.eu/v1alpha1
 kind: Solver
 metadata:
-  name: solver-sample-3
+  name: solver-sample
   namespace: fluidos
 spec:
   # This is the Selector used to find a Flavor (FLUIDOS node) that matches the requirements
@@ -37,7 +37,7 @@ spec:
         data:
           value: 110
   # The intentID is the ID of the intent that the solver should satisfy
-  intentID: "intent-sample-3"
+  intentID: "intent-sample"
   # This flag is used to indicate that the solver should find a candidate (FLUIDOS node)
   findCandidate: true
   # This flag is used to indicate that the solver should reserve and buy the resources from the candidate (FLUIDOS node)
