@@ -54,7 +54,7 @@ func (g *Gateway) getFlavors(w http.ResponseWriter, _ *http.Request) {
 
 	// Filtering only the available flavors
 	for i := range flavors {
-		if !flavors[i].Spec.Availability {
+		if flavors[i].Spec.Availability {
 			availableFlavors = append(availableFlavors, flavors[i])
 		}
 	}

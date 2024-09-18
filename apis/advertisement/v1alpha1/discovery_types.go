@@ -32,7 +32,7 @@ type DiscoverySpec struct {
 
 	// This is the FlavourSelector that describes the characteristics of the intent that the solver is looking to satisfy
 	// This pattern corresponds to what has been defined in the REAR Protocol to do a discovery with a selector
-	Selector *nodecorev1alpha1.Selector `json:"selector"`
+	Selector *nodecorev1alpha1.Selector `json:"selector,omitempty"`
 
 	// This flag indicates that needs to be established a subscription to the provider in case a match is found.
 	// In order to have periodic updates of the status of the matching Flavor

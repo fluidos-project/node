@@ -152,7 +152,7 @@ func (g *Gateway) CacheRefresher(interval time.Duration) func(ctx context.Contex
 //
 //nolint:revive // we need to pass ctx as parameter to be compliant with the Poller interface
 func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
-	klog.Infof("Refreshing cache")
+	klog.InfoDepth(1, "Refreshing cache...")
 	for transactionID, transaction := range g.Transactions {
 		if tools.CheckExpiration(transaction.ExpirationTime) {
 			klog.Infof("Transaction %s expired, removing it from cache...", transactionID)
