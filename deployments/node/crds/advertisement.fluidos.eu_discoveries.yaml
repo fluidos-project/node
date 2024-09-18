@@ -88,7 +88,6 @@ spec:
                   In order to have periodic updates of the status of the matching Flavor
                 type: boolean
             required:
-            - selector
             - solverID
             - subscribe
             type: object

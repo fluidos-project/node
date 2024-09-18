@@ -96,7 +96,7 @@ func searchFlavorWithSelector(ctx context.Context, selector models.Selector, add
 func searchFlavor(ctx context.Context, addr string) ([]*nodecorev1alpha1.Flavor, error) {
 	var flavors []models.Flavor
 
-	url := fmt.Sprintf("http://%s%s", addr, ListFlavorsPath)
+	url := fmt.Sprintf("http://%s%s", addr, Routes.Flavors)
 
 	resp, err := makeRequest(ctx, "GET", url, nil)
 	if err != nil {
