@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"k8s.io/klog/v2"
 
@@ -30,10 +31,8 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
 )
 
-// TODO: move this function into the REAR Gateway package
-
-// ReserveFlavour reserves a flavour with the given flavourID.
-func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1alpha1.Reservation, flavourID string) (*models.Transaction, error) {
+// ReserveFlavor reserves a flavor with the given flavorID.
+func (g *Gateway) ReserveFlavor(ctx context.Context, reservation *reservationv1alpha1.Reservation, flavorID string) (*models.Transaction, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
@@ -48,35 +47,34 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 	var transaction models.Transaction
 
 	body := models.ReserveRequest{
-		FlavourID: flavourID,
+		FlavorID: flavorID,
 		Buyer: models.NodeIdentity{
 			NodeID: g.ID.NodeID,
 			IP:     g.ID.IP,
 			Domain: g.ID.Domain,
+			AdditionalInformation: &models.NodeIdentityAdditionalInfo{
+				LiqoID: liqoCredentials.ClusterID,
+			},
 		},
-		ClusterID: liqoCredentials.ClusterID,
-		Partition: func() *models.Partition {
-			if reservation.Spec.Partition != nil {
-				return parseutil.ParsePartition(reservation.Spec.Partition)
+		Configuration: func() *models.Configuration {
+			if reservation.Spec.Configuration != nil {
+				configuration := parseutil.ParseConfiguration(reservation.Spec.Configuration)
+				return configuration
 			}
 			return nil
 		}(),
 	}
 
-	klog.Infof("Reservation %s for flavour %s", reservation.Name, flavourID)
-
-	if reservation.Spec.Partition != nil {
-		body.Partition = parseutil.ParsePartition(reservation.Spec.Partition)
-	}
+	klog.Infof("Reservation %s for flavor %s", reservation.Name, flavorID)
 
 	selectorBytes, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: this url should be taken from the nodeIdentity of the flavour
+	// TODO: this url should be taken from the nodeIdentity of the flavor
 	bodyBytes := bytes.NewBuffer(selectorBytes)
-	url := fmt.Sprintf("http://%s%s%s", reservation.Spec.Seller.IP, ReserveFlavourPath, flavourID)
+	url := fmt.Sprintf("http://%s%s", reservation.Spec.Seller.IP, Routes.Reserve)
 
 	klog.Infof("Sending request to %s", url)
 
@@ -87,7 +85,13 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 	defer resp.Body.Close()
 
 	// Check if the response status code is 200 (OK)
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		klog.Infof("Received OK response status code: %v", resp)
+	case http.StatusNotFound:
+		klog.Errorf("Received NOT FOUND response status code: %v", resp)
+		return nil, fmt.Errorf("received NOT FOUND response status code: %d", resp.StatusCode)
+	default:
 		klog.Errorf("Received non-OK response status code: %v", resp)
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
@@ -104,21 +108,22 @@ func (g *Gateway) ReserveFlavour(ctx context.Context, reservation *reservationv1
 		return &transaction, fmt.Errorf("transactionID is empty")
 	}
 
-	klog.Infof("Flavour %s reserved: transaction ID %s", flavourID, transaction.TransactionID)
+	klog.Infof("Flavor %s reserved: transaction ID %s", flavorID, transaction.TransactionID)
 
 	g.addNewTransacion(&transaction)
 
 	return &transaction, nil
 }
 
-// PurchaseFlavour purchases a flavour with the given flavourID.
-func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, seller nodecorev1alpha1.NodeIdentity) (*models.ResponsePurchase, error) {
+// PurchaseFlavor purchases a flavor with the given flavorID.
+func (g *Gateway) PurchaseFlavor(ctx context.Context, transactionID string,
+	seller nodecorev1alpha1.NodeIdentity, buyerLiqoCredentials *models.LiqoCredentials) (*models.Contract, error) {
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
 	}
 
-	var purchase models.ResponsePurchase
+	var contract models.Contract
 
 	// Check if the transaction exists
 	transaction, err := g.GetTransaction(transactionID)
@@ -126,8 +131,10 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, sel
 		return nil, err
 	}
 
+	klog.Infof("Transaction %s for flavor %s", transactionID, transaction.FlavorID)
+
 	body := models.PurchaseRequest{
-		TransactionID: transaction.TransactionID,
+		LiqoCredentials: buyerLiqoCredentials,
 	}
 
 	selectorBytes, err := json.Marshal(body)
@@ -136,8 +143,8 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, sel
 	}
 
 	bodyBytes := bytes.NewBuffer(selectorBytes)
-	// TODO: this url should be taken from the nodeIdentity of the flavour
-	url := fmt.Sprintf("http://%s%s%s", seller.IP, PurchaseFlavourPath, transactionID)
+	apiPath := strings.Replace(Routes.Purchase, "{transactionID}", transactionID, 1)
+	url := fmt.Sprintf("http://%s%s", seller.IP, apiPath)
 
 	resp, err := makeRequest(ctx, "POST", url, bodyBytes)
 	if err != nil {
@@ -150,56 +157,66 @@ func (g *Gateway) PurchaseFlavour(ctx context.Context, transactionID string, sel
 		return nil, fmt.Errorf("received non-OK response status code: %d", resp.StatusCode)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&purchase); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&contract); err != nil {
 		return nil, err
 	}
 
-	return &purchase, nil
+	return &contract, nil
 }
 
-// DiscoverFlavours is a function that returns an array of Flavour that fit the Selector by performing a get request to an http server.
-func (g *Gateway) DiscoverFlavours(ctx context.Context, selector *nodecorev1alpha1.FlavourSelector) ([]*nodecorev1alpha1.Flavour, error) {
+// DiscoverFlavors is a function that returns an array of Flavor that fit the Selector by performing a get request to an http server.
+func (g *Gateway) DiscoverFlavors(ctx context.Context, selector *nodecorev1alpha1.Selector) ([]*nodecorev1alpha1.Flavor, error) {
+	klog.Info("Discovering flavors")
+
+	// Check if Liqo is ready
 	err := checkLiqoReadiness(g.LiqoReady)
 	if err != nil {
 		return nil, err
 	}
 
-	var s *models.Selector
-	var flavoursCR []*nodecorev1alpha1.Flavour
+	var s models.Selector
+	var flavorsCR []*nodecorev1alpha1.Flavor
 
+	klog.Info("Checking selector")
 	if selector != nil {
-		s = parseutil.ParseFlavourSelector(selector)
-	}
-
-	providers := getters.GetLocalProviders(context.Background(), g.client)
-
-	// Send the POST request to all the servers in the list
-	for _, provider := range providers {
-		flavour, err := discover(ctx, s, provider)
+		s, err = parseutil.ParseFlavorSelector(selector)
+		klog.Infof("Selector parsed: %v", s)
 		if err != nil {
-			klog.Errorf("Error when searching Flavour: %s", err)
 			return nil, err
 		}
-		// Check if the flavour is nil
-		if flavour == nil {
-			klog.Infof("No Flavours found for provider %s", provider)
+	}
+
+	klog.Info("Getting local providers")
+	providers := getters.GetLocalProviders(context.Background(), g.client)
+
+	// Send the GET request to all the servers in the list
+	for _, provider := range providers {
+		klog.Infof("Provider: %s", provider)
+		flavors, err := discover(ctx, s, provider)
+		if err != nil {
+			klog.Errorf("Error when searching Flavor: %s", err)
+			return nil, err
+		}
+		// Check if the flavor is nil
+		if len(flavors) == 0 {
+			klog.Infof("No Flavors found for provider %s", provider)
 		} else {
-			klog.Infof("Flavour found for provider %s", provider)
-			flavoursCR = append(flavoursCR, flavour)
+			klog.Infof("Flavors found for provider %s: %d", provider, len(flavors))
+			flavorsCR = append(flavorsCR, flavors...)
 		}
 	}
 
-	klog.Infof("Found %d flavours", len(flavoursCR))
-	return flavoursCR, nil
+	klog.Infof("Found %d flavors", len(flavorsCR))
+	return flavorsCR, nil
 }
 
-func discover(ctx context.Context, s *models.Selector, provider string) (*nodecorev1alpha1.Flavour, error) {
+func discover(ctx context.Context, s models.Selector, provider string) ([]*nodecorev1alpha1.Flavor, error) {
 	if s != nil {
-		klog.Infof("Searching Flavour with selector %v", s)
-		return searchFlavourWithSelector(ctx, s, provider)
+		klog.Infof("Searching Flavor with selector %v", s)
+		return searchFlavorWithSelector(ctx, s, provider)
 	}
-	klog.Infof("Searching Flavour with no selector")
-	return searchFlavour(ctx, provider)
+	klog.Infof("Searching Flavor with no selector")
+	return searchFlavor(ctx, provider)
 }
 
 func checkLiqoReadiness(b bool) error {

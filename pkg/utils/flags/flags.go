@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import "time"
 
 // Namespace flags.
 var (
-	FluidoNamespace = "fluidos"
+	FluidosNamespace = "fluidos"
 )
 
 // Expiration/Time flags.

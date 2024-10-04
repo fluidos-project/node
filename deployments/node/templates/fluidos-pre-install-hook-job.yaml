@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pre-install-job
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      hostNetwork: true
+      serviceAccountName: helm-service-account
+      containers:
+        - name: pre-install-container
+          image: dtzar/helm-kubectl:latest
+          command: ["/bin/sh", "-c", "sh /scripts/pre-install.sh {{ .Values.provider }}"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      restartPolicy: OnFailure
+      volumes:
+        - name: script
+          configMap:
+            name: pre-install-script

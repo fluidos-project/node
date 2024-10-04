@@ -41,7 +41,6 @@ echo "We'll now run the installation process for the FLUIDOS node."
 read -r -p "What type of environment do you want to use? /
 1. Use demo KIND environment (one consumer and one provider) /
 2. Use a custom KIND environment with n consumer and m provides /
-3. Use personal Kubernetes clusters through KUBECONFIG files /
 Please enter the number of the option you want to use:
  " environment_type
 
@@ -72,14 +71,14 @@ else
     return 1
 fi
 
-# Ask the user if they want to use a local resource manager
-read -r -p "Do you want to use a local resource manager? [y/n] " local_resource_manager
+# Ask the user if they want to use the resource auto discovery from the local resource manager
+read -r -p "Do you want to enable resource auto discovery? [y/n] " enable_auto_discovery
 
 # Check if the input is y or n
-if [ "$local_resource_manager" == "y" ]; then
-    local_resource_manager=true
-elif [ "$local_resource_manager" == "n" ]; then
-    local_resource_manager=false
+if [ "$enable_auto_discovery" == "y" ]; then
+    enable_auto_discovery=true
+elif [ "$enable_auto_discovery" == "n" ]; then
+    enable_auto_discovery=false
 else
     echo "Invalid option."
     return 1
@@ -111,29 +110,29 @@ elif [ "$environment_type" -eq 2 ]; then
 
     # Call create_kind clusters with parameters and save return value into clusters variable
     create_kind_clusters "$consumers_json" "$providers_json" $environment_type "$consumer_clusters" "$provider_clusters" 
-elif [ "$environment_type" -eq 3 ]; then
-    # Ask the user what Kubernetes clusters they want to use between kubeadm and k3s
-    read -r -p "What type of Kubernetes clusters do you want to use? 
-    1. kubeadm 
-    2. k3s 
-    Please enter the number of the option you want to use:
-    " installation_type
-    if [ "$installation_type" -eq 1 ]; then
-        installation_type="kubeadm"
-    elif [ "$installation_type" -eq 2 ]; then
-        installation_type="k3s"
-    else
-        echo "Invalid option."
-        return 1
-    fi
-    get_clusters "$consumers_json" "$providers_json"
+# elif [ "$environment_type" -eq 3 ]; then
+#     # Ask the user what Kubernetes clusters they want to use between kubeadm and k3s
+#     read -r -p "What type of Kubernetes clusters do you want to use? 
+#     1. kubeadm 
+#     2. k3s 
+#     Please enter the number of the option you want to use:
+#     " installation_type
+#     if [ "$installation_type" -eq 1 ]; then
+#         installation_type="kubeadm"
+#     elif [ "$installation_type" -eq 2 ]; then
+#         installation_type="k3s"
+#     else
+#         echo "Invalid option."
+#         return 1
+#     fi
+#     get_clusters "$consumers_json" "$providers_json"
 else
     echo "Invalid option."
     return 1
 fi
 
 # FLUIDOS node installation
-install_components "$consumers_json" "$providers_json" $local_repositories $local_resource_manager $installation_type
+install_components "$consumers_json" "$providers_json" $local_repositories $enable_auto_discovery $installation_type
 
 print_title "Installation completed successfully"
 

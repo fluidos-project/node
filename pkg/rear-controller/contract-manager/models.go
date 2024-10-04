@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,23 +24,16 @@ type Selector struct {
 	EphemeralStorage int    `json:"ephemeral-storage,omitempty"`
 }
 
-// Transaction contains information regarding the transaction for a flavour.
+// Transaction contains information regarding the transaction for a flavor.
 type Transaction struct {
-	TransactionID string    `json:"transactionID"`
-	FlavourID     string    `json:"flavourID"`
-	StartTime     time.Time `json:"startTime,omitempty"`
+	TransactionID  string    `json:"transactionID"`
+	FlavorID       string    `json:"flavorID"`
+	ExpirationTime time.Time `json:"startTime,omitempty"`
 }
 
-// Purchase contains information regarding the purchase for a flavour.
+// Purchase contains information regarding the purchase for a flavor.
 type Purchase struct {
 	TransactionID string `json:"transactionID"`
-	FlavourID     string `json:"flavourID"`
+	FlavorID      string `json:"flavorID"`
 	BuyerID       string `json:"buyerID"`
-}
-
-// ResponsePurchase contain information after purchase a Flavour.
-type ResponsePurchase struct {
-	FlavourID string `json:"flavourID"`
-	BuyerID   string `json:"buyerID"`
-	Status    string `json:"status"`
 }

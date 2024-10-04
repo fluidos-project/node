@@ -1,0 +1,15 @@
+{{- $resManagerConfig := (merge (dict "name" "local-resource-manager" "module" "local-resource-manager") .) -}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      name: https
+      targetPort: 9443 #9443
+  selector:
+    {{- include "fluidos.labels" $resManagerConfig | nindent 6 }}

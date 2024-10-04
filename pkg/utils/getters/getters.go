@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,14 +31,14 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
-// GetNodeIdentity retrieves the list of local providers ip addresses from the Network Manager configMap.
+// GetNodeIdentity retrieves the node identity from the local cluster.
 func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.NodeIdentity {
 	cm := &corev1.ConfigMap{}
 
 	// Get the node identity
 	err := cl.Get(ctx, types.NamespacedName{
 		Name:      consts.NodeIdentityConfigMapName,
-		Namespace: flags.FluidoNamespace,
+		Namespace: flags.FluidosNamespace,
 	}, cm)
 	if err != nil {
 		klog.Errorf("Error getting the configmap: %s", err)
@@ -59,7 +59,7 @@ func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 	// Get the configmap
 	err := cl.Get(ctx, types.NamespacedName{
 		Name:      consts.NetworkConfigMapName,
-		Namespace: flags.FluidoNamespace,
+		Namespace: flags.FluidosNamespace,
 	}, cm)
 	if err != nil {
 		klog.Errorf("Error getting the configmap: %s", err)

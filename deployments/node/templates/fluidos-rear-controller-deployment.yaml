@@ -59,10 +59,20 @@ spec:
         - name: {{ .Values.rearController.service.grpc.name }}
           containerPort: {{ .Values.rearController.service.grpc.port }}
           protocol: TCP
+        - name: webhook
+          containerPort: 9443
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /readyz
             port: healthz
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: {{ .Values.webhook.deployment.certsMount | default "/tmp/k8s-webhook-server/serving-certs/" }}
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: {{ include "fluidos.prefixedName" $rearControllerConfig }}
       {{- if (.Values.common).nodeSelector }}
       nodeSelector:
       {{- toYaml .Values.common.nodeSelector | nindent 8 }}

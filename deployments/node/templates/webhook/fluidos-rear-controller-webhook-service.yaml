@@ -1,0 +1,15 @@
+{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      name: https
+      targetPort: 9443 #9443
+  selector:
+    {{- include "fluidos.labels" $rearControllerConfig | nindent 6 }}

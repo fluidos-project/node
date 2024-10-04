@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,19 +19,19 @@ import (
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
-// SetPhase sets the phase of the discovery
+// SetPhase sets the phase of the discovery.
 func (r *Reservation) SetPhase(phase nodecorev1alpha1.Phase, msg string) {
 	r.Status.Phase.Phase = phase
 	r.Status.Phase.LastChangeTime = tools.GetTimeNow()
 	r.Status.Phase.Message = msg
 }
 
-// SetReserveStatus sets the status of the reserve (if it is a reserve)
+// SetReserveStatus sets the status of the reserve (if it is a reserve).
 func (r *Reservation) SetReserveStatus(status nodecorev1alpha1.Phase) {
 	r.Status.ReservePhase = status
 }
 
-// SetPurchaseStatus sets the status of the purchase (if it is a purchase)
+// SetPurchaseStatus sets the status of the purchase (if it is a purchase).
 func (r *Reservation) SetPurchaseStatus(status nodecorev1alpha1.Phase) {
 	r.Status.PurchasePhase = status
 }

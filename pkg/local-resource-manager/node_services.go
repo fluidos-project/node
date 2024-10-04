@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,89 +15,56 @@
 package localresourcemanager
 
 import (
-	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/fluidos-project/node/pkg/utils/flags"
 	"github.com/fluidos-project/node/pkg/utils/models"
 )
 
-// GetNodesResources retrieves the metrics from all the worker nodes in the cluster.
-func GetNodesResources(ctx context.Context, cl client.Client) ([]models.NodeInfo, error) {
-	// Set a label selector to filter worker nodes
-	labelSelector := labels.Set{flags.ResourceNodeLabel: "true"}.AsSelector()
-
-	// Get a list of nodes
-	nodes := &corev1.NodeList{}
-	err := cl.List(ctx, nodes, &client.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		klog.Errorf("Error when listing nodes: %s", err)
-		return nil, err
+// GetNodeInfos returns the NodeInfo struct for a given node and its metrics.
+func GetNodeInfos(node *corev1.Node, nodeMetrics *metricsv1beta1.NodeMetrics) (*models.NodeInfo, error) {
+	// Check if the node and the node metrics match
+	if node.Name != nodeMetrics.Name {
+		klog.Info("Node and NodeMetrics do not match")
+		return nil, fmt.Errorf("node and node metrics do not match")
 	}
 
-	// Get a list of nodes metrics
-	nodesMetrics := &metricsv1beta1.NodeMetricsList{}
-	err = cl.List(ctx, nodesMetrics, &client.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		klog.Errorf("Error when listing nodes metrics: %s", err)
-		return nil, err
-	}
+	metricsStruct := forgeResourceMetrics(nodeMetrics, node)
+	nodeInfo := forgeNodeInfo(node, metricsStruct)
 
-	var nodesInfo []models.NodeInfo
-	// Print the name of each node
-	for n := range nodes.Items {
-		for m := range nodesMetrics.Items {
-			node := nodes.Items[n]
-			metrics := nodesMetrics.Items[m]
-			if nodes.Items[n].Name != nodesMetrics.Items[m].Name {
-				// So that we can select just the nodes that we want
-				continue
-			}
-			metricsStruct := forgeResourceMetrics(&metrics, &node)
-			nodeInfo := forgeNodeInfo(&node, metricsStruct)
-			nodesInfo = append(nodesInfo, *nodeInfo)
-		}
-	}
-
-	return nodesInfo, nil
+	return nodeInfo, nil
 }
 
 // forgeResourceMetrics creates from params a new ResourceMetrics Struct.
 func forgeResourceMetrics(nodeMetrics *metricsv1beta1.NodeMetrics, node *corev1.Node) *models.ResourceMetrics {
 	// Get the total and used resources
-	cpuTotal := node.Status.Allocatable.Cpu()
-	cpuUsed := nodeMetrics.Usage.Cpu()
-	memoryTotal := node.Status.Allocatable.Memory()
-	memoryUsed := nodeMetrics.Usage.Memory()
-	podsTotal := node.Status.Allocatable.Pods()
-	podsUsed := nodeMetrics.Usage.Pods()
-	ephemeralStorage := nodeMetrics.Usage.StorageEphemeral()
+	cpuTotal := node.Status.Allocatable.Cpu().DeepCopy()
+	cpuUsed := nodeMetrics.Usage.Cpu().DeepCopy()
+	memoryTotal := node.Status.Allocatable.Memory().DeepCopy()
+	memoryUsed := nodeMetrics.Usage.Memory().DeepCopy()
+	podsTotal := node.Status.Allocatable.Pods().DeepCopy()
+	podsUsed := nodeMetrics.Usage.Pods().DeepCopy()
+	ephemeralStorage := nodeMetrics.Usage.StorageEphemeral().DeepCopy()
 
 	// Compute the available resources
 	cpuAvail := cpuTotal.DeepCopy()
 	memAvail := memoryTotal.DeepCopy()
 	podsAvail := podsTotal.DeepCopy()
-	cpuAvail.Sub(*cpuUsed)
-	memAvail.Sub(*memoryUsed)
-	podsAvail.Sub(*podsUsed)
+	cpuAvail.Sub(cpuUsed)
+	memAvail.Sub(memoryUsed)
+	podsAvail.Sub(podsUsed)
 
 	return &models.ResourceMetrics{
-		CPUTotal:         *cpuTotal,
+		CPUTotal:         cpuTotal,
 		CPUAvailable:     cpuAvail,
-		MemoryTotal:      *memoryTotal,
+		MemoryTotal:      memoryTotal,
 		MemoryAvailable:  memAvail,
-		PodsTotal:        *podsTotal,
+		PodsTotal:        podsTotal,
 		PodsAvailable:    podsAvail,
-		EphemeralStorage: *ephemeralStorage,
+		EphemeralStorage: ephemeralStorage,
 	}
 }
 

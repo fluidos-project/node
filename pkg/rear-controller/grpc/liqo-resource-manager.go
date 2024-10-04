@@ -1,4 +1,4 @@
-// Copyright 2022-2023 FLUIDOS Project
+// Copyright 2022-2024 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -120,6 +120,8 @@ func (s *Server) NotifyChange(ctx context.Context, req *resourcemonitors.Cluster
 	var err error
 	s.subscribers.Range(func(key, value interface{}) bool {
 		stream := value.(resourcemonitors.ResourceReader_SubscribeServer)
+
+		klog.Infof("Key: %v, Value: %v", key, value)
 
 		err = stream.Send(req)
 		if err != nil {

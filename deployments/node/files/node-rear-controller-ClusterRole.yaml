@@ -96,7 +96,7 @@ rules:
 - apiGroups:
   - nodecore.fluidos.eu
   resources:
-  - flavours
+  - flavors
   verbs:
   - create
   - delete
@@ -108,13 +108,13 @@ rules:
 - apiGroups:
   - nodecore.fluidos.eu
   resources:
-  - flavours/finalizers
+  - flavors/finalizers
   verbs:
   - update
 - apiGroups:
   - nodecore.fluidos.eu
   resources:
-  - flavours/status
+  - flavors/status
   verbs:
   - get
   - patch

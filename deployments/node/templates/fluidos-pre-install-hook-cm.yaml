@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pre-install-script
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-4"
+data:
+  pre-install.sh: |
+    #!/bin/bash
+
+    # Function to check if a Helm release is installed
+    is_helm_installed() {
+        helm ls --all --short -n $1 | grep -q "^$2\$"
+    }
+
+    # Function to check if a Kubernetes resource exists
+    is_k8s_resource_present() {
+        kubectl get $1 -n $2 &> /dev/null
+    }
+
+    # Function to install metrics-server if not installed
+    install_metrics_server() {
+        if ! is_helm_installed "default" "metrics-server" && ! is_k8s_resource_present "deployment/metrics-server" "kube-system"; then
+            echo "Installing metrics-server..."
+            helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+            helm repo update
+            helm install metrics-server metrics-server/metrics-server -n kube-system --set args='{--kubelet-insecure-tls,--kubelet-preferred-address-types=InternalIP\,ExternalIP\,Hostname,--cert-dir=/tmp,--kubelet-use-node-status-port}'
+            echo "Waiting for metrics-server to be ready"
+            kubectl wait --for=condition=ready pod -l k8s-app=metrics-server -n kube-system --timeout=300s
+        else
+            echo "metrics-server is already installed."
+        fi
+    }
+
+    # Function to install cert-manager if not installed
+    install_cert_manager() {
+        if ! is_helm_installed "cert-manager" "cert-manager" && ! is_k8s_resource_present "deployment/cert-manager" "cert-manager"; then
+            echo "Installing cert-manager..."
+            helm repo add jetstack https://charts.jetstack.io
+            helm repo update
+            kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.7.1/cert-manager.crds.yaml
+            helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace
+
+            echo "Waiting for cert-manager to be ready"
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=controller -n cert-manager --timeout=300s
+
+        else
+            echo "cert-manager is already installed."
+        fi
+    }
+
+    # Function to install liqo if not installed
+    # install_liqo() {
+    #     local provider=$1
+
+    #     if [ -z "$provider" ]; then
+    #         echo "Provider not specified for liqo. Usage: $0 <provider>"
+    #         exit 1
+    #     fi
+
+    #     if ! is_helm_installed "default" "liqo" && ! is_k8s_resource_present "deployment/liqo" "liqo"; then
+    #         echo "Installing liqo with provider $provider..."
+    #         curl -sL https://github.com/liqotech/liqo/releases/download/v0.4.0/liqoctl-linux-amd64 -o /usr/local/bin/liqoctl
+    #         chmod +x /usr/local/bin/liqoctl
+    #         liqoctl install $provider --cluster-name $provider --only-output-values --dump-values-path="values-liqo.yaml"
+    #         helm repo add liqo https://helm.liqo.io/
+    #         helm repo update
+    #         helm install liqo liqo/liqo -f values-liqo.yaml -n liqo --set discovery.config.enableAdvertisement=false --create-namespace --kubeconfig "$KUBECONFIG"
+    #         rm values-liqo.yaml
+    #     else
+    #         echo "liqo is already installed."
+    #     fi
+    # }
+
+    # Main script
+    main() {
+        # Check if Helm is installed
+        if ! command -v helm &> /dev/null; then
+            echo "Helm is not installed. Please install Helm first."
+            exit 1
+        fi
+
+        # Check if kubectl is installed
+        if ! command -v kubectl &> /dev/null; then
+            echo "kubectl is not installed. Please install kubectl first."
+            exit 1
+        fi
+
+        # Install dependencies
+        install_metrics_server
+        install_cert_manager
+        # install_liqo $1
+    }
+
+    # Run the main script with provider as parameter
+    main $1
