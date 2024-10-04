@@ -32,4 +32,4 @@ spec:
         - name: CLUSTER_ADDRESS
           value: "your-cluster-address"
         - name: MULTICAST_ADDRESS
-          value: "224.0.0.2:4000"
+          value: "224.0.0.155:4000"

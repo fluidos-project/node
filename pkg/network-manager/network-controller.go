@@ -86,7 +86,7 @@ func Start(ctx context.Context, cl client.Client) error {
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
-		multicastAddress = "224.0.0.2:4000" // Default multicast address if not specified
+		multicastAddress = "224.0.0.155:4000" // Default multicast address if not specified
 	}
 
 	clusterAddress, err := getClusterAddress()
@@ -142,14 +142,14 @@ func Start(ctx context.Context, cl client.Client) error {
 	return nil
 }
 
-// These functions need to be implemented
-func getControlPlaneID() (string, error) {
-	id := os.Getenv("CONTROL_PLANE_ID")
-	if id == "" {
-		return "", fmt.Errorf("CONTROL_PLANE_ID environment variable not set")
-	}
-	return id, nil
-}
+// // These functions need to be implemented
+// func getControlPlaneID() (string, error) {
+// 	id := os.Getenv("CONTROL_PLANE_ID")
+// 	if id == "" {
+// 		return "", fmt.Errorf("CONTROL_PLANE_ID environment variable not set")
+// 	}
+// 	return id, nil
+// }
 
 func getClusterAddress() (string, error) {
 	// First, try to get the IP from the API server
