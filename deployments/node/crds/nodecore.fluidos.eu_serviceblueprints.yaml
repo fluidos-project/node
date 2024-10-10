@@ -1,0 +1,163 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: serviceblueprints.nodecore.fluidos.eu
+spec:
+  group: nodecore.fluidos.eu
+  names:
+    kind: ServiceBlueprint
+    listKind: ServiceBlueprintList
+    plural: serviceblueprints
+    shortNames:
+    - sbp
+    singular: serviceblueprint
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.name
+      name: Name
+      type: string
+    - jsonPath: .spec.description
+      name: Description
+      type: string
+    - jsonPath: .spec.category
+      name: Category
+      type: string
+    - jsonPath: .spec.tags
+      name: Tags
+      type: string
+    - jsonPath: .status.serviceFlavors
+      name: ServiceFlavors
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ServiceBlueprint is the Schema for the serviceblueprints API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ServiceBlueprintSpec defines the desired state of ServiceBlueprint.
+            properties:
+              category:
+                description: Category of the Service Blueprint.
+                type: string
+              description:
+                description: Description of the Service Blueprint.
+                type: string
+              hostingPolicies:
+                description: |-
+                  HostingPolicies of the Service Blueprint.
+                  If empty, the default behavior is to host on the provider cluster.
+                  If multiple policies are specified, the first one is the default.
+                items:
+                  description: HostingPolicy represents the hosting policy chosen
+                    for the service.
+                  type: string
+                type: array
+              name:
+                description: Name of the Service Blueprint.
+                type: string
+              tags:
+                description: Tags of the Service Blueprint.
+                items:
+                  type: string
+                type: array
+              templates:
+                description: Templates of the Service Blueprint.
+                items:
+                  description: ServiceTemplate defines the template of a Service.
+                  properties:
+                    description:
+                      description: Description of the Service Template.
+                      type: string
+                    name:
+                      description: Name of the Service Template.
+                      type: string
+                    serviceData:
+                      description: YAML template of the Service.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - name
+                  - serviceData
+                  type: object
+                type: array
+            required:
+            - category
+            - description
+            - hostingPolicies
+            - name
+            - tags
+            - templates
+            type: object
+          status:
+            description: ServiceBlueprintStatus defines the observed state of ServiceBlueprint.
+            properties:
+              serviceFlavors:
+                description: ServiceFlavor linked to the Service Blueprint.
+                items:
+                  description: ServiceFlavor represents a Service Flavor description.
+                  properties:
+                    category:
+                      description: Category of the Service Flavor.
+                      type: string
+                    configurationTemplate:
+                      description: ConfigurationTemplate of the Service Flavor. JSON
+                        Schema with the parameters that can be configured.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    description:
+                      description: Description of the Service Flavor.
+                      type: string
+                    hostingPolicies:
+                      description: HostingPolicies of the Service Flavor.
+                      items:
+                        description: HostingPolicy represents the hosting policy chosen
+                          for the service.
+                        type: string
+                      type: array
+                    name:
+                      description: Name of the Service Flavor.
+                      type: string
+                    tags:
+                      description: Tags of the Service Flavor.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - category
+                  - configurationTemplate
+                  - description
+                  - hostingPolicies
+                  - name
+                  - tags
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

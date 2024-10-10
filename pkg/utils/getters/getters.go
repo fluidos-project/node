@@ -16,6 +16,7 @@ package getters
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/liqotech/liqo/pkg/auth"
@@ -27,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
@@ -99,16 +101,83 @@ func GetLiqoCredentials(ctx context.Context, cl client.Client) (*nodecorev1alpha
 	}, nil
 }
 
-// GetAllocationNameByClusterIDSpec retrieves the name of the allocation with the given in its Specs.
-func GetAllocationNameByClusterIDSpec(ctx context.Context, c client.Client, clusterID string) *string {
+// GetAllocationByClusterIDSpec retrieves the name of the allocation with the given in its Specs.
+func GetAllocationByClusterIDSpec(ctx context.Context, c client.Client, clusterID string) (nodecorev1alpha1.AllocationList, error) {
+	filteredAllocations := nodecorev1alpha1.AllocationList{}
 	allocationList := nodecorev1alpha1.AllocationList{}
-	if err := c.List(ctx, &allocationList, client.MatchingFields{"spec.remoteClusterID": clusterID}); err != nil {
-		klog.Infof("Error when getting the allocation list: %s", err)
-		return nil
+	// Get all the Allocations
+	if err := c.List(ctx, &allocationList, client.InNamespace(flags.FluidosNamespace)); err != nil {
+		klog.Errorf("Error getting the Allocations: %s", err)
+		return filteredAllocations, err
 	}
-	if len(allocationList.Items) == 0 {
-		klog.Infof("No Allocations found with the ClusterID %s", clusterID)
-		return nil
+	// Filter the Allocation based on the contract spec:
+	// the clusterID field should match spec.seller.additionalInformation.liqoID or spec.buyer.additionalInformation.liqoID
+	for i := range allocationList.Items {
+		allocation := allocationList.Items[i]
+		// Get the contract
+		contract := &reservationv1alpha1.Contract{}
+		if err := c.Get(
+			ctx,
+			types.NamespacedName{
+				Name:      allocation.Spec.Contract.Name,
+				Namespace: allocation.Spec.Contract.Namespace,
+			},
+			contract,
+		); err != nil {
+			klog.Errorf("Error getting the Contract: %s", err)
+			return filteredAllocations, err
+		}
+		// Check if the clusterID is in the contract
+		if contract.Spec.Seller.AdditionalInformation.LiqoID == clusterID || contract.Spec.Buyer.AdditionalInformation.LiqoID == clusterID {
+			// Add the Allocation to the filtered list
+			filteredAllocations.Items = append(filteredAllocations.Items, allocation)
+		}
 	}
-	return &allocationList.Items[0].Name
+
+	return filteredAllocations, nil
+}
+
+// GetBlueprint retrieves a ServiceBlueprint from the Flavor name.
+func GetBlueprint(ctx context.Context, c client.Client, flavorName string) (*nodecorev1alpha1.ServiceBlueprint, error) {
+	// ServiceBlueprint is the owner of the Flavor
+	flavor := &nodecorev1alpha1.Flavor{}
+	if err := c.Get(ctx, types.NamespacedName{Name: flavorName, Namespace: flags.FluidosNamespace}, flavor); err != nil {
+		klog.Errorf("Error getting the Flavor: %s", err)
+		return nil, err
+	}
+
+	// Get the owners of the Flavor
+	owners := flavor.GetOwnerReferences()
+	if len(owners) == 0 {
+		klog.Errorf("No owner found for the Flavor %s", flavorName)
+		return nil, fmt.Errorf("no owner found for the Flavor %s", flavorName)
+	}
+
+	// Get the ServiceBlueprint
+	blueprint := &nodecorev1alpha1.ServiceBlueprint{}
+	if err := c.Get(ctx, types.NamespacedName{Name: owners[0].Name, Namespace: flags.FluidosNamespace}, blueprint); err != nil {
+		klog.Errorf("Error getting the ServiceBlueprint: %s", err)
+		return nil, err
+	}
+
+	return blueprint, nil
+}
+
+// GetAllocationByContractName retrieves the Allocation with the given contract name.
+func GetAllocationByContractName(ctx context.Context, c client.Client, contractName string) (*nodecorev1alpha1.Allocation, error) {
+	// Get all the Allocations with spec.contract.name == contractName
+	allocations := &nodecorev1alpha1.AllocationList{}
+	if err := c.List(ctx, allocations, client.InNamespace(flags.FluidosNamespace)); err != nil {
+		klog.Errorf("Error getting the Allocations: %s", err)
+		return nil, err
+	}
+
+	for i := range allocations.Items {
+		allocation := allocations.Items[i]
+		if allocation.Spec.Contract.Name == contractName {
+			return &allocation, nil
+		}
+	}
+
+	return nil, fmt.Errorf("allocation with contract name %s not found", contractName)
 }

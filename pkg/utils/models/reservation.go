@@ -16,8 +16,6 @@ package models
 
 import (
 	"encoding/json"
-
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Configuration represents the configuration properties of a Flavor.
@@ -29,20 +27,6 @@ type Configuration struct {
 // ConfigurationData represents the data of a Configuration.
 type ConfigurationData interface {
 	GetConfigurationType() FlavorTypeName
-}
-
-// K8SliceConfiguration represents the configuration properties of a K8Slice Flavor.
-type K8SliceConfiguration struct {
-	CPU     resource.Quantity   `json:"cpu"`
-	Memory  resource.Quantity   `json:"memory"`
-	Pods    resource.Quantity   `json:"pods"`
-	Gpu     *GpuCharacteristics `json:"gpu,omitempty"`
-	Storage *resource.Quantity  `json:"storage,omitempty"`
-}
-
-// GetConfigurationType returns the type of the Configuration.
-func (p *K8SliceConfiguration) GetConfigurationType() FlavorTypeName {
-	return K8SliceNameDefault
 }
 
 // Transaction contains information regarding the transaction for a flavor.
@@ -63,7 +47,7 @@ type Contract struct {
 	Buyer                    NodeIdentity      `json:"buyerID"`
 	BuyerClusterID           string            `json:"buyerClusterID"`
 	Seller                   NodeIdentity      `json:"seller"`
-	PeeringTargetCredentials LiqoCredentials   `json:"sellerCredentials"`
+	PeeringTargetCredentials LiqoCredentials   `json:"peeringTargetCredentials"`
 	ExpirationTime           string            `json:"expirationTime,omitempty"`
 	ExtraInformation         map[string]string `json:"extraInformation,omitempty"`
 	Configuration            *Configuration    `json:"configuration,omitempty"`

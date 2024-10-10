@@ -17,8 +17,8 @@ package rearmanager
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
-	fcutils "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -116,7 +116,15 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if solver.Spec.FindCandidate {
 		if findCandidateStatus != nodecorev1alpha1.PhaseSolved {
-			return r.handleFindCandidate(ctx, req, &solver)
+			result, err := r.handleFindCandidate(ctx, req, &solver)
+			if err != nil {
+				solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Error when finding a candidate: "+err.Error())
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+			}
+			return result, err
 		}
 	} else {
 		klog.Infof("Solver %s Solved : No need to find a candidate", req.NamespacedName.Name)
@@ -131,7 +139,15 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if solver.Spec.ReserveAndBuy {
 		if (findCandidateStatus == nodecorev1alpha1.PhaseSolved || !solver.Spec.FindCandidate) &&
 			reserveAndBuyStatus != nodecorev1alpha1.PhaseSolved {
-			return r.handleReserveAndBuy(ctx, req, &solver)
+			result, err := r.handleReserveAndBuy(ctx, req, &solver)
+			if err != nil {
+				solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Error when reserving and buying the resources: "+err.Error())
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+			}
+			return result, err
 		}
 	} else {
 		klog.Infof("Solver %s Solved : No need to reserve and buy the resources", req.NamespacedName.Name)
@@ -160,7 +176,15 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				return ctrl.Result{}, err
 			}
 
-			return r.handlePeering(ctx, req, &solver, contract)
+			result, err := r.handlePeering(ctx, req, &solver, contract)
+			if err != nil {
+				solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Error when establishing a peering: "+err.Error())
+				if err := r.updateSolverStatus(ctx, &solver); err != nil {
+					klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+					return ctrl.Result{}, err
+				}
+			}
+			return result, err
 		}
 	} else {
 		klog.Infof("Solver %s Solved : No need to establish a peering", req.NamespacedName.Name)
@@ -171,6 +195,17 @@ func (r *SolverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
+	}
+
+	// Check if all the phases are solved
+	if solver.Status.FindCandidate == nodecorev1alpha1.PhaseSolved &&
+		solver.Status.ReserveAndBuy == nodecorev1alpha1.PhaseSolved &&
+		solver.Status.Peering == nodecorev1alpha1.PhaseSolved {
+		solver.SetPhase(nodecorev1alpha1.PhaseSolved, "Solver has completed all the phases")
+		if err := r.updateSolverStatus(ctx, &solver); err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
@@ -341,78 +376,126 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 						return ctrl.Result{}, err
 					}
 				}
-			}
-
-			if pc.Name == "" {
-				klog.Errorf("No PeeringCandidate found for Solver %s:", solver.Name)
-				return ctrl.Result{}, nil
-			}
-
-			if solver.Spec.Selector != nil {
-				// Forge the Partition
-
-				// Parse Solver Selector
-				solverTypeIdentifier, solverTypeData, err := nodecorev1alpha1.ParseSolverSelector(solver.Spec.Selector)
-				if err != nil {
-					klog.Errorf("Error when parsing Solver Selector for Solver %s: %s", solver.Name, err)
-					return ctrl.Result{}, err
-				}
-				if solverTypeIdentifier == nodecorev1alpha1.TypeK8Slice {
-					// Check if the SolverTypeData is not nil, so if the Solver specifies in the selector even filters
-					if solverTypeData != nil {
-						// Forge partition
-						k8sliceSelector := solverTypeData.(nodecorev1alpha1.K8SliceSelector)
-						klog.Infof("K8S Slice Selector: %v", k8sliceSelector)
-
-						// Parse flavor from PeeringCandidate
-						flavorTypeIdentifier, flavorData, err := nodecorev1alpha1.ParseFlavorType(&pc.Spec.Flavor)
-						if err != nil {
-							klog.Errorf("Error when parsing Flavor for Solver %s: %s", solver.Name, err)
-							return ctrl.Result{}, err
-						}
-						if flavorTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
-							klog.Errorf("Flavor type is different from K8Slice as expected by the Solver selector for Solver %s", solver.Name)
-						}
-
-						// Force casting
-						k8slice := flavorData.(nodecorev1alpha1.K8Slice)
-
-						k8slicepartition := resourceforge.ForgeK8SliceConfiguration(k8sliceSelector, &k8slice)
-						// Convert the K8SlicePartition to JSON
-						k8slicepartitionJSON, err := json.Marshal(k8slicepartition)
-						if err != nil {
-							klog.Errorf("Error when marshaling K8SlicePartition for Solver %s: %s", solver.Name, err)
-							return ctrl.Result{}, err
-						}
-						configuration = &nodecorev1alpha1.Configuration{
-							ConfigurationTypeIdentifier: solverTypeIdentifier,
-							// Partition Data is the raw data of the k8slicepartion
-							ConfigurationData: runtime.RawExtension{Raw: k8slicepartitionJSON},
-						}
-					}
-				}
-				// TODO: If not K8Slice, implement the other types partitions if possible
-			}
-
-			// Get the NodeIdentity
-			nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
-
-			// Forge the Reservation
-			reservation := resourceforge.ForgeReservation(&pc, configuration, *nodeIdentity, solver.Name)
-			if err := r.Client.Create(ctx, reservation); err != nil {
-				klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
-				return ctrl.Result{}, err
-			}
-
-			klog.Infof("Reservation %s created", reservation.Name)
-
-			solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseRunning)
-			solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation created")
-			if err := r.updateSolverStatus(ctx, solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
+				// TODO: Logic is not so strong: implementing workaround to select first peering candidate
+				break
 			}
 		}
+
+		if pc.Name == "" {
+			klog.Errorf("No PeeringCandidate found for Solver %s:", solver.Name)
+			return ctrl.Result{}, nil
+		}
+
+		if solver.Spec.Selector != nil {
+			// Parse Solver Selector
+			solverTypeIdentifier, solverTypeData, err := nodecorev1alpha1.ParseSolverSelector(solver.Spec.Selector)
+			if err != nil {
+				klog.Errorf("Error when parsing Solver Selector for Solver %s: %s", solver.Name, err)
+				return ctrl.Result{}, err
+			}
+			switch solverTypeIdentifier {
+			case nodecorev1alpha1.TypeK8Slice:
+				// Check if the SolverTypeData is not nil, so if the Solver specifies in the selector even filters
+				if solverTypeData != nil {
+					// Forge partition
+					k8sliceSelector := solverTypeData.(nodecorev1alpha1.K8SliceSelector)
+					klog.Infof("K8S Slice Selector: %v", k8sliceSelector)
+
+					// Parse flavor from PeeringCandidate
+					flavorTypeIdentifier, flavorData, err := nodecorev1alpha1.ParseFlavorType(&pc.Spec.Flavor)
+					if err != nil {
+						klog.Errorf("Error when parsing Flavor for Solver %s: %s", solver.Name, err)
+						return ctrl.Result{}, err
+					}
+					if flavorTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
+						klog.Errorf("Flavor type is different from K8Slice as expected by the Solver selector for Solver %s", solver.Name)
+					}
+
+					// Force casting
+					k8slice := flavorData.(nodecorev1alpha1.K8Slice)
+
+					k8SliceConfiguration := resourceforge.ForgeK8SliceConfiguration(k8sliceSelector, &k8slice)
+					// Convert the K8SlicePartition to JSON
+					k8SliceConfigurationJSON, err := json.Marshal(k8SliceConfiguration)
+					if err != nil {
+						klog.Errorf("Error when marshaling K8SlicePartition for Solver %s: %s", solver.Name, err)
+						return ctrl.Result{}, err
+					}
+					configuration = &nodecorev1alpha1.Configuration{
+						ConfigurationTypeIdentifier: solverTypeIdentifier,
+						// Partition Data is the raw data of the k8slicepartion
+						ConfigurationData: runtime.RawExtension{Raw: k8SliceConfigurationJSON},
+					}
+				}
+			case nodecorev1alpha1.TypeVM:
+				// TODO(VM): Implement the VM configuration forging if possible
+				klog.Warningf("Solver %s has a VM selector, but the VM configuration forging is not implemented yet", solver.Name)
+			case nodecorev1alpha1.TypeService:
+
+				// Parse flavor from PeeringCandidate
+				flavorTypeIdentifier, flavorData, err := nodecorev1alpha1.ParseFlavorType(&pc.Spec.Flavor)
+				if err != nil {
+					klog.Errorf("Error when parsing Flavor for Solver %s: %s", solver.Name, err)
+					return ctrl.Result{}, err
+				}
+
+				if flavorTypeIdentifier != nodecorev1alpha1.TypeService {
+					klog.Errorf("Flavor type is different from Service as expected by the Solver selector for Solver %s", solver.Name)
+					return ctrl.Result{}, fmt.Errorf("flavor type is different from Service as expected by the Solver selector for Solver %s", solver.Name)
+				}
+
+				// Force casting
+				service := flavorData.(nodecorev1alpha1.ServiceFlavor)
+
+				// Get the default service configuration based on the service category
+				serviceConfiguration, err := resourceforge.ForgeDefaultServiceConfiguration(&service)
+				if err != nil {
+					klog.Errorf("Error when forging the default Service configuration for Solver %s: %s", solver.Name, err)
+					return ctrl.Result{}, err
+				}
+
+				// Convert the ServiceConfiguration to JSON
+				serviceConfigurationJSON, err := json.Marshal(serviceConfiguration)
+				if err != nil {
+					klog.Errorf("Error when marshaling ServiceConfiguration for Solver %s: %s", solver.Name, err)
+					return ctrl.Result{}, err
+				}
+				configuration = &nodecorev1alpha1.Configuration{
+					ConfigurationTypeIdentifier: solverTypeIdentifier,
+					// Configuration Data is the raw data of the service configuration
+					ConfigurationData: runtime.RawExtension{Raw: serviceConfigurationJSON},
+				}
+				// TODO(Service): Implement the Service configuration forging if possible
+			case nodecorev1alpha1.TypeSensor:
+				// TODO(Sensor): Implement the Sensor configuration forging if possible
+				klog.Warningf("Solver %s has a Sensor selector, but the Sensor configuration forging is not implemented yet", solver.Name)
+			default:
+				klog.Errorf("Solver %s has an unsupported selector type", solver.Name)
+			}
+		}
+
+		// Get the NodeIdentity
+		nodeIdentity := getters.GetNodeIdentity(ctx, r.Client)
+
+		// Forge the Reservation
+		reservation := resourceforge.ForgeReservation(&pc, configuration, *nodeIdentity, solver.Name)
+		if err := r.Client.Create(ctx, reservation); err != nil {
+			klog.Errorf("Error when creating Reservation for Solver %s: %s", solver.Name, err)
+			return ctrl.Result{}, err
+		}
+
+		klog.Infof("Reservation %s created", reservation.Name)
+
+		solver.SetReserveAndBuyStatus(nodecorev1alpha1.PhaseRunning)
+		klog.Infof("Solver set ReserveAndBuy status to %s", solver.Status.ReserveAndBuy)
+		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Reservation created")
+		klog.Infof("Solver set phase to %s", solver.Status.SolverPhase.Phase)
+		if err := r.updateSolverStatus(ctx, solver); err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseRunning:
 		// Check solver expiration
 		if tools.CheckExpirationSinceTime(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationPhaseRunning) {
@@ -442,11 +525,11 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
+
+		klog.Infof("Solver status changing to %s", solver.Status.SolverPhase.Phase)
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseAllocating:
 		klog.Infof("Solver %s has reserved and purchased the resources, creating the Allocation", req.NamespacedName.Name)
-		// Create the Allocation
-		//TODO: delete allocating phase
 		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseFailed:
 		klog.Infof("Solver %s has failed to reserve and buy the resources", req.NamespacedName.Name)
@@ -465,7 +548,6 @@ func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Req
 		}
 		return ctrl.Result{}, nil
 	}
-	return ctrl.Result{}, nil
 }
 
 func contains(slice []string, s string) bool {
@@ -486,6 +568,7 @@ func (r *SolverReconciler) handlePeering(
 	peeringStatus := solver.Status.Peering
 	switch peeringStatus {
 	case nodecorev1alpha1.PhaseIdle:
+		// Allocation creation phase
 		klog.Infof("Solver %s is trying to establish a peering", req.NamespacedName.Name)
 
 		contractNamespaceName := types.NamespacedName{Name: contract.Name, Namespace: contract.Namespace}
@@ -507,46 +590,20 @@ func (r *SolverReconciler) handlePeering(
 		klog.Infof("Allocation %s created", allocation.Name)
 
 		solver.SetPeeringStatus(nodecorev1alpha1.PhaseRunning)
+		klog.Infof("Solver set peering status to %s", solver.Status.Peering)
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Allocation created")
+		klog.Infof("Solver set phase to %s", solver.Status.SolverPhase.Phase)
 		if err := r.updateSolverStatus(ctx, solver); err != nil {
 			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{}, nil
+		klog.Infof("Solver %s has created the Allocation %s, moving to %s phase", req.NamespacedName.Name, allocation.Name, nodecorev1alpha1.PhaseRunning)
 
+		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseRunning:
-		klog.Info("Checking peering status")
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.PeeringTargetCredentials.ClusterID)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				klog.Infof("ForeignCluster %s not found", contract.Spec.PeeringTargetCredentials.ClusterID)
-				// Retry later
-				return ctrl.Result{Requeue: true}, nil
-			}
-			klog.Errorf("Error when getting ForeignCluster %s: %v", contract.Spec.PeeringTargetCredentials.ClusterID, err)
-			solver.SetPeeringStatus(nodecorev1alpha1.PhaseFailed)
-			if err := r.updateSolverStatus(ctx, solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-		klog.Infof("ForeignCluster %s found", contract.Spec.PeeringTargetCredentials.ClusterID)
-		if fcutils.IsOutgoingJoined(fc) &&
-			fcutils.IsAuthenticated(fc) &&
-			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-			!fcutils.IsUnpeered(fc) {
-			klog.Infof("Solver %s has established a peering", req.NamespacedName.Name)
-			solver.SetPeeringStatus(nodecorev1alpha1.PhaseSolved)
-			solver.SetPhase(nodecorev1alpha1.PhaseSolved, "Solver has established a peering")
-			if err := r.updateSolverStatus(ctx, solver); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-		klog.Infof("Solver %s is still peering", req.NamespacedName.Name)
+		klog.Info("Checking Allocation status")
+
 		// Check solver expiration
 		if tools.CheckExpirationSinceTime(solver.Status.SolverPhase.LastChangeTime, flags.ExpirationSolver) {
 			klog.Infof("Solver %s has expired", req.NamespacedName.Name)
@@ -558,7 +615,51 @@ func (r *SolverReconciler) handlePeering(
 			}
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{Requeue: true}, nil
+
+		// Get the Reservation with spec SolverID == Solver.Name
+		reservationList := reservationv1alpha1.ReservationList{}
+		if err := r.List(ctx, &reservationList); err != nil {
+			klog.Errorf("Error when listing Reservations: %s", err)
+			return ctrl.Result{}, err
+		}
+
+		reservation := &reservationv1alpha1.Reservation{}
+		for i := range reservationList.Items {
+			if reservationList.Items[i].Spec.SolverID == solver.Name {
+				reservation = &reservationList.Items[i]
+				break
+			}
+		}
+
+		if reservation.Name == "" {
+			klog.Infof("No Reservation found for Solver %s", solver.Name)
+			return ctrl.Result{}, errors.NewNotFound(schema.GroupResource{Group: "reservation", Resource: "Reservation"}, "Reservation")
+		}
+
+		// Get the Allocations
+		allocationList := nodecorev1alpha1.AllocationList{}
+		if err := r.List(ctx, &allocationList); err != nil {
+			klog.Errorf("Error when listing Allocations: %s", err)
+			return ctrl.Result{}, err
+		}
+
+		allocation := &nodecorev1alpha1.Allocation{}
+		for i := range allocationList.Items {
+			if allocationList.Items[i].Spec.Contract.Name == reservation.Status.Contract.Name &&
+				allocationList.Items[i].Spec.Contract.Namespace == reservation.Status.Contract.Namespace {
+				allocation = &allocationList.Items[i]
+				break
+			}
+		}
+
+		common.AllocationStatusCheck(solver, allocation)
+
+		if err := r.updateSolverStatus(ctx, solver); err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	case nodecorev1alpha1.PhaseFailed:
 		klog.Infof("Solver %s has failed to establish a peering", req.NamespacedName.Name)
 		solver.SetPhase(nodecorev1alpha1.PhaseFailed, "Solver has failed to establish a peering")
@@ -641,6 +742,7 @@ func (r *SolverReconciler) searchPeeringCandidates(ctx context.Context,
 	filtered := []advertisementv1alpha1.PeeringCandidate{}
 	for i := range pc.Items {
 		p := pc.Items[i]
+		// PeeringCandidate needs to be available
 		if p.Spec.Available {
 			filtered = append(filtered, p)
 		}
@@ -696,6 +798,7 @@ func (r *SolverReconciler) createOrGetDiscovery(ctx context.Context,
 }
 
 func (r *SolverReconciler) updateSolverStatus(ctx context.Context, solver *nodecorev1alpha1.Solver) error {
+	klog.Infof("Updating Solver %s status", solver.Name)
 	return r.Status().Update(ctx, solver)
 }
 

@@ -45,19 +45,6 @@ import (
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
 //	+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch
 
-const (
-	// ListFlavorsPath is the path to get the list of flavors.
-	ListFlavorsPath = "/api/listflavors"
-	// ListFlavorByIDPath is the path to get a flavor by ID.
-	ListFlavorByIDPath = "/api/listflavors/"
-	// ReserveFlavorPath is the path to reserve a flavor.
-	ReserveFlavorPath = "/api/reserveflavor/"
-	// PurchaseFlavorPath is the path to purchase a flavor.
-	PurchaseFlavorPath = "/api/purchaseflavor/"
-	// ListFlavorsBySelectorPath is the path to get the list of flavors by selector.
-	ListFlavorsBySelectorPath = "/api/listflavors/selector"
-)
-
 // Gateway is the object that contains all the logical data stractures of the REAR Gateway.
 type Gateway struct {
 	// NodeIdentity is the identity of the FLUIDOS Node
@@ -109,7 +96,11 @@ func (g *Gateway) Start(ctx context.Context) error {
 	// Gateway endpoints
 	router.HandleFunc(Routes.Flavors, g.getFlavors).Methods("GET")
 	router.HandleFunc(Routes.K8SliceFlavors, g.getK8SliceFlavorsBySelector).Methods("GET")
-	// TODO: Implement the other selector types
+	router.HandleFunc(Routes.ServiceFlavors, g.getServiceFlavorsBySelector).Methods("GET")
+	// TODO (VM): implement the VM flavors endpoint
+	// router.HandleFunc(Routes.VMFlavors, g.getVMFlavorsBySelector).Methods("GET")
+	// TODO (Sensor): implement the Sensor flavors endpoint
+	// router.HandleFunc(Routes.SensorFlavors, g.getSensorFlavorsBySelector).Methods("GET")
 	router.HandleFunc(Routes.Reserve, g.reserveFlavor).Methods("POST")
 	router.HandleFunc(Routes.Purchase, g.purchaseFlavor).Methods("POST")
 
@@ -152,7 +143,7 @@ func (g *Gateway) CacheRefresher(interval time.Duration) func(ctx context.Contex
 //
 //nolint:revive // we need to pass ctx as parameter to be compliant with the Poller interface
 func (g *Gateway) refreshCache(ctx context.Context) (bool, error) {
-	klog.InfoDepth(1, "Refreshing cache...")
+	klog.InfofDepth(1, "Refreshing cache")
 	for transactionID, transaction := range g.Transactions {
 		if tools.CheckExpiration(transaction.ExpirationTime) {
 			klog.Infof("Transaction %s expired, removing it from cache...", transactionID)

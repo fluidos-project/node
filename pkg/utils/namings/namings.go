@@ -24,6 +24,7 @@ import (
 
 	"k8s.io/klog/v2"
 
+	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
@@ -35,7 +36,9 @@ func ForgeVirtualNodeName(clusterName string) string {
 // ForgeContractName creates a name for the Contract.
 func ForgeContractName(flavorID string) string {
 	hash := ForgeHashString(flavorID, 4)
-	return fmt.Sprintf("contract-%s-%s", flavorID, hash)
+	contractName := fmt.Sprintf("contract-%s-%s", flavorID, hash)
+	// Replace all dots with dashes
+	return strings.ReplaceAll(contractName, ".", "-")
 }
 
 // ForgeAllocationName generates a name for the Allocation.
@@ -66,6 +69,8 @@ func ForgeFlavorName(resourceType, domain string) string {
 	if err != nil {
 		klog.Errorf("Error when generating random string: %s", err)
 	}
+	// Trim the random string to 4 characters
+	r = r[:4]
 
 	name := domain + "-" + resType + "-" + r
 
@@ -138,4 +143,40 @@ func ForgeHashString(input string, length int) string {
 	uniqueString := hashString[:length]
 
 	return uniqueString
+}
+
+// ForgeNamespaceName creates a namespace name from a contract.
+func ForgeNamespaceName(contract *reservationv1alpha1.Contract) string {
+	var namespaceName string
+	if contract == nil {
+		// Create random string
+		rnd, err := ForgeRandomString()
+		if err != nil {
+			klog.Errorf("Error when generating random string: %s", err)
+		}
+		rnd = rnd[:4]
+		namespaceName = fmt.Sprintf("fluidos-namespace-%s", rnd)
+	} else {
+		namespaceName = contract.Name
+	}
+
+	return namespaceName
+}
+
+// ForgeSecretName creates a secret name from a contract.
+func ForgeSecretName(contract *reservationv1alpha1.Contract) string {
+	var secretName string
+	if contract == nil {
+		// Create random string
+		rnd, err := ForgeRandomString()
+		if err != nil {
+			klog.Errorf("Error when generating random string: %s", err)
+		}
+		rnd = rnd[:4]
+		secretName = fmt.Sprintf("fluidos-secret-%s", rnd)
+	} else {
+		secretName = fmt.Sprintf("fluidos-secret-%s", contract.Name)
+	}
+
+	return secretName
 }

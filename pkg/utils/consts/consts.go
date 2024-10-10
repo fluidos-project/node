@@ -21,4 +21,19 @@ const (
 	LiqoNamespace                 = "liqo"
 	LiqoAuthTokenSecretNamePrefix = "remote-token-"
 	LiqoTokenKey                  = "token"
+	LiqoRemoteClusterIDLabel      = "liqo.io/remote-cluster-id"
+	FluidosContractLabel          = "reservation.fluidos.eu/contract"
+	FluidosServiceCredentials     = "nodecore.fluidos.eu/flavor-service-credentials"
+	FluidosServiceEndpoint        = "nodecore.fluidos.eu/flavor-service-endpoint"
+)
+
+// ServiceCategory represents a category of a service
+type ServiceCategory string
+
+const (
+	// Database represents a service category for a database
+	Database ServiceCategory = "database"
+	// MessageQueue represents a service category for a message queue
+	MessageQueue ServiceCategory = "message-queue"
+	// TODO (Service): add more service categories based on ontology
 )

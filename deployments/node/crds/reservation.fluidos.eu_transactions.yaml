@@ -66,11 +66,16 @@ spec:
                 description: Buyer is the buyer Identity of the Fluidos Node that
                   is reserving the Flavor
                 properties:
+                  additionalInformation:
+                    description: NodeIdentityAdditionalInfo contains additional information
+                      about the node.
+                    properties:
+                      liqoID:
+                        type: string
+                    type: object
                   domain:
                     type: string
                   ip:
-                    type: string
-                  liqoID:
                     type: string
                   nodeID:
                     type: string

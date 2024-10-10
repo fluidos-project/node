@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: Transport this file to the apis section following the kubebuilder conventions
+
 package discoverymanager
 
 import (

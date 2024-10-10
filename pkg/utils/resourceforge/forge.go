@@ -15,19 +15,29 @@
 package resourceforge
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"strings"
 	"time"
 
+	"github.com/Masterminds/sprig"
+	offloadingv1alpha1 "github.com/liqotech/liqo/apis/offloading/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
 	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/parseutil"
@@ -118,7 +128,7 @@ func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 
 // ForgeContract creates a Contract CR.
 func ForgeContract(flavor *nodecorev1alpha1.Flavor, transaction *models.Transaction,
-	lc *nodecorev1alpha1.LiqoCredentials) *reservationv1alpha1.Contract {
+	peeringTargetLiqoCredentials *nodecorev1alpha1.LiqoCredentials, sellerLiqoID string) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavor.Name),
@@ -130,14 +140,26 @@ func ForgeContract(flavor *nodecorev1alpha1.Flavor, transaction *models.Transact
 				Domain: transaction.Buyer.Domain,
 				IP:     transaction.Buyer.IP,
 				NodeID: transaction.Buyer.NodeID,
+				AdditionalInformation: &nodecorev1alpha1.NodeIdentityAdditionalInfo{
+					LiqoID: transaction.ClusterID,
+				},
 			},
-			BuyerClusterID:           transaction.ClusterID,
-			Seller:                   flavor.Spec.Owner,
-			PeeringTargetCredentials: *lc,
+			BuyerClusterID: transaction.ClusterID,
+			Seller: func() nodecorev1alpha1.NodeIdentity {
+				return nodecorev1alpha1.NodeIdentity{
+					Domain: flavor.Spec.Owner.Domain,
+					NodeID: flavor.Spec.Owner.NodeID,
+					IP:     flavor.Spec.Owner.IP,
+					AdditionalInformation: &nodecorev1alpha1.NodeIdentityAdditionalInfo{
+						LiqoID: sellerLiqoID,
+					},
+				}
+			}(),
+			PeeringTargetCredentials: *peeringTargetLiqoCredentials,
 			TransactionID:            transaction.TransactionID,
 			Configuration: func() *nodecorev1alpha1.Configuration {
 				if transaction.Configuration != nil {
-					configuration, err := ForgeConfiguration(*transaction.Configuration)
+					configuration, err := ForgeConfigurationFromObj(*transaction.Configuration)
 					if err != nil {
 						klog.Errorf("Error when parsing configuration: %s", err)
 						return nil
@@ -160,8 +182,8 @@ func ForgeContract(flavor *nodecorev1alpha1.Flavor, transaction *models.Transact
 	}
 }
 
-// ForgeFlavorFromMetrics creates a new flavor custom resource from the metrics of the node.
-func ForgeFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdentity,
+// ForgeK8SliceFlavorFromMetrics creates a new flavor custom resource from the metrics of the node.
+func ForgeK8SliceFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdentity,
 	ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor) {
 	k8SliceType := nodecorev1alpha1.K8Slice{
 		Characteristics: nodecorev1alpha1.K8SliceCharacteristics{
@@ -215,8 +237,9 @@ func ForgeFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 				Period:   flags.PERIOD,
 			},
 			Availability: true,
-			// TODO: test without network property and location
+			// FIXME: NetworkPropertyType should be taken in a smarter way
 			NetworkPropertyType: "networkProperty",
+			// FIXME: Location should be taken in a smarter way
 			Location: &nodecorev1alpha1.Location{
 				Latitude:        "10",
 				Longitude:       "58",
@@ -226,6 +249,133 @@ func ForgeFlavorFromMetrics(node *models.NodeInfo, ni nodecorev1alpha1.NodeIdent
 			},
 		},
 	}
+}
+
+// ForgeServiceFlavorFromBlueprint creates a new flavor custom resource from a ServiceBlueprint.
+func ForgeServiceFlavorFromBlueprint(serviceBlueprint *nodecorev1alpha1.ServiceBlueprint, ni *nodecorev1alpha1.NodeIdentity,
+	ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor) {
+	configurationTemplate, err := forgeServiceConfigurationTemplateFromCategory(models.MapToServiceCategory(serviceBlueprint.Spec.Category))
+	if err != nil {
+		klog.Errorf("Error when forging configuration template: %s", err)
+		return nil
+	}
+
+	serviceFlavor := &nodecorev1alpha1.ServiceFlavor{
+		Name:                  serviceBlueprint.Spec.Name,
+		Description:           serviceBlueprint.Spec.Description,
+		Category:              serviceBlueprint.Spec.Category,
+		Tags:                  serviceBlueprint.Spec.Tags,
+		HostingPolicies:       serviceBlueprint.Spec.HostingPolicies,
+		ConfigurationTemplate: runtime.RawExtension{Raw: []byte(configurationTemplate)},
+	}
+
+	serviceFlavorJSON, err := json.Marshal(serviceFlavor)
+	if err != nil {
+		klog.Errorf("Error when marshaling service flavor: %s", err)
+		return nil
+	}
+
+	return &nodecorev1alpha1.Flavor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            namings.ForgeFlavorName(string(nodecorev1alpha1.TypeService), ni.Domain),
+			Namespace:       flags.FluidosNamespace,
+			OwnerReferences: ownerReferences,
+		},
+		Spec: nodecorev1alpha1.FlavorSpec{
+			ProviderID: ni.NodeID,
+			FlavorType: nodecorev1alpha1.FlavorType{
+				TypeIdentifier: nodecorev1alpha1.TypeService,
+				TypeData:       runtime.RawExtension{Raw: serviceFlavorJSON},
+			},
+			Owner: *ni,
+			Price: nodecorev1alpha1.Price{
+				Amount:   flags.AMOUNT,
+				Currency: flags.CURRENCY,
+				Period:   flags.PERIOD,
+			},
+			Availability: true,
+			// FIXME: NetworkPropertyType should be taken in a smarter way
+			NetworkPropertyType: "networkProperty",
+			// FIXME: Location should be taken in a smarter way
+			Location: &nodecorev1alpha1.Location{
+				Latitude:        "10",
+				Longitude:       "58",
+				Country:         "Italy",
+				City:            "Turin",
+				AdditionalNotes: "None",
+			},
+		},
+	}
+}
+
+// forgeServiceConfigurationTemplateFromCategory creates a JSON schema for the configuration template of a service.
+func forgeServiceConfigurationTemplateFromCategory(category consts.ServiceCategory) (configurationTemplate string, err error) {
+	var JSONtemplate string
+
+	switch category {
+	case consts.Database:
+		JSONtemplate = `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"properties": {
+				"username": {
+					"type": "string"
+				},
+				"password": {
+					"type": "string"
+				},
+				"database": {
+					"type": "string"
+				}
+			},
+			"required": ["username", "password", "database"]
+		}`
+	case consts.MessageQueue:
+		JSONtemplate = `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"properties": {
+				"username": {
+					"type": "string"
+				},
+				"password": {
+					"type": "string"
+				}
+			},
+			"required": ["username", "password"]
+		}`
+	// TODO (Service): Implement more categories based on ontology
+	default:
+		klog.Errorf("Category not recognized")
+		return "", fmt.Errorf("category not recognized")
+	}
+
+	return JSONtemplate, nil
+}
+
+// forgeServiceConfigurationDefaultFromCategory creates a default configuration for a service based on the category.
+func forgeServiceConfigurationDefaultFromCategory(category consts.ServiceCategory) (configuration string, err error) {
+	var JSONtemplate string
+
+	switch category {
+	case consts.Database:
+		JSONtemplate = `{
+			"username": "admin",
+			"password": "admin",
+			"database": "mydb"
+		}`
+	case consts.MessageQueue:
+		JSONtemplate = `{
+			"username": "admin",
+			"password": "adminpassword"
+		}`
+	// TODO (Service): Implement more categories based on ontology
+	default:
+		klog.Errorf("Category not recognized")
+		return "", fmt.Errorf("category not recognized")
+	}
+
+	return JSONtemplate, nil
 }
 
 // ForgeFlavorFromRef creates a new flavor starting from a Reference Flavor and the new Characteristics.
@@ -283,7 +433,11 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 		},
 		Configuration: func() *models.Configuration {
 			if contract.Spec.Configuration != nil {
-				configuration := parseutil.ParseConfiguration(contract.Spec.Configuration)
+				configuration, err := parseutil.ParseConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor)
+				if err != nil {
+					klog.Errorf("Error when parsing configuration: %s", err)
+					return nil
+				}
 				return configuration
 			}
 			return nil
@@ -293,6 +447,23 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 		ExtraInformation: func() map[string]string {
 			if contract.Spec.ExtraInformation != nil {
 				return contract.Spec.ExtraInformation
+			}
+			return nil
+		}(),
+	}
+}
+
+// ForgeNodeIdentitiesFromObj creates a NodeIdentity CR from a NodeIdentity Object.
+func ForgeNodeIdentitiesFromObj(nodeIdentity *models.NodeIdentity) *nodecorev1alpha1.NodeIdentity {
+	return &nodecorev1alpha1.NodeIdentity{
+		NodeID: nodeIdentity.NodeID,
+		IP:     nodeIdentity.IP,
+		Domain: nodeIdentity.Domain,
+		AdditionalInformation: func() *nodecorev1alpha1.NodeIdentityAdditionalInfo {
+			if nodeIdentity.AdditionalInformation != nil {
+				return &nodecorev1alpha1.NodeIdentityAdditionalInfo{
+					LiqoID: nodeIdentity.AdditionalInformation.LiqoID,
+				}
 			}
 			return nil
 		}(),
@@ -312,18 +483,10 @@ func ForgeContractFromObj(contract *models.Contract) (*reservationv1alpha1.Contr
 			Namespace: flags.FluidosNamespace,
 		},
 		Spec: reservationv1alpha1.ContractSpec{
-			Flavor: *flavorCR,
-			Buyer: nodecorev1alpha1.NodeIdentity{
-				Domain: contract.Buyer.Domain,
-				IP:     contract.Buyer.IP,
-				NodeID: contract.Buyer.NodeID,
-			},
+			Flavor:         *flavorCR,
+			Buyer:          *ForgeNodeIdentitiesFromObj(&contract.Buyer),
 			BuyerClusterID: contract.BuyerClusterID,
-			Seller: nodecorev1alpha1.NodeIdentity{
-				NodeID: contract.Seller.NodeID,
-				IP:     contract.Seller.IP,
-				Domain: contract.Seller.Domain,
-			},
+			Seller:         *ForgeNodeIdentitiesFromObj(&contract.Seller),
 			PeeringTargetCredentials: nodecorev1alpha1.LiqoCredentials{
 				ClusterID:   contract.PeeringTargetCredentials.ClusterID,
 				ClusterName: contract.PeeringTargetCredentials.ClusterName,
@@ -333,7 +496,7 @@ func ForgeContractFromObj(contract *models.Contract) (*reservationv1alpha1.Contr
 			TransactionID: contract.TransactionID,
 			Configuration: func() *nodecorev1alpha1.Configuration {
 				if contract.Configuration != nil {
-					configuration, err := ForgeConfiguration(*contract.Configuration)
+					configuration, err := ForgeConfigurationFromObj(*contract.Configuration)
 					if err != nil {
 						klog.Errorf("Error when parsing configuration: %s", err)
 						return nil
@@ -373,16 +536,18 @@ func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alph
 				Domain: transaction.Buyer.Domain,
 				IP:     transaction.Buyer.IP,
 				NodeID: transaction.Buyer.NodeID,
-				LiqoID: func() string {
+				AdditionalInformation: func() *nodecorev1alpha1.NodeIdentityAdditionalInfo {
 					if transaction.Buyer.AdditionalInformation != nil {
-						return transaction.Buyer.AdditionalInformation.LiqoID
+						return &nodecorev1alpha1.NodeIdentityAdditionalInfo{
+							LiqoID: transaction.Buyer.AdditionalInformation.LiqoID,
+						}
 					}
-					return ""
+					return nil
 				}(),
 			},
 			Configuration: func() *nodecorev1alpha1.Configuration {
 				if transaction.Configuration != nil {
-					configuration, err := ForgeConfiguration(*transaction.Configuration)
+					configuration, err := ForgeConfigurationFromObj(*transaction.Configuration)
 					if err != nil {
 						klog.Errorf("Error when parsing configuration: %s", err)
 						return nil
@@ -395,8 +560,8 @@ func ForgeTransactionFromObj(transaction *models.Transaction) *reservationv1alph
 	}
 }
 
-// ForgeConfiguration creates a Configuration CR from a Configuration object.
-func ForgeConfiguration(configuration models.Configuration) (*nodecorev1alpha1.Configuration, error) {
+// ForgeConfigurationFromObj creates a Configuration CR from a Configuration object.
+func ForgeConfigurationFromObj(configuration models.Configuration) (*nodecorev1alpha1.Configuration, error) {
 	// Parse the Configuration
 	switch configuration.Type {
 	case models.K8SliceNameDefault:
@@ -433,10 +598,123 @@ func ForgeConfiguration(configuration models.Configuration) (*nodecorev1alpha1.C
 			ConfigurationTypeIdentifier: nodecorev1alpha1.TypeK8Slice,
 			ConfigurationData:           runtime.RawExtension{Raw: configurationData},
 		}, nil
-	// TODO: Implement the other configuration types, if any
+	case models.VMNameDefault:
+		// TODO (VM): Implement VM configuration
+		return nil, fmt.Errorf("vm configuration not implemented")
+	case models.ServiceNameDefault:
+		// Force casting of configurationStruct to Service
+		var configurationStruct models.ServiceConfiguration
+		err := json.Unmarshal(configuration.Data, &configurationStruct)
+		if err != nil {
+			return nil, err
+		}
+		// Create ServiceConfiguration nodecorev1alpha1
+		serviceConfigurationCR := nodecorev1alpha1.ServiceConfiguration{
+			HostingPolicy: func() *nodecorev1alpha1.HostingPolicy {
+				if configurationStruct.HostingPolicy != nil {
+					hp := models.MapFromModelHostingPolicy(*configurationStruct.HostingPolicy)
+					return &hp
+				}
+				return nil
+			}(),
+			ConfigurationData: runtime.RawExtension{
+				Raw: configurationStruct.ConfigurationData,
+			},
+		}
+		// Marshal ServiceConfiguration to JSON
+		configurationData, err := json.Marshal(serviceConfigurationCR)
+		if err != nil {
+			return nil, err
+		}
+		return &nodecorev1alpha1.Configuration{
+			ConfigurationTypeIdentifier: nodecorev1alpha1.TypeService,
+			ConfigurationData:           runtime.RawExtension{Raw: configurationData},
+		}, nil
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement Sensor configuration
+		return nil, fmt.Errorf("sensor configuration not implemented")
 	default:
 		return nil, fmt.Errorf("unknown configuration type")
 	}
+}
+
+// ForgeConfigurationObj creates a Configuration object from a Configuration CR.
+func ForgeConfigurationObj(configuration *nodecorev1alpha1.Configuration) (*models.Configuration, error) {
+	var data json.RawMessage
+	switch configuration.ConfigurationTypeIdentifier {
+	case nodecorev1alpha1.TypeK8Slice:
+		// Force casting of configurationStruct to K8Slice
+		var configurationStruct nodecorev1alpha1.K8SliceConfiguration
+		err := json.Unmarshal(configuration.ConfigurationData.Raw, &configurationStruct)
+		if err != nil {
+			return nil, err
+		}
+		k8SliceConfiguration := models.K8SliceConfiguration{
+			CPU:    configurationStruct.CPU,
+			Memory: configurationStruct.Memory,
+			Pods:   configurationStruct.Pods,
+			Gpu: func() *models.GpuCharacteristics {
+				if configurationStruct.Gpu != nil {
+					return &models.GpuCharacteristics{
+						Model:  configurationStruct.Gpu.Model,
+						Cores:  configurationStruct.Gpu.Cores,
+						Memory: configurationStruct.Gpu.Memory,
+					}
+				}
+				return nil
+			}(),
+			Storage: configurationStruct.Storage,
+		}
+
+		// Marshal the K8Slice configuration to JSON
+		data, err = json.Marshal(k8SliceConfiguration)
+		if err != nil {
+			return nil, err
+		}
+	case nodecorev1alpha1.TypeService:
+		// Force casting of configurationStruct to Service
+		var configurationStruct nodecorev1alpha1.ServiceConfiguration
+		err := json.Unmarshal(configuration.ConfigurationData.Raw, &configurationStruct)
+		if err != nil {
+			return nil, err
+		}
+		// Convert ConfigurationData to json.RawMessage
+		configurationData, err := json.Marshal(configurationStruct.ConfigurationData)
+		if err != nil {
+			return nil, err
+		}
+		// Create ServiceConfiguration nodecorev1alpha1
+		serviceConfiguration := models.ServiceConfiguration{
+			HostingPolicy: func() *models.HostingPolicy {
+				if configurationStruct.HostingPolicy != nil {
+					hp := models.MapToModelHostingPolicy(*configurationStruct.HostingPolicy)
+					return &hp
+				}
+				return nil
+			}(),
+			ConfigurationData: json.RawMessage(configurationData),
+		}
+
+		// Marshal ServiceConfiguration to JSON
+		data, err = json.Marshal(serviceConfiguration)
+		if err != nil {
+			return nil, err
+		}
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement Sensor configuration
+		return nil, fmt.Errorf("sensor configuration not implemented")
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement VM configuration
+		return nil, fmt.Errorf("vm configuration not implemented")
+	default:
+		return nil, fmt.Errorf("unknown configuration type")
+	}
+	modelConf := models.Configuration{
+		Type: models.MapToFlavorTypeName(configuration.ConfigurationTypeIdentifier),
+		Data: data,
+	}
+
+	return &modelConf, nil
 }
 
 // ForgeResourceSelectorFromObj creates a ResourceSelector CR from a ResourceSelector Object.
@@ -646,7 +924,36 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 			TypeIdentifier: nodecorev1alpha1.TypeK8Slice,
 			TypeData:       runtime.RawExtension{Raw: flavorTypeDataJSON},
 		}
-
+	case models.VMNameDefault:
+		// TODO (VM): Implement VM flavor
+		return nil, fmt.Errorf("VM flavor not implemented")
+	case models.ServiceNameDefault:
+		// Unmarshal ServiceFlavorType
+		var flavorTypeDataModel models.ServiceFlavor
+		err := json.Unmarshal(flavor.Type.Data, &flavorTypeDataModel)
+		if err != nil {
+			klog.Errorf("Error when unmarshalling ServiceType: %s", err)
+			return nil, err
+		}
+		flavorTypeData := nodecorev1alpha1.ServiceFlavor{
+			Name:                  flavorTypeDataModel.Name,
+			Description:           flavorTypeDataModel.Description,
+			Category:              flavorTypeDataModel.Category,
+			Tags:                  flavorTypeDataModel.Tags,
+			ConfigurationTemplate: runtime.RawExtension{Raw: flavorTypeDataModel.ConfigurationTemplate},
+		}
+		flavorTypeDataJSON, err := json.Marshal(flavorTypeData)
+		if err != nil {
+			klog.Errorf("Error when marshaling ServiceType: %s", err)
+			return nil, err
+		}
+		flavorType = nodecorev1alpha1.FlavorType{
+			TypeIdentifier: nodecorev1alpha1.TypeService,
+			TypeData:       runtime.RawExtension{Raw: flavorTypeDataJSON},
+		}
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement Sensor flavor
+		return nil, fmt.Errorf("sensor flavor not implemented")
 	default:
 		klog.Errorf("Flavor type not recognized")
 		return nil, fmt.Errorf("flavor type not recognized")
@@ -840,4 +1147,286 @@ func ForgeAllocation(contract *reservationv1alpha1.Contract) *nodecorev1alpha1.A
 			},
 		},
 	}
+}
+
+// ForgeDefaultServiceConfiguration forges the default service configuration based on the category of the service.
+func ForgeDefaultServiceConfiguration(serviceFlavor *nodecorev1alpha1.ServiceFlavor) (*nodecorev1alpha1.ServiceConfiguration, error) {
+	var defaultServiceConfiguration *nodecorev1alpha1.ServiceConfiguration
+
+	var configurationJSON string
+
+	configurationJSON, err := forgeServiceConfigurationDefaultFromCategory(models.MapToServiceCategory(serviceFlavor.Category))
+	if err != nil {
+		klog.Errorf("Error when forging default service configuration: %s", err)
+		return nil, err
+	}
+
+	// Marshal the default service configuration to JSON
+	defaultServiceConfiguration = &nodecorev1alpha1.ServiceConfiguration{
+		ConfigurationData: runtime.RawExtension{Raw: []byte(configurationJSON)},
+		// TODO(Service): default hosting policy is to omit it, therefore use the default one
+	}
+
+	return defaultServiceConfiguration, nil
+}
+
+// ForgeLiqoCredentialsObj creates a LiqoCredentials object from a LiqoCredentials CR.
+func ForgeLiqoCredentialsObj(liqoCredentials *nodecorev1alpha1.LiqoCredentials) (*models.LiqoCredentials, error) {
+	return &models.LiqoCredentials{
+		ClusterID:   liqoCredentials.ClusterID,
+		ClusterName: liqoCredentials.ClusterName,
+		Token:       liqoCredentials.Token,
+		Endpoint:    liqoCredentials.Endpoint,
+	}, nil
+}
+
+// ForgeLiqoCredentialsFromObj creates a LiqoCredentials CR from a LiqoCredentials object.
+func ForgeLiqoCredentialsFromObj(liqoCredentials *models.LiqoCredentials) (*nodecorev1alpha1.LiqoCredentials, error) {
+	return &nodecorev1alpha1.LiqoCredentials{
+		ClusterID:   liqoCredentials.ClusterID,
+		ClusterName: liqoCredentials.ClusterName,
+		Token:       liqoCredentials.Token,
+		Endpoint:    liqoCredentials.Endpoint,
+	}, nil
+}
+
+// ForgePodOffloadingStrategy creates a PodOffloadingStrategy CR from a nodecorev1alpha1.HostingPolicy.
+func ForgePodOffloadingStrategy(hostingPolicy *nodecorev1alpha1.HostingPolicy) (offloadingv1alpha1.PodOffloadingStrategyType, error) {
+	switch *hostingPolicy {
+	case nodecorev1alpha1.HostingPolicyProvider:
+		return offloadingv1alpha1.LocalPodOffloadingStrategyType, nil
+	case nodecorev1alpha1.HostingPolicyConsumer:
+		return offloadingv1alpha1.RemotePodOffloadingStrategyType, nil
+	case nodecorev1alpha1.HostingPolicyShared:
+		return offloadingv1alpha1.LocalAndRemotePodOffloadingStrategyType, nil
+	default:
+		return "", fmt.Errorf("hosting policy not recognized")
+	}
+}
+
+// ForgeServiceManifests creates YAML Kubernetes manifests from a reservationv1alpha1.Contract.
+func ForgeServiceManifests(ctx context.Context, c client.Client, contract *reservationv1alpha1.Contract) ([]string, error) {
+	var manifests []string
+
+	// Retrieve the Service blueprint, owner of the Flavor specified in the contract
+	serviceBlueprint, err := getters.GetBlueprint(ctx, c, contract.Spec.Flavor.Name)
+	if err != nil {
+		klog.Errorf("Error when getting blueprint: %s", err)
+		return nil, err
+	}
+
+	// Retrieve the Configuration of the Service from the Contract
+	_, configurationData, err := nodecorev1alpha1.ParseConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing configuration: %s", err)
+		return nil, err
+	}
+
+	// Force casting of configurationData to ServiceConfiguration
+	serviceConfiguration, ok := configurationData.(nodecorev1alpha1.ServiceConfiguration)
+	if !ok {
+		klog.Errorf("Error when casting configuration data to ServiceConfiguration")
+		return nil, fmt.Errorf("error when casting configuration data to ServiceConfiguration")
+	}
+
+	// Render templates based on configuration
+
+	// Obtain map[string]interface{} from the raw extension
+	configurationDataMap := make(map[string]interface{})
+	err = json.Unmarshal(serviceConfiguration.ConfigurationData.Raw, &configurationDataMap)
+	if err != nil {
+		klog.Errorf("Error when unmarshalling configuration data: %s", err)
+		return nil, err
+	}
+
+	for _, template := range serviceBlueprint.Spec.Templates {
+		// Obtain the template string from the raw extension
+		templateString := string(template.ServiceTemplateData.Raw)
+		klog.Infof("Template: %s", templateString)
+		// Render the template
+		renderedTemplate, err := RenderTemplate(templateString, configurationDataMap)
+		if err != nil {
+			klog.Errorf("Error when rendering template: %s", err)
+			return nil, err
+		}
+		manifests = append(manifests, renderedTemplate)
+	}
+
+	// TODO (Service): Implement the creation of the service manifests
+
+	return manifests, nil
+}
+
+// RenderTemplate renders a template with the given data.
+func RenderTemplate(yamlTemplate string, data map[string]interface{}) (string, error) {
+	// Parse the template
+	tmpl, err := template.New("k8sTemplate").Funcs(sprig.TxtFuncMap()).Parse(yamlTemplate)
+	if err != nil {
+		klog.Errorf("Error when parsing template: %s", err)
+		return "", err
+	}
+
+	var rendered bytes.Buffer
+	// Execute the template with the data
+	err = tmpl.Execute(&rendered, data)
+	if err != nil {
+		klog.Errorf("Error when executing template: %s", err)
+		return "", err
+	}
+
+	return rendered.String(), nil
+}
+
+// ForgeHostingPolicyFromContract creates a HostingPolicy from a Contract.
+func ForgeHostingPolicyFromContract(contract *reservationv1alpha1.Contract, cl client.Client) (nodecorev1alpha1.HostingPolicy, error) {
+	if contract.Spec.Configuration == nil {
+		klog.Infof("Configuration not found in the contract, proceeding with default hosting policy")
+
+		return forgeDefaultHostingPolicyFromFlavor(&contract.Spec.Flavor, cl)
+	}
+	klog.Info("Configuration found in the contract, proceeding with the hosting policy specified in the configuration")
+	// Retrieve the configuration data from the contract
+	configurationType, configurationData, err := nodecorev1alpha1.ParseConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing configuration: %s", err)
+		return "", err
+	}
+
+	// Check the configuration type
+	if configurationType != nodecorev1alpha1.TypeService {
+		klog.Errorf("Configuration type is not Service")
+		return "", fmt.Errorf("configuration type is not Service")
+	}
+
+	// Force casting the configuration data to ServiceConfiguration
+	serviceConfiguration, ok := configurationData.(nodecorev1alpha1.ServiceConfiguration)
+	if !ok {
+		klog.Errorf("Error when casting configuration data to ServiceConfiguration")
+		return "", fmt.Errorf("error when casting configuration data to ServiceConfiguration")
+	}
+
+	if serviceConfiguration.HostingPolicy != nil {
+		return *serviceConfiguration.HostingPolicy, nil
+	}
+	klog.Errorf("Hosting policy not found in the configuration, proceeding with default hosting policy")
+	return forgeDefaultHostingPolicyFromFlavor(&contract.Spec.Flavor, cl)
+}
+
+func forgeDefaultHostingPolicyFromFlavor(flavor *nodecorev1alpha1.Flavor, cl client.Client) (nodecorev1alpha1.HostingPolicy, error) {
+	klog.Info("Default hosting policy requested, proceeding with the hosting policy specified in the flavor")
+	// Get the service blueprint associated with the flavor specified in the contract
+	serviceBlueprint, err := getters.GetBlueprint(context.Background(), cl, flavor.Name)
+	if err != nil {
+		klog.Errorf("Error when getting blueprint: %s", err)
+		return "", err
+	}
+
+	if len(serviceBlueprint.Spec.HostingPolicies) == 0 {
+		// No hosting policies found in the blueprint, default to Provider
+		return nodecorev1alpha1.HostingPolicyProvider, nil
+	}
+	// Get the first hosting policy found in the blueprint
+	return serviceBlueprint.Spec.HostingPolicies[0], nil
+}
+
+// ForgeSecretForService creates a Secret based on a contract for the service going to be created,
+// following default behaviors based on the service category.
+func ForgeSecretForService(contract *reservationv1alpha1.Contract,
+	serviceEndpoint *corev1.Service) (*corev1.Secret, error) {
+	// Parse the flavor type
+	flavorTypeIdentifier, flavorTypeData, err := nodecorev1alpha1.ParseFlavorType(&contract.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing flavor type: %s", err)
+		return nil, err
+	}
+	if flavorTypeIdentifier != nodecorev1alpha1.TypeService {
+		klog.Errorf("Flavor type is not Service")
+		return nil, fmt.Errorf("flavor type is not Service")
+	}
+	// Force casting
+	serviceFlavor, ok := flavorTypeData.(nodecorev1alpha1.ServiceFlavor)
+	if !ok {
+		klog.Errorf("Error when casting flavor type data to ServiceFlavor")
+		return nil, fmt.Errorf("error when casting flavor type data to ServiceFlavor")
+	}
+
+	// Parse configuration data
+	_, configurationData, err := nodecorev1alpha1.ParseConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor)
+	if err != nil {
+		klog.Errorf("Error when parsing configuration: %s", err)
+		return nil, err
+	}
+
+	// Force casting of configurationData to ServiceConfiguration
+	serviceConfiguration, ok := configurationData.(nodecorev1alpha1.ServiceConfiguration)
+	if !ok {
+		klog.Errorf("Error when casting configuration data to ServiceConfiguration")
+		return nil, fmt.Errorf("error when casting configuration data to ServiceConfiguration")
+	}
+
+	// Cast serviceConfiguration.ConfigurationData to map[string]interface{}
+	configurationDataMap := make(map[string]interface{})
+	err = json.Unmarshal(serviceConfiguration.ConfigurationData.Raw, &configurationDataMap)
+	if err != nil {
+		klog.Errorf("Error when unmarshalling configuration data: %s", err)
+		return nil, err
+	}
+
+	// Endpoints generation
+	var endpoints = make([]string, 0)
+	if serviceEndpoint != nil {
+		// Generate service dns name with default k8s dns resolution
+		endpointsHost := serviceEndpoint.Name + "." + serviceEndpoint.Namespace + ".svc.cluster.local"
+		for _, port := range serviceEndpoint.Spec.Ports {
+			endpoints = append(endpoints, fmt.Sprintf("%s:%d", endpointsHost, port.Port))
+		}
+	} else {
+		klog.Infof("Service endpoint not found")
+	}
+
+	// Convert endpoints to string
+	stringEndpoint := strings.Join(endpoints, ",")
+
+	var secretCredentials *corev1.Secret
+
+	switch serviceFlavor.Category {
+	case string(consts.Database):
+		// Create the secret
+		secretCredentials = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "credentials-" + contract.Name,
+			},
+			StringData: map[string]string{
+				"endpoints": stringEndpoint,
+				"username":  configurationDataMap["username"].(string),
+				"password":  configurationDataMap["password"].(string),
+				"database":  configurationDataMap["database"].(string),
+			},
+		}
+	case string(consts.MessageQueue):
+		// Create the secret
+		secretCredentials = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "credentials-" + contract.Name,
+			},
+			StringData: map[string]string{
+				"endpoints": stringEndpoint,
+				"username":  configurationDataMap["username"].(string),
+				"password":  configurationDataMap["password"].(string),
+			},
+		}
+	// TODO (Service): Add more service categories here	for secret creation
+	default:
+		klog.Infof("Service category %s not supported", serviceFlavor.Category)
+		return nil, fmt.Errorf("service category %s not supported", serviceFlavor.Category)
+	}
+
+	// Set labels
+	if secretCredentials.Labels == nil {
+		secretCredentials.Labels = make(map[string]string)
+	}
+
+	secretCredentials.Labels[consts.FluidosServiceCredentials] = "true"
+
+	return secretCredentials, nil
 }

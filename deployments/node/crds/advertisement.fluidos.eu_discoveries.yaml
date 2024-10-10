@@ -244,11 +244,17 @@ spec:
                                         if the Flavor is provided by a reseller or
                                         a third party.
                                       properties:
+                                        additionalInformation:
+                                          description: NodeIdentityAdditionalInfo
+                                            contains additional information about
+                                            the node.
+                                          properties:
+                                            liqoID:
+                                              type: string
+                                          type: object
                                         domain:
                                           type: string
                                         ip:
-                                          type: string
-                                        liqoID:
                                           type: string
                                         nodeID:
                                           type: string

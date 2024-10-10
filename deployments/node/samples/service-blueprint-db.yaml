@@ -1,0 +1,101 @@
+apiVersion: nodecore.fluidos.eu/v1alpha1
+kind: ServiceBlueprint
+metadata:
+  name: db-mysql
+  namespace: fluidos
+spec:
+  # The name of the service blueprint
+  name: db
+  # The description of the service blueprint
+  description: A database service blueprint
+  # The type of the service blueprint
+  category: database
+  # The tags of the service blueprint
+  tags:
+    - database
+    - mysql
+  hostingPolicies:
+    - Provider
+    - Consumer
+  # The service blueprint's configuration
+  templates:
+    - name: secret
+      description: A secret containing the database credentials
+      serviceData:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: db-credentials
+        type: Opaque
+        stringData:
+          username: "{{ .username }}"
+          password: "{{ .password }}"
+          database: "{{ .database }}"
+
+    - name: service
+      description: A service to expose the database
+      serviceData:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: db-service
+          labels:
+            nodecore.fluidos.eu/flavor-service-endpoint: "true"
+        spec:
+          selector:
+            app: db
+          ports:
+            - protocol: TCP
+              port: 3306
+              targetPort: 3306
+
+    - name: deployment
+      description: A deployment for the database service blueprint
+      serviceData:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: db
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: db
+          template:
+            metadata:
+              labels:
+                app: db
+            spec:
+              containers:
+                - name: db
+                  image: mysql:5.7
+                  env:
+                    - name: MYSQL_ROOT_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: password
+                    - name: MYSQL_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: password
+                    - name: MYSQL_USER
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: username
+                    - name: MYSQL_DATABASE
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: database
+                  resources:
+                    limits:
+                      cpu: "500m"
+                      memory: "512Mi"
+                    requests:
+                      cpu: "100m"
+                      memory: "256Mi"
+                  ports:
+                    - containerPort: 3306

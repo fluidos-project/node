@@ -27,8 +27,8 @@ import (
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/rear-controller/gateway"
+	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/models"
-	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 	"github.com/fluidos-project/node/pkg/utils/tools"
 )
@@ -175,8 +175,7 @@ func (r *ReservationReconciler) handleReserve(ctx context.Context,
 			return ctrl.Result{}, err
 		}
 
-		flavorID := namings.RetrieveFlavorNameFromPC(reservation.Spec.PeeringCandidate.Name)
-		res, err := r.Gateway.ReserveFlavor(ctx, reservation, flavorID)
+		res, err := r.Gateway.ReserveFlavor(ctx, reservation, &peeringCandidate.Spec.Flavor)
 		if err != nil {
 			if res != nil {
 				klog.Infof("Transaction is non correctly set, Retrying...")
@@ -309,13 +308,27 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 
 		transactionID := reservation.Status.TransactionID
 		var contract *models.Contract
+		var liqoCredentials *nodecorev1alpha1.LiqoCredentials
 		var err error
 
 		// Based on the flavorTypeIdentifier, purchase flavor action may need buyer credentials
 		switch flavorTypeIdentifier {
 		case nodecorev1alpha1.TypeK8Slice:
 			contract, err = r.Gateway.PurchaseFlavor(ctx, transactionID, reservation.Spec.Seller, nil)
-			// TODO: Implement other flavor types if purchase request needs buyer credentials
+		case nodecorev1alpha1.TypeService:
+			liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), r.Client)
+			if err != nil {
+				klog.Errorf("Error getting Liqo Credentials: %s", err)
+				return ctrl.Result{}, err
+			}
+
+			contract, err = r.Gateway.PurchaseFlavor(ctx, transactionID, reservation.Spec.Seller, liqoCredentials)
+		case nodecorev1alpha1.TypeVM:
+			// TODO (VM): implement the VM flavor purchase
+			klog.Infof("VM flavor purchase not implemented")
+		case nodecorev1alpha1.TypeSensor:
+			// TODO (Sensor): implement the sensor flavor purchase
+			klog.Infof("Sensor flavor purchase not implemented")
 		default:
 			klog.Errorf("Flavor type %s not supported", flavorTypeIdentifier)
 		}

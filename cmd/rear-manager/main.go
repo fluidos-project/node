@@ -22,6 +22,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	liqodiscovery "github.com/liqotech/liqo/apis/discovery/v1alpha1"
+	liqooffloading "github.com/liqotech/liqo/apis/offloading/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -49,6 +50,7 @@ func init() {
 	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(liqodiscovery.AddToScheme(scheme))
+	utilruntime.Must(liqooffloading.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -113,8 +115,9 @@ func main() {
 	}
 
 	if err = (&rearmanager.AllocationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Manager: mgr,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Allocation")
 		os.Exit(1)
