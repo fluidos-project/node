@@ -1,0 +1,25 @@
+{{- $subnet := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".0/24"}}
+{{- $rangeStart := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".101"}}
+{{- $rangeEnd := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".101"}}
+
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: macvlan-conf
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-6"
+spec:
+  config: '{
+      "cniVersion": "0.3.0",
+      "type": "macvlan",
+      "master": "eth0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "host-local",
+        "subnet": "{{ $subnet }}",
+        "rangeStart": "{{ $rangeStart }}",
+        "rangeEnd": "{{ $rangeEnd }}"
+      }
+    }'

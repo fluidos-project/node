@@ -116,7 +116,7 @@ rearController:
 
 networkManager:
   # -- The number of Network Manager, which can be increased for active/passive high availability.
-  replicas: 3
+  replicas: 1
   pod:
     # -- Annotations for the network-manager pod.
     annotations: {}
@@ -149,6 +149,13 @@ networkManager:
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
       nodeID: 
+    network:
+      # -- The first octet of the CNI virtual network subnet
+      firstOctet: "10"
+      # -- The second octet of the CNI virtual network subnet
+      secondOctet: 
+      # -- The third octet of the CNI virtual network subnet
+      thirdOctet: 
 
 provider: "your-provider"
 

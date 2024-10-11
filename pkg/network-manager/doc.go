@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package virtualfabricmanager provides the virtual fabric manager services to manage the peering between FLUIDOS Node.
+// Package networkmanager provides the virtual fabric manager services to manage the peering between FLUIDOS Node.
 package networkmanager
