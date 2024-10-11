@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,16 +40,17 @@ type ClusterInfo struct {
 type NetworkManager struct {
 	context            context.Context
 	client             client.Client
-	mu                 sync.Mutex
 	address            string
 	iface              *net.Interface
 	discoveredClusters map[string]*clst.Cluster //da rivedere
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
+
 	info := ClusterInfo{
 		Address: nm.address,
 	}
+
 	message, err := json.Marshal(info)
 	if err != nil {
 		return err
@@ -79,6 +79,7 @@ func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
 }
 
 func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error {
+
 	addr, err := net.ResolveUDPAddr("udp", multicastAddress)
 	if err != nil {
 		return err
@@ -99,34 +100,31 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 		}
 
 		var info ClusterInfo
+
 		err = json.Unmarshal(buffer[:n], &info)
 		if err != nil {
 			fmt.Printf("Error unmarshalling message: %v\n", err)
 			continue
 		}
 
-		fmt.Printf("Discovered cluster:  Address=%s\n", info.Address)
+		if info.Address != nm.address {
+			_, found := nm.discoveredClusters[info.Address]
 
-		//create cluster cr reference
-		discClst := frg.ForgeCluster(info.Address)
-		if err := nm.client.Create(nm.context, discClst); err != nil {
-			fmt.Printf("Error when creating Cluster: %s", err)
-			return err
+			if !found {
+				fmt.Printf("Discovered cluster:  Address=%s\n", info.Address)
+
+				// Create Cluster CR reference
+				discClst := frg.ForgeCluster(info.Address)
+				if err := nm.client.Create(nm.context, discClst); err != nil {
+					fmt.Printf("Error when creating Cluster: %s", err)
+					return err
+				}
+				fmt.Printf("Cluster %s created\n", discClst.Name)
+
+				// Add recently discovered Cluster *CR to the map
+				nm.discoveredClusters[info.Address] = discClst
+			}
 		}
-		fmt.Printf("Cluster %s created", discClst.Name)
-
-		//add recently discovered cluster *cr to map
-		nm.discoveredClusters[info.Address] = discClst //magari cambiamo la chiave in nodeID
-	}
-}
-
-func (nm *NetworkManager) printDiscoveredClusters() {
-	nm.mu.Lock()
-	defer nm.mu.Unlock()
-
-	//reading from Clusters map
-	for _, cp := range nm.discoveredClusters {
-		fmt.Printf("Address in cluster list: %s\n", cp.Address)
 	}
 }
 
@@ -178,20 +176,6 @@ func Start(ctx context.Context, cl client.Client) error {
 	go func() {
 		if err := nm.receiveMulticastMessage(multicastAddress); err != nil {
 			fmt.Printf("Error receiving multicast message: %v\n", err)
-		}
-	}()
-
-	// Periodically print discovered clusters
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				nm.printDiscoveredClusters()
-			case <-ctx.Done():
-				ticker.Stop()
-				return
-			}
 		}
 	}()
 
