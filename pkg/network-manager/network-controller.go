@@ -1,3 +1,17 @@
+// Copyright 2022-2024 FLUIDOS Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package networkmanager
 
 import (
@@ -10,6 +24,10 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	clst "github.com/fluidos-project/node/apis/network/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/getters"
+	frg "github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
 type ControlPlaneInfo struct {
@@ -20,6 +38,7 @@ type NetworkManager struct {
 	discoveredControlPlanes map[string]ControlPlaneInfo
 	mu                      sync.Mutex
 	address                 string
+	discoveredClusters      map[string]*clst.Cluster //da rivedere
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
@@ -69,6 +88,12 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 		}
 
 		fmt.Printf("Discovered control plane:  Address=%s\n", info.Address)
+
+		//create cluster cr reference
+		discClst := frg.ForgeCluster(info.Address)
+
+		//add recently discovered cluster *cr to map
+		nm.discoveredClusters[info.Address] = discClst //magari cambiamo la chiave in nodeID
 	}
 }
 
@@ -78,6 +103,10 @@ func (nm *NetworkManager) printDiscoveredControlPlanes() {
 	fmt.Println("Discovered Kubernetes Control Planes:")
 	for _, cp := range nm.discoveredControlPlanes {
 		fmt.Printf("Address: %s\n", cp.Address)
+	}
+	//reading from Clusters map
+	for _, cp := range nm.discoveredClusters {
+		fmt.Printf("Address in cluster list: %s\n", cp.Address)
 	}
 }
 
@@ -89,7 +118,7 @@ func Start(ctx context.Context, cl client.Client) error {
 		multicastAddress = "224.0.0.155:4000" // Default multicast address if not specified
 	}
 
-	clusterAddress, err := getClusterAddress()
+	clusterAddress, err := getClusterAddress(ctx, cl)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster address: %w", err)
 	}
@@ -151,12 +180,21 @@ func Start(ctx context.Context, cl client.Client) error {
 // 	return id, nil
 // }
 
-func getClusterAddress() (string, error) {
+func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
 	// First, try to get the IP from the API server
-	host := os.Getenv("KUBERNETES_SERVICE_HOST")
-	if host != "" {
-		return host, nil
+
+	// Get NodeIdentity
+	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
+	if nodeIdentity != nil {
+		return nodeIdentity.IP, nil
 	}
+
+	/*
+		host := os.Getenv("KUBERNETES_SERVICE_HOST") //--nope!uso getNodeIdentity in getters.go
+		if host != "" {
+			return host, nil
+		}
+	*/
 
 	// If that fails, try to get the node's IP
 	hostname, err := os.Hostname()
