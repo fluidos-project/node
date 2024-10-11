@@ -57,6 +57,8 @@ build_and_load() {
 # $2: provider JSON tmp file
 # $3: local repositories boolean
 # $4: local resource manager boolean
+# $5: kubernetes clusters type
+# $6: network manager installation boolean
 # Return: none
 function install_components() {
 
@@ -80,6 +82,9 @@ function install_components() {
 
     # Get the kubernetes clusters type from parameters
     installation_type=$5
+
+    # Get the network manager installation boolean from parameters
+    enable_node_discovery=$6
 
     helm repo add fluidos https://fluidos-project.github.io/node/
 
@@ -175,6 +180,11 @@ function install_components() {
         KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
 
         echo "The KUBECONFIG is $KUBECONFIG"
+
+        # Setup CNI to enable multicast node discovery
+        if [ "$enable_node_discovery" == "true" ]; then
+            kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml --kubeconfig "$KUBECONFIG"
+        fi
       
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
@@ -233,6 +243,7 @@ function install_components() {
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
+                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
             else
@@ -241,6 +252,7 @@ function install_components() {
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
                 --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
+                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"
             fi

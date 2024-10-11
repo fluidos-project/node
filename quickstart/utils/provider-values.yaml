@@ -121,7 +121,9 @@ networkManager:
   replicas: 1
   pod:
     # -- Annotations for the network-manager pod.
-    annotations: {}
+    annotations: {
+      k8s.v1.cni.cncf.io/networks: macvlan-conf@eth1
+    }
     # -- Labels for the network-manager pod.
     labels: {}
     # -- Extra arguments for the network-manager pod.
@@ -151,6 +153,13 @@ networkManager:
       ip: 
       # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
       nodeID: 
+    network:
+      # -- The first octet of the CNI virtual network subnet
+      firstOctet: "10"
+      # -- The second octet of the CNI virtual network subnet
+      secondOctet: "202"
+      # -- The third octet of the CNI virtual network subnet
+      thirdOctet: 
 
 webhook:
   # -- Enable the webhook server for the local-resource-manager.

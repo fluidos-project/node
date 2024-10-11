@@ -30,27 +30,46 @@ import (
 	frg "github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
+// clusterRole
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+
 type ControlPlaneInfo struct {
-	Address string `json:"address"`
+	Address  string `json:"address"`
+	Hostname string `json:"hostname"`
 }
 
 type NetworkManager struct {
 	discoveredControlPlanes map[string]ControlPlaneInfo
 	mu                      sync.Mutex
 	address                 string
+	hostname                string
+	iface                   *net.Interface
 	discoveredClusters      map[string]*clst.Cluster //da rivedere
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
 	info := ControlPlaneInfo{
-		Address: nm.address,
+		Address:  nm.address,
+		Hostname: nm.hostname,
 	}
 	message, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
 
-	conn, err := net.Dial("udp", multicastAddress)
+	laddr, err := nm.iface.Addrs()
+	if err != nil {
+		return err
+	}
+
+	dialer := &net.Dialer{
+		LocalAddr: &net.UDPAddr{
+			IP:   laddr[0].(*net.IPNet).IP,
+			Port: 0,
+		},
+	}
+
+	conn, err := dialer.Dial("udp", multicastAddress)
 	if err != nil {
 		return err
 	}
@@ -66,7 +85,7 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 		return err
 	}
 
-	conn, err := net.ListenMulticastUDP("udp", nil, addr)
+	conn, err := net.ListenMulticastUDP("udp", nm.iface, addr)
 	if err != nil {
 		return err
 	}
@@ -87,7 +106,7 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			continue
 		}
 
-		fmt.Printf("Discovered control plane:  Address=%s\n", info.Address)
+		fmt.Printf("Discovered control plane:  Address=%s, Hostname=%s\n", info.Address, info.Hostname)
 
 		//create cluster cr reference
 		discClst := frg.ForgeCluster(info.Address)
@@ -102,7 +121,7 @@ func (nm *NetworkManager) printDiscoveredControlPlanes() {
 	defer nm.mu.Unlock()
 	fmt.Println("Discovered Kubernetes Control Planes:")
 	for _, cp := range nm.discoveredControlPlanes {
-		fmt.Printf("Address: %s\n", cp.Address)
+		fmt.Printf("Address: %s, Hostname: %s\n", cp.Address, cp.Hostname)
 	}
 	//reading from Clusters map
 	for _, cp := range nm.discoveredClusters {
@@ -123,10 +142,25 @@ func Start(ctx context.Context, cl client.Client) error {
 		return fmt.Errorf("failed to get cluster address: %w", err)
 	}
 
+	clusterHostname, err := getClusterHostname()
+
+	if err != nil {
+		return fmt.Errorf("failed to get cluster hostname: %w", err)
+	}
+
+	ifi, err := net.InterfaceByName("eth1")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Interface: %s - MAC address: %s\n", ifi.Name, ifi.HardwareAddr)
+
 	nm := &NetworkManager{
 		discoveredControlPlanes: make(map[string]ControlPlaneInfo),
 
-		address: clusterAddress,
+		address:  clusterAddress,
+		hostname: clusterHostname,
+		iface:    ifi,
 	}
 
 	// Start sending multicast messages
@@ -214,4 +248,12 @@ func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
 	}
 
 	return "", fmt.Errorf("no suitable IPv4 address found for control plane")
+}
+
+func getClusterHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname: %v", err)
+	}
+	return hostname, nil
 }
