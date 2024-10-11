@@ -31,26 +31,25 @@ import (
 )
 
 // clusterRole
+// +kubebuilder:rbac:groups=network.fluidos.eu,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
-type ControlPlaneInfo struct {
-	Address  string `json:"address"`
-	Hostname string `json:"hostname"`
+type ClusterInfo struct {
+	Address string `json:"address"`
 }
 
 type NetworkManager struct {
-	discoveredControlPlanes map[string]ControlPlaneInfo
-	mu                      sync.Mutex
-	address                 string
-	hostname                string
-	iface                   *net.Interface
-	discoveredClusters      map[string]*clst.Cluster //da rivedere
+	context            context.Context
+	client             client.Client
+	mu                 sync.Mutex
+	address            string
+	iface              *net.Interface
+	discoveredClusters map[string]*clst.Cluster //da rivedere
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
-	info := ControlPlaneInfo{
-		Address:  nm.address,
-		Hostname: nm.hostname,
+	info := ClusterInfo{
+		Address: nm.address,
 	}
 	message, err := json.Marshal(info)
 	if err != nil {
@@ -99,30 +98,32 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			return err
 		}
 
-		var info ControlPlaneInfo
+		var info ClusterInfo
 		err = json.Unmarshal(buffer[:n], &info)
 		if err != nil {
 			fmt.Printf("Error unmarshalling message: %v\n", err)
 			continue
 		}
 
-		fmt.Printf("Discovered control plane:  Address=%s, Hostname=%s\n", info.Address, info.Hostname)
+		fmt.Printf("Discovered cluster:  Address=%s\n", info.Address)
 
 		//create cluster cr reference
 		discClst := frg.ForgeCluster(info.Address)
+		if err := nm.client.Create(nm.context, discClst); err != nil {
+			fmt.Printf("Error when creating Cluster: %s", err)
+			return err
+		}
+		fmt.Printf("Cluster %s created", discClst.Name)
 
 		//add recently discovered cluster *cr to map
 		nm.discoveredClusters[info.Address] = discClst //magari cambiamo la chiave in nodeID
 	}
 }
 
-func (nm *NetworkManager) printDiscoveredControlPlanes() {
+func (nm *NetworkManager) printDiscoveredClusters() {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	fmt.Println("Discovered Kubernetes Control Planes:")
-	for _, cp := range nm.discoveredControlPlanes {
-		fmt.Printf("Address: %s, Hostname: %s\n", cp.Address, cp.Hostname)
-	}
+
 	//reading from Clusters map
 	for _, cp := range nm.discoveredClusters {
 		fmt.Printf("Address in cluster list: %s\n", cp.Address)
@@ -130,7 +131,7 @@ func (nm *NetworkManager) printDiscoveredControlPlanes() {
 }
 
 func Start(ctx context.Context, cl client.Client) error {
-	fmt.Println("Starting Kubernetes control plane discovery")
+	fmt.Println("Starting Kubernetes cluster discovery")
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
@@ -142,12 +143,6 @@ func Start(ctx context.Context, cl client.Client) error {
 		return fmt.Errorf("failed to get cluster address: %w", err)
 	}
 
-	clusterHostname, err := getClusterHostname()
-
-	if err != nil {
-		return fmt.Errorf("failed to get cluster hostname: %w", err)
-	}
-
 	ifi, err := net.InterfaceByName("eth1")
 	if err != nil {
 		return err
@@ -156,11 +151,11 @@ func Start(ctx context.Context, cl client.Client) error {
 	fmt.Printf("Interface: %s - MAC address: %s\n", ifi.Name, ifi.HardwareAddr)
 
 	nm := &NetworkManager{
-		discoveredControlPlanes: make(map[string]ControlPlaneInfo),
-
-		address:  clusterAddress,
-		hostname: clusterHostname,
-		iface:    ifi,
+		context:            ctx,
+		client:             cl,
+		discoveredClusters: make(map[string]*clst.Cluster),
+		address:            clusterAddress,
+		iface:              ifi,
 	}
 
 	// Start sending multicast messages
@@ -186,13 +181,13 @@ func Start(ctx context.Context, cl client.Client) error {
 		}
 	}()
 
-	// Periodically print discovered control planes
+	// Periodically print discovered clusters
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		for {
 			select {
 			case <-ticker.C:
-				nm.printDiscoveredControlPlanes()
+				nm.printDiscoveredClusters()
 			case <-ctx.Done():
 				ticker.Stop()
 				return
@@ -205,15 +200,6 @@ func Start(ctx context.Context, cl client.Client) error {
 	return nil
 }
 
-// // These functions need to be implemented
-// func getControlPlaneID() (string, error) {
-// 	id := os.Getenv("CONTROL_PLANE_ID")
-// 	if id == "" {
-// 		return "", fmt.Errorf("CONTROL_PLANE_ID environment variable not set")
-// 	}
-// 	return id, nil
-// }
-
 func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
 	// First, try to get the IP from the API server
 
@@ -223,37 +209,5 @@ func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
 		return nodeIdentity.IP, nil
 	}
 
-	/*
-		host := os.Getenv("KUBERNETES_SERVICE_HOST") //--nope!uso getNodeIdentity in getters.go
-		if host != "" {
-			return host, nil
-		}
-	*/
-
-	// If that fails, try to get the node's IP
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "", fmt.Errorf("failed to get hostname: %v", err)
-	}
-
-	addrs, err := net.LookupIP(hostname)
-	if err != nil {
-		return "", fmt.Errorf("failed to lookup IPs: %v", err)
-	}
-
-	for _, addr := range addrs {
-		if ipv4 := addr.To4(); ipv4 != nil && !ipv4.IsLoopback() {
-			return ipv4.String(), nil
-		}
-	}
-
-	return "", fmt.Errorf("no suitable IPv4 address found for control plane")
-}
-
-func getClusterHostname() (string, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "", fmt.Errorf("failed to get hostname: %v", err)
-	}
-	return hostname, nil
+	return "", fmt.Errorf("no suitable IPv4 address found for cluster")
 }
