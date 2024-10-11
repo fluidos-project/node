@@ -25,7 +25,7 @@ A Helm chart for Fluidos Node
 | localResourceManager.pod.labels | object | `{}` | Labels for the local-resource-manager pod. |
 | localResourceManager.pod.resources | object | `{"limits":{},"requests":{}}` | Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the local-resource-manager pod. |
 | localResourceManager.replicas | int | `1` | The number of REAR Controller, which can be increased for active/passive high availability. |
-| networkManager.configMaps.network.firstOctet | int | `10` | The first octet of the CNI virtual network subnet |
+| networkManager.configMaps.network.firstOctet | string | `"10"` | The first octet of the CNI virtual network subnet |
 | networkManager.configMaps.network.secondOctet | string | `nil` | The second octet of the CNI virtual network subnet |
 | networkManager.configMaps.network.thirdOctet | string | `nil` | The third octet of the CNI virtual network subnet |
 | networkManager.configMaps.nodeIdentity.domain | string | `""` | The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes |
