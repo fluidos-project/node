@@ -56,7 +56,7 @@ func (r *Contract) ValidateCreate() (admission.Warnings, error) {
 	contractlog.Info("CONTRACT VALIDATE CREATE WEBHOOK")
 	contractlog.Info("validate create", "name", r.Name)
 
-	if err := validateConfiguration(r.Spec.Configuration); err != nil {
+	if err := validateConfiguration(r.Spec.Configuration, &r.Spec.Flavor); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +70,7 @@ func (r *Contract) ValidateUpdate(old runtime.Object) (admission.Warnings, error
 
 	contractlog.Info("old", "old", old)
 
-	if err := validateConfiguration(r.Spec.Configuration); err != nil {
+	if err := validateConfiguration(r.Spec.Configuration, &r.Spec.Flavor); err != nil {
 		return nil, err
 	}
 
@@ -86,12 +86,12 @@ func (r *Contract) ValidateDelete() (admission.Warnings, error) {
 	return nil, nil
 }
 
-func validateConfiguration(configuration *nodecorev1alpha1.Configuration) error {
+func validateConfiguration(configuration *nodecorev1alpha1.Configuration, flavor *nodecorev1alpha1.Flavor) error {
 	if configuration == nil {
 		return nil
 	}
 	// Validate creation of Contract checking ContractType->typeIdentifier matches the struct inside the ContractType->TypeData
-	typeIdentifier, _, err := nodecorev1alpha1.ParseConfiguration(configuration)
+	typeIdentifier, _, err := nodecorev1alpha1.ParseConfiguration(configuration, flavor)
 	if err != nil {
 		return err
 	}

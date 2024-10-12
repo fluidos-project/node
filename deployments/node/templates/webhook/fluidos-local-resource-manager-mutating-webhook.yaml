@@ -27,3 +27,24 @@ webhooks:
     resources:
     - flavors
   sideEffects: None
+# Service Blueprint mutating webhook
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-nodecore-fluidos-eu-v1alpha1-serviceblueprint
+  failurePolicy: Fail
+  name: mutate.serviceblueprint.nodecore.fluidos.eu
+  rules:
+  - apiGroups:
+    - nodecore.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - serviceblueprints
+  sideEffects: None

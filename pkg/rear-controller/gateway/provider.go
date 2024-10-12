@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -102,30 +103,10 @@ func (g *Gateway) getK8SliceFlavorsBySelector(w http.ResponseWriter, r *http.Req
 	// Print the selector information parsing it:
 	klog.Infof("Selector type: %s", selector.GetSelectorType())
 
-	flavors, err := services.GetAllFlavors(g.client)
+	flavors, err := services.GetAvailableFlavors(g.client)
 	if err != nil {
 		klog.Errorf("Error getting all the Flavor CRs: %s", err)
 		http.Error(w, "Error getting all the Flavor CRs", http.StatusInternalServerError)
-		return
-	}
-
-	klog.Infof("Found %d Flavors in the cluster", len(flavors))
-
-	availableFlavors := make([]nodecorev1alpha1.Flavor, 0)
-
-	// Filtering only the available flavors
-	for i := range flavors {
-		if flavors[i].Spec.Availability {
-			availableFlavors = append(availableFlavors, flavors[i])
-		}
-	}
-
-	klog.Infof("Available Flavors: %d", len(availableFlavors))
-	if len(availableFlavors) == 0 {
-		klog.Infof("No available Flavors found")
-		// Return content for empty list
-		emptyList := make([]models.Flavor, 0)
-		encodeResponseStatusCode(w, emptyList, http.StatusNoContent)
 		return
 	}
 
@@ -137,7 +118,7 @@ func (g *Gateway) getK8SliceFlavorsBySelector(w http.ResponseWriter, r *http.Req
 	}
 
 	klog.Infof("Filtering Flavors by selector...")
-	flavorsSelected, err := common.FilterFlavorsBySelector(availableFlavors, selector)
+	flavorsSelected, err := common.FilterFlavorsBySelector(flavors, selector)
 	if err != nil {
 		http.Error(w, "Error getting the Flavors by selector", http.StatusInternalServerError)
 		return
@@ -156,7 +137,73 @@ func (g *Gateway) getK8SliceFlavorsBySelector(w http.ResponseWriter, r *http.Req
 	// Parse the flavors CR to the models.Flavor struct
 	flavorsParsed := make([]models.Flavor, 0)
 	for i := range flavorsSelected {
-		parsedFlavor := parseutil.ParseFlavor(&availableFlavors[i])
+		parsedFlavor := parseutil.ParseFlavor(&flavors[i])
+		if parsedFlavor == nil {
+			klog.Errorf("Error parsing the Flavor: %s", err)
+			continue
+		}
+		flavorsParsed = append(flavorsParsed, *parsedFlavor)
+	}
+
+	// Encode the Flavor as JSON and write it to the response writer
+	encodeResponse(w, flavorsParsed)
+}
+
+// getServiceFlavorsBySelector gets the flavor CRs from the cluster that match the selector.
+func (g *Gateway) getServiceFlavorsBySelector(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	klog.Infof("Processing request for getting Service Flavors by selector...")
+
+	klog.Infof("URL: %s", r.URL.String())
+
+	// build the selector from the url query parameters
+	selector, err := queryParamToSelector(r.URL.Query(), models.ServiceNameDefault)
+	if err != nil {
+		klog.Errorf("Error building the selector from the URL query parameters: %s", err)
+		http.Error(w, "Error building the selector from the URL query parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Print the selector information parsing it:
+	klog.Infof("Selector type: %s", selector.GetSelectorType())
+
+	// Get the available flavors
+	flavors, err := services.GetAvailableFlavors(g.client)
+	if err != nil {
+		klog.Errorf("Error getting the available Flavors: %s", err)
+		http.Error(w, "Error getting the available Flavors", http.StatusInternalServerError)
+		return
+	}
+
+	klog.Infof("Checking selector syntax...")
+	if err := common.CheckSelector(selector); err != nil {
+		klog.Errorf("Error checking the selector syntax: %s", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	klog.Infof("Filtering Flavors by selector...")
+	flavorsSelected, err := common.FilterFlavorsBySelector(flavors, selector)
+	if err != nil {
+		http.Error(w, "Error getting the Flavors by selector", http.StatusInternalServerError)
+		return
+	}
+
+	klog.Infof("Flavors found that match the selector are: %d", len(flavorsSelected))
+
+	if len(flavorsSelected) == 0 {
+		klog.Infof("No matching Flavors found")
+		// Return content for empty list
+		emptyList := make([]models.Flavor, 0)
+		encodeResponse(w, emptyList)
+		return
+	}
+
+	// Parse the flavors CR to the models.Flavor struct
+	flavorsParsed := make([]models.Flavor, 0)
+	for i := range flavorsSelected {
+		parsedFlavor := parseutil.ParseFlavor(&flavorsSelected[i])
 		if parsedFlavor == nil {
 			klog.Errorf("Error parsing the Flavor: %s", err)
 			continue
@@ -195,7 +242,7 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get the flavor type
-	flavorTypeIdentifier, _, err := nodecorev1alpha1.ParseFlavorType(flavor)
+	flavorTypeIdentifier, flavorData, err := nodecorev1alpha1.ParseFlavorType(flavor)
 	if err != nil {
 		klog.Errorf("Error parsing the Flavor type: %s", err)
 		http.Error(w, "Error parsing the Flavor type", http.StatusInternalServerError)
@@ -207,8 +254,130 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 		// The configuration is not necessary for the K8Slice flavor
 		if request.Configuration == nil {
 			klog.Info("No configuration provided for K8Slice flavor")
+		} else {
+			// Configuration type is the K8SliceConfiguration
+			if request.Configuration.Type != models.K8SliceNameDefault {
+				klog.Errorf("Configuration type %s not supported", request.Configuration.Type)
+				http.Error(w, "Configuration type not supported", http.StatusBadRequest)
+				return
+			}
+			// Forge the configuration object
+			configuration, err := resourceforge.ForgeConfigurationFromObj(*request.Configuration)
+			if err != nil {
+				klog.Errorf("Error forging the configuration object: %s", err)
+				http.Error(w, "Error forging the configuration object", http.StatusInternalServerError)
+				return
+			}
+			// Parse the configuration
+			_, _, err = nodecorev1alpha1.ParseConfiguration(configuration, flavor)
+			if err != nil {
+				klog.Errorf("Error parsing the configuration: %s", err)
+				http.Error(w, "Error parsing the configuration", http.StatusInternalServerError)
+				return
+			}
+			// No further checks are needed for the K8Slice flavor configuration
+			// TODO(K8Slice): Implement the K8Slice flavor configuration checks if needed
 		}
-		// TODO: Implement the other flavor types
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement the VM flavor configuration
+		klog.Errorf("Flavor type %s not supported", flavorTypeIdentifier)
+		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
+		return
+	case nodecorev1alpha1.TypeService:
+		if request.Configuration == nil {
+			klog.Errorf("No configuration provided for Service flavor")
+
+			// Need to check that the flavor can be used without a configuration
+			// Create fake empty service configuration
+			emptyServiceConfiguration := nodecorev1alpha1.ServiceConfiguration{
+				HostingPolicy: nil,
+				ConfigurationData: runtime.RawExtension{
+					Raw: []byte("{}"),
+				},
+			}
+
+			// Force casting the flavor data to the ServiceFlavor type
+			serviceFlavor, ok := flavorData.(*nodecorev1alpha1.ServiceFlavor)
+			if !ok {
+				klog.Errorf("Error casting the flavor data to ServiceFlavor")
+				http.Error(w, "Error casting the flavor data to ServiceFlavor", http.StatusInternalServerError)
+				return
+			}
+
+			// Validate the empty service configuration
+			if err := emptyServiceConfiguration.Validate(serviceFlavor); err != nil {
+				// The flavor cannot be used without a configuration
+				klog.Errorf("Error validating the flavor without a configuration: %s", err)
+				http.Error(w, "Error validating the flavor without a configuration. A configuration is required", http.StatusBadRequest)
+				return
+			}
+		} else {
+			// Configuration type is the ServiceConfiguration
+			if request.Configuration.Type != models.ServiceNameDefault {
+				klog.Errorf("Configuration type %s not supported", request.Configuration.Type)
+				http.Error(w, "Configuration type not supported", http.StatusBadRequest)
+				return
+			}
+			// Forge the configuration object
+			configuration, err := resourceforge.ForgeConfigurationFromObj(*request.Configuration)
+			if err != nil {
+				klog.Errorf("Error forging the configuration object: %s", err)
+				http.Error(w, "Error forging the configuration object", http.StatusInternalServerError)
+				return
+			}
+			// Parse the configuration and validate it over the ServiceFlavor
+			configurationType, configurationData, err := nodecorev1alpha1.ParseConfiguration(configuration, flavor)
+			if err != nil {
+				klog.Errorf("Error parsing the configuration: %s", err)
+				http.Error(w, "Error parsing the configuration", http.StatusInternalServerError)
+				return
+			}
+			if configurationType != nodecorev1alpha1.TypeService {
+				klog.Errorf("Configuration type %s not supported", configurationType)
+				http.Error(w, "Configuration type not supported", http.StatusBadRequest)
+				return
+			}
+			// Force cast the configuration data to the ServiceConfiguration type
+			serviceConfiguration, ok := configurationData.(nodecorev1alpha1.ServiceConfiguration)
+			if !ok {
+				klog.Errorf("Error casting the configuration data to ServiceConfiguration")
+				http.Error(w, "Error casting the configuration data to ServiceConfiguration", http.StatusInternalServerError)
+				return
+			}
+
+			// Check the hosting policy is supported by the flavor
+			if serviceConfiguration.HostingPolicy != nil {
+				// Force cast the flavor data to the ServiceFlavor type
+				serviceFlavor, ok := flavorData.(*nodecorev1alpha1.ServiceFlavor)
+				if !ok {
+					klog.Errorf("Error casting the flavor data to ServiceFlavor")
+					http.Error(w, "Error casting the flavor data to ServiceFlavor", http.StatusInternalServerError)
+					return
+				}
+
+				// Check if the hosting policy is included in the supported hosting policies by the service flavor
+				supported := false
+				for _, hp := range serviceFlavor.HostingPolicies {
+					if hp == *serviceConfiguration.HostingPolicy {
+						supported = true
+						break
+					}
+				}
+
+				if !supported {
+					klog.Errorf("Hosting policy %s not supported by the flavor", serviceConfiguration.HostingPolicy)
+					http.Error(w, "Hosting policy not supported by the flavor", http.StatusBadRequest)
+					return
+				}
+			}
+
+			klog.Info("Service flavor configuration validated")
+		}
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement the Sensor flavor configuration
+		klog.Errorf("Flavor type %s not supported", flavorTypeIdentifier)
+		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
+		return
 	default:
 		klog.Errorf("Flavor type %s not supported", flavorTypeIdentifier)
 		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
@@ -220,7 +389,7 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 	if found {
 		t.ExpirationTime = tools.GetExpirationTime()
 		transaction = t
-		g.addNewTransacion(t)
+		g.addNewTransaction(t)
 	}
 
 	if !found {
@@ -243,7 +412,7 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 		transaction = resourceforge.ForgeTransactionObj(transactionID, &request)
 
 		// Add the transaction to the transactions map
-		g.addNewTransacion(transaction)
+		g.addNewTransaction(transaction)
 	}
 
 	klog.Infof("Transaction %s reserved", transaction.TransactionID)
@@ -319,7 +488,50 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	liqoCredentials, err := getters.GetLiqoCredentials(context.Background(), g.client)
+	var liqoCredentials *nodecorev1alpha1.LiqoCredentials
+
+	// According to the flavor type, create the contract with the right liqo credentials
+	switch flavorSold.Spec.FlavorType.TypeIdentifier {
+	case nodecorev1alpha1.TypeK8Slice:
+		// Create a new Liqo credentials for the K8Slice flavor based on the ones provided by the provider
+		liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), g.client)
+		if err != nil {
+			klog.Errorf("Error getting Liqo Credentials: %s", err)
+			http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)
+			return
+		}
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement the VM flavor contract
+		klog.Errorf("Flavor type %s not supported", flavorSold.Spec.FlavorType.TypeIdentifier)
+		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
+		return
+	case nodecorev1alpha1.TypeService:
+		// Check client sent its liqo credentials
+		if purchase.LiqoCredentials == nil {
+			klog.Errorf("Error: Liqo credentials not provided")
+			http.Error(w, "Error: Liqo credentials not provided", http.StatusBadRequest)
+			return
+		}
+		// Override the Liqo credentials with the ones sent by the client
+		liqoCredentials, err = resourceforge.ForgeLiqoCredentialsFromObj(purchase.LiqoCredentials)
+		if err != nil {
+			klog.Errorf("Error forging the Liqo credentials: %s", err)
+			http.Error(w, "Error forging the Liqo credentials", http.StatusInternalServerError)
+			return
+		}
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement the Sensor flavor contract
+		klog.Errorf("Flavor type %s not supported", flavorSold.Spec.FlavorType.TypeIdentifier)
+		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
+		return
+	default:
+		klog.Errorf("Flavor type %s not supported", flavorSold.Spec.FlavorType.TypeIdentifier)
+		http.Error(w, "Flavor type not supported", http.StatusBadRequest)
+		return
+	}
+
+	// Obtaining the Seller Liqo Cluster ID
+	sellerLiqoCredentials, err := getters.GetLiqoCredentials(context.Background(), g.client)
 	if err != nil {
 		klog.Errorf("Error getting Liqo Credentials: %s", err)
 		http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)
@@ -328,7 +540,8 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new contract
 	klog.Infof("Creating a new contract...")
-	contract = *resourceforge.ForgeContract(flavorSold, &transaction, liqoCredentials)
+	// Forge the contract object
+	contract = *resourceforge.ForgeContract(flavorSold, &transaction, liqoCredentials, sellerLiqoCredentials.ClusterID)
 	err = g.client.Create(context.Background(), &contract)
 	if err != nil {
 		klog.Errorf("Error creating the Contract: %s", err)

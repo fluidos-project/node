@@ -66,14 +66,35 @@ func ParseFlavorSelector(selector *nodecorev1alpha1.Selector) (models.Selector, 
 
 	case nodecorev1alpha1.TypeVM:
 		// Force casting of selectorStruct to VM
-		// TODO: Implement the parsing of the VM selector
+		// TODO (VM): Implement the parsing of the VM selector
 		return nil, fmt.Errorf("VM selector not implemented")
 
 	case nodecorev1alpha1.TypeService:
 		// Force casting of selectorStruct to Service
-		// TODO: Implement the parsing of the Service selector
-		return nil, fmt.Errorf("service selector not implemented")
+		if selectorStruct == nil {
+			return models.ServiceSelector{
+				Category: nil,
+				Tags:     nil,
+			}, nil
+		}
+		selectorStruct := selectorStruct.(nodecorev1alpha1.ServiceSelector)
+		klog.Info("Forced casting of selectorStruct to Service")
+		// Print the selectorStruct
+		klog.Infof("SelectorStruct: %v", selectorStruct)
+		// Generate the model for the Service selector
+		serviceSelector, err := parseServiceFilters(&selectorStruct)
+		if err != nil {
+			return nil, err
+		}
 
+		klog.Infof("ServiceSelector: %v", serviceSelector)
+
+		return *serviceSelector, nil
+
+	case nodecorev1alpha1.TypeSensor:
+		// Force casting of selectorStruct to Sensor
+		// TODO (Sensor): Implement the parsing of the Sensor selector
+		return nil, fmt.Errorf("sensor selector not implemented")
 	default:
 		return nil, fmt.Errorf("unknown selector type")
 	}
@@ -212,6 +233,7 @@ func ParseStringFilter(filter *nodecorev1alpha1.StringFilter) (models.StringFilt
 	return filterModel, nil
 }
 
+// parseK8SliceFilters parses a K8SliceSelector into a K8SliceSelector model.
 func parseK8SliceFilters(k8sSelector *nodecorev1alpha1.K8SliceSelector) (*models.K8SliceSelector, error) {
 	var architectureFilterModel models.StringFilter
 	var cpuFilterModel, memoryFilterModel, podsFilterModel, storageFilterModel models.ResourceQuantityFilter
@@ -303,12 +325,53 @@ func parseK8SliceFilters(k8sSelector *nodecorev1alpha1.K8SliceSelector) (*models
 	return &k8SliceSelector, nil
 }
 
-// ParseConfiguration creates a Configuration Object from a Configuration CR.
-func ParseConfiguration(configuration *nodecorev1alpha1.Configuration) *models.Configuration {
-	// Parse the Configuration
-	configurationType, configurationStruct, err := nodecorev1alpha1.ParseConfiguration(configuration)
+func parseServiceFilters(serviceSelector *nodecorev1alpha1.ServiceSelector) (*models.ServiceSelector, error) {
+	var categoryFilterModel models.StringFilter
+	var tagsFilterModel models.StringFilter
+
+	// Parse the Category filter
+	categoryFilterModel, err := ParseStringFilter(serviceSelector.CategoryFilter)
 	if err != nil {
-		return nil
+		return nil, err
+	}
+	if categoryFilterModel.Data == nil {
+		klog.Info("Category filter is nil")
+	}
+
+	// Parse the Tags filter
+	tagsFilterModel, err = ParseStringFilter(serviceSelector.TagsFilter)
+	if err != nil {
+		return nil, err
+	}
+	if tagsFilterModel.Data == nil {
+		klog.Info("Tags filter is nil")
+	}
+
+	// Generate the model for the Service selector
+	serviceSelectorModel := models.ServiceSelector{
+		Category: func() *models.StringFilter {
+			if serviceSelector.CategoryFilter != nil {
+				return &categoryFilterModel
+			}
+			return nil
+		}(),
+		Tags: func() *models.StringFilter {
+			if serviceSelector.TagsFilter != nil {
+				return &tagsFilterModel
+			}
+			return nil
+		}(),
+	}
+
+	return &serviceSelectorModel, nil
+}
+
+// ParseConfiguration creates a Configuration Object from a Configuration CR.
+func ParseConfiguration(configuration *nodecorev1alpha1.Configuration, flavor *nodecorev1alpha1.Flavor) (*models.Configuration, error) {
+	// Parse the Configuration
+	configurationType, configurationStruct, err := nodecorev1alpha1.ParseConfiguration(configuration, flavor)
+	if err != nil {
+		return nil, err
 	}
 
 	switch configurationType {
@@ -335,15 +398,47 @@ func ParseConfiguration(configuration *nodecorev1alpha1.Configuration) *models.C
 		configurationData, err := json.Marshal(k8sliceConfigurationJSON)
 		if err != nil {
 			klog.Errorf("Error marshaling the K8Slice configuration: %s", err)
-			return nil
+			return nil, err
 		}
 		return &models.Configuration{
 			Type: models.K8SliceNameDefault,
 			Data: configurationData,
+		}, nil
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement the parsing of the VM configuration
+		return nil, fmt.Errorf("VM configuration not implemented")
+	case nodecorev1alpha1.TypeService:
+		configuration, ok := configurationStruct.(nodecorev1alpha1.ServiceConfiguration)
+		if !ok {
+			return nil, fmt.Errorf("error casting the configuration to ServiceConfiguration")
 		}
-		// TODO: Implement the other configuration types, if any
+		serviceConfiguration := models.ServiceConfiguration{
+			HostingPolicy: func() *models.HostingPolicy {
+				if configuration.HostingPolicy != nil {
+					hp := models.MapToModelHostingPolicy(*configuration.HostingPolicy)
+					return &hp
+				}
+				return nil
+			}(),
+			ConfigurationData: json.RawMessage(configuration.ConfigurationData.Raw),
+		}
+
+		// Marshal the Service configuration to JSON
+		configurationData, err := json.Marshal(serviceConfiguration)
+		if err != nil {
+			klog.Errorf("Error marshaling the Service configuration: %s", err)
+			return nil, err
+		}
+		return &models.Configuration{
+			Type: models.ServiceNameDefault,
+			Data: configurationData,
+		}, nil
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement the parsing of the Sensor configuration
+		return nil, fmt.Errorf("sensor configuration not implemented")
+	// TODO: Implement the other configuration types, if any
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown configuration type")
 	}
 }
 
@@ -353,6 +448,14 @@ func ParseNodeIdentity(node nodecorev1alpha1.NodeIdentity) models.NodeIdentity {
 		NodeID: node.NodeID,
 		IP:     node.IP,
 		Domain: node.Domain,
+		AdditionalInformation: func() *models.NodeIdentityAdditionalInfo {
+			if node.AdditionalInformation != nil {
+				return &models.NodeIdentityAdditionalInfo{
+					LiqoID: node.AdditionalInformation.LiqoID,
+				}
+			}
+			return nil
+		}(),
 	}
 }
 
@@ -462,6 +565,8 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 		return nil
 	}
 
+	klog.Infof("Parsing Flavor type %s", flavorType)
+
 	var modelFlavorType models.FlavorType
 
 	switch flavorType {
@@ -532,7 +637,42 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 			Name: models.K8SliceNameDefault,
 			Data: encodedFlavorTypeData,
 		}
-	// TODO: Implement the other flavor types
+	case nodecorev1alpha1.TypeVM:
+		// TODO (VM): Implement the parsing of the VM flavor
+		klog.Errorf("VM flavor not supported yet")
+		return nil
+	case nodecorev1alpha1.TypeService:
+		flavorTypeStruct := flavorTypeStruct.(nodecorev1alpha1.ServiceFlavor)
+		modelFlavorTypeData := models.ServiceFlavor{
+			Name:        flavorTypeStruct.Name,
+			Description: flavorTypeStruct.Description,
+			Category:    flavorTypeStruct.Category,
+			Tags:        flavorTypeStruct.Tags,
+			HostingPolicies: func() []models.HostingPolicy {
+				var hostingPolicies []models.HostingPolicy
+				for _, policy := range flavorTypeStruct.HostingPolicies {
+					hostingPolicies = append(hostingPolicies, models.MapToModelHostingPolicy(policy))
+				}
+				return hostingPolicies
+			}(),
+			ConfigurationTemplate: json.RawMessage(flavorTypeStruct.ConfigurationTemplate.Raw),
+		}
+
+		// Encode the Service data into JSON
+		encodedFlavorTypeData, err := json.Marshal(modelFlavorTypeData)
+		if err != nil {
+			klog.Errorf("Error encoding the Service data: %s", err)
+			return nil
+		}
+
+		modelFlavorType = models.FlavorType{
+			Name: models.ServiceNameDefault,
+			Data: encodedFlavorTypeData,
+		}
+	case nodecorev1alpha1.TypeSensor:
+		// TODO (Sensor): Implement the parsing of the Sensor flavor
+		klog.Errorf("Sensor flavor not supported yet")
+		return nil
 	default:
 		klog.Errorf("Unknown flavor type: %s", flavorType)
 		return nil
@@ -579,7 +719,11 @@ func ParseContract(contract *reservationv1alpha1.Contract) *models.Contract {
 		TransactionID:  contract.Spec.TransactionID,
 		Configuration: func() *models.Configuration {
 			if contract.Spec.Configuration != nil {
-				configuration := ParseConfiguration(contract.Spec.Configuration)
+				configuration, err := ParseConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor)
+				if err != nil {
+					klog.Errorf("Error when parsing configuration: %s", err)
+					return nil
+				}
 				return configuration
 			}
 			return nil

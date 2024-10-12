@@ -43,3 +43,15 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - serviceblueprints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

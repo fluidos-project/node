@@ -133,7 +133,7 @@ func Start(ctx context.Context, cl client.Client) error {
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
-		multicastAddress = "224.0.0.155:4000" // Default multicast address if not specified
+		multicastAddress = "239.11.11.1:4000" // Default multicast address if not specified
 	}
 
 	clusterAddress, err := getClusterAddress(ctx, cl)

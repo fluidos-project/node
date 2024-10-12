@@ -22,3 +22,9 @@ func (allocation *Allocation) SetStatus(status Status, msg string) {
 	allocation.Status.LastUpdateTime = tools.GetTimeNow()
 	allocation.Status.Message = msg
 }
+
+// SetResourceRef sets the resource reference of the allocation.
+func (allocation *Allocation) SetResourceRef(resourceRef GenericRef) {
+	allocation.Status.ResourceRef = resourceRef
+	allocation.Status.LastUpdateTime = tools.GetTimeNow()
+}

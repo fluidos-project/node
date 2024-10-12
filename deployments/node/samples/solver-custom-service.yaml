@@ -1,0 +1,30 @@
+apiVersion: nodecore.fluidos.eu/v1alpha1
+kind: Solver
+metadata:
+  name: solver-sample-service
+  namespace: fluidos
+spec:
+  # This is the Selector used to find a Flavor (FLUIDOS node) that matches the requirements
+  selector:
+    # The flavorType is the type of the Flavor (FLUIDOS node) that the solver should find
+    flavorType: Service
+    # The filters are used to filter the Flavors (FLUIDOS nodes) that the solver should consider
+    filters:
+      # Category filter is used to filter the Service Flavors (FLUIDOS nodes) based on the Category
+      categoryFilter:
+        name: Match
+        data:
+          value: "database"
+      # Tags filter is used to filter the Service Flavors (FLUIDOS nodes) based on the Tags
+      tagsFilter:
+        name: Match
+        data:
+          value: "mysql"
+  # The intentID is the ID of the intent that the solver should satisfy
+  intentID: "intent-sample-service"
+  # This flag is used to indicate that the solver should find a candidate (FLUIDOS node)
+  findCandidate: true
+  # This flag is used to indicate that the solver should reserve and buy the resources from the candidate (FLUIDOS node)
+  reserveAndBuy: false
+  # This flag is used to indicate that the solver should establish peering with the candidate (FLUIDOS node)
+  establishPeering: false

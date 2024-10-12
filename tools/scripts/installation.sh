@@ -6,8 +6,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR"/utils.sh
 
-declare -A providers_ips
-
 # PIDs of the processes in background
 pids=()
 
@@ -64,9 +62,6 @@ function install_components() {
 
     unset clusters
     declare -A clusters
-
-    unset providers_ips
-    declare -A providers_ips
 
     # Get consumer JSON tmp file from parameter
     consumers_json=$1
@@ -150,32 +145,6 @@ function install_components() {
         echo "Cluster is: $cluster"
         echo "Cluster value is: ${clusters[$cluster]}"
 
-        # Create list of providers ip taking all the clusters controlplane IPs from the map and put it ina  string separated by commas
-        for provider in "${!clusters[@]}"; do
-            # Check if the cluster is not the current one
-            # Check if the cluster is a provider
-            cluster_role=$(jq -r '.role' <<< "${clusters[$provider]}")
-            # Print cluster role
-            echo "Cluster role is: $cluster_role"
-            if [ "$provider" != "$cluster" ] && [ "$cluster_role" == "provider" ]; then
-                # Print the specific cluster informations
-                echo "Provider cluster: $provider"
-                echo "Value: ${clusters[$provider]}"
-                ip_value="${clusters[$provider]}"
-                ip=$(jq -r '.ip' <<< "$ip_value")
-                # Add the provider port to the IP
-                ip="$ip:$provider_node_port"
-
-                if [ -z "${providers_ips[$cluster]}" ]; then
-                    providers_ips[$cluster]="$ip"
-                else
-                    providers_ips[$cluster]="${providers_ips[$cluster]}\,$ip"
-                fi
-            fi
-        done
-
-        echo "Providers IPs for cluster $cluster: ${providers_ips[$cluster]}"
-
         # Get the kubeconfig file which depends on variable installation_type
         KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
 
@@ -242,7 +211,6 @@ function install_components() {
                 --set tag=$VERSION \
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
                 --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
@@ -251,7 +219,6 @@ function install_components() {
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
                 --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"

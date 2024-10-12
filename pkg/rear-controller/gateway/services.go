@@ -42,9 +42,14 @@ func searchFlavorWithSelector(ctx context.Context, selector models.Selector, add
 	switch selector.GetSelectorType() {
 	case models.K8SliceNameDefault:
 		url = fmt.Sprintf("http://%s%s", addr, Routes.K8SliceFlavors)
-		// Convert the selector to query parameters
-	// TODO: Implement the other selector types
-
+	case models.VMNameDefault:
+		// TODO (VM): Implement the VM selector type
+		return nil, fmt.Errorf("unsupported selector type %s", selector.GetSelectorType())
+	case models.ServiceNameDefault:
+		url = fmt.Sprintf("http://%s%s", addr, Routes.ServiceFlavors)
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement the Sensor selector type
+		return nil, fmt.Errorf("unsupported selector type %s", selector.GetSelectorType())
 	default:
 		return nil, fmt.Errorf("unsupported selector type")
 	}

@@ -35,7 +35,15 @@ func selectorToQueryParams(selector models.Selector) (string, error) {
 	case models.K8SliceNameDefault:
 		k8sliceSelector := selector.(models.K8SliceSelector)
 		return encodeK8SliceSelector(k8sliceSelector)
-	// TODO: Implement the other selector types
+	case models.VMNameDefault:
+		// TODO (VM): Implement the VM selector type
+		return "", fmt.Errorf("unsupported selector type %s", selector.GetSelectorType())
+	case models.ServiceNameDefault:
+		serviceSelector := selector.(models.ServiceSelector)
+		return encodeServiceSelector(serviceSelector)
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement the Sensor selector type
+		return "", fmt.Errorf("unsupported selector type %s", selector.GetSelectorType())
 	default:
 		return "", fmt.Errorf("unsupported selector type")
 	}
@@ -57,6 +65,18 @@ func queryParamToSelector(queryValues url.Values, selectorType models.FlavorType
 			return nil, err
 		}
 		return *k8sliceSelector, nil
+	case models.VMNameDefault:
+		// TODO (VM): Implement the VM query param to selector conversion
+		return nil, fmt.Errorf("unsupported selector type %s", selectorType)
+	case models.ServiceNameDefault:
+		serviceSelector, err := decodeServiceSelector(queryValues)
+		if err != nil {
+			return nil, err
+		}
+		return *serviceSelector, nil
+	case models.SensorNameDefault:
+		// TODO (Sensor): Implement the Sensor query param to selector conversion
+		return nil, fmt.Errorf("unsupported selector type %s", selectorType)
 	default:
 		return nil, fmt.Errorf("unsupported selector type")
 	}
@@ -81,8 +101,8 @@ func (g *Gateway) SearchTransaction(buyerID, flavorID string) (*models.Transacti
 	return &models.Transaction{}, false
 }
 
-// addNewTransacion add a new transaction to the transactions map.
-func (g *Gateway) addNewTransacion(transaction *models.Transaction) {
+// addNewTransaction add a new transaction to the transactions map.
+func (g *Gateway) addNewTransaction(transaction *models.Transaction) {
 	g.Transactions[transaction.TransactionID] = transaction
 }
 
@@ -150,6 +170,35 @@ func encodeK8SliceSelector(selector models.K8SliceSelector) (string, error) {
 			values += fmt.Sprintf("[storage]%s=%s&", key, value)
 		}
 	}
+
+	// Remove trailing "&" if present
+	if values != "" && values[len(values)-1] == '&' {
+		values = values[:len(values)-1]
+	}
+
+	return values, nil
+}
+
+func encodeServiceSelector(selector models.ServiceSelector) (string, error) {
+	var values string
+
+	if selector.Category != nil {
+		klog.Info("Encoding Category")
+		categoryEncoded := encodeStringFilter(reflect.ValueOf(selector.Category))
+		for key, value := range categoryEncoded {
+			values += fmt.Sprintf("filter[category]%s=%s&", key, value)
+		}
+	}
+
+	if selector.Tags != nil {
+		klog.Info("Encoding Tags")
+		tagsEncoded := encodeStringFilter(reflect.ValueOf(selector.Tags))
+		for key, value := range tagsEncoded {
+			values += fmt.Sprintf("filter[tags]%s=%s&", key, value)
+		}
+	}
+
+	// TODO(Service): Add more filters encoding here
 
 	// Remove trailing "&" if present
 	if values != "" && values[len(values)-1] == '&' {
@@ -449,6 +498,56 @@ func decodeK8SliceSelector(values url.Values) (*models.K8SliceSelector, error) {
 			}
 			selector.Storage = filter
 			klog.Infof("Selector Storage: %v", selector.Storage)
+		default:
+			return nil, fmt.Errorf("invalid resource: %s", resource)
+		}
+	}
+
+	return &selector, nil
+}
+
+func decodeServiceSelector(values url.Values) (*models.ServiceSelector, error) {
+	selector := models.ServiceSelector{}
+
+	// Define the regex pattern for the expected keys
+	keyPattern := regexp.MustCompile(`^filter\[(category|tags)\]\[(match)\]$`)
+
+	for key, value := range values {
+		// Check if the key matches the expected pattern
+		if !keyPattern.MatchString(key) {
+			return nil, fmt.Errorf("invalid key format: %s", key)
+		}
+
+		klog.Infof("Decoding key: %s", key)
+
+		parts := strings.Split(key, "[")
+		resource := parts[1][:len(parts[1])-1]
+		filterType := parts[2][:len(parts[2])-1]
+
+		// Convert filterType to FilterType
+		var filterTypeName models.FilterType
+		switch filterType {
+		case "match":
+			filterTypeName = models.MatchFilter
+		default:
+			return nil, fmt.Errorf("invalid filter type: %s", filterType)
+		}
+
+		switch resource {
+		case "category":
+			filter, err := decodeStringFilter(filterTypeName, selector.Category, value)
+			if err != nil {
+				return nil, err
+			}
+			selector.Category = filter
+			klog.Infof("Selector Category: %v", selector.Category)
+		case "tags":
+			filter, err := decodeStringFilter(filterTypeName, selector.Tags, value)
+			if err != nil {
+				return nil, err
+			}
+			selector.Tags = filter
+			klog.Infof("Selector Tags: %v", selector.Tags)
 		default:
 			return nil, fmt.Errorf("invalid resource: %s", resource)
 		}

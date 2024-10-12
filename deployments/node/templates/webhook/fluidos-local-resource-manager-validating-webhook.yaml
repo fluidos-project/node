@@ -27,25 +27,24 @@ webhooks:
     resources:
     - flavors
   sideEffects: None
-# - admissionReviewVersions:
-#   - v1
-#   - v1beta1
-#   clientConfig:
-#     service:
-#       name: {{ include "fluidos.prefixedName" $resManagerConfig }}
-#       namespace: {{ .Release.Namespace }}
-#       path: /validate/peeringcandidate
-#   failurePolicy: Ignore
-#   name: pc.validate.fluidos.eu
-#   rules:
-#   - apiGroups:
-#     - advertisement.node.fluidos.io
-#     apiVersions:
-#     - v1alpha1
-#     operations:
-#     - CREATE
-#     - UPDATE
-#     - DELETE
-#     resources:
-#     - peeringcandidates
-#   sideEffects: None
+# Service Blueprint validating webhook
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: {{ include "fluidos.prefixedName" $resManagerConfig }}
+      namespace: {{ .Release.Namespace }}
+      path: /validate-nodecore-fluidos-eu-v1alpha1-serviceblueprint
+  failurePolicy: Fail
+  name: validate.serviceblueprint.nodecore.fluidos.eu
+  rules:
+  - apiGroups:
+    - nodecore.fluidos.eu
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - serviceblueprints
+  sideEffects: None

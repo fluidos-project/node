@@ -1,0 +1,37 @@
+apiVersion: reservation.fluidos.eu/v1alpha1
+kind: Reservation
+metadata:
+  name: reservation-solver-sample-service
+  namespace: fluidos
+spec:
+  solverID: solver-sample-service
+  # Set it as you want, following needs and requests in the solver.
+  # Optional  
+  configuration:
+    # Be sure to use the same type of the peeringCandidate
+    type: Service
+    # Be sure to use values that are supported by the configuration template JSON Schema of the peeringCandidate's flavor
+    data:
+      configurationData:
+        database: mydb
+        password: admin
+        username: admin    
+  # Retrieve from PeeringCandidate chosen to reserve
+  peeringCandidate:
+    name: peeringcandidate-service-blueprint-db-service-8183833f22322a477d52b145f0790b5c
+    namespace: fluidos
+  # Set it to reserve
+  reserve: true
+  # Set it to purchase after reservation is completed and you have a transaction
+  purchase: false
+  # Retrieve from PeeringCandidate Flavor Owner field
+  seller:
+    domain: fluidos.eu
+    ip: 172.18.0.6:30001
+    nodeID: pfgcltas60
+  # Retrieve from configmap
+  buyer:
+    domain: fluidos.eu
+    ip: 172.18.0.7:30000
+    nodeID: 43ndiidjov
+  

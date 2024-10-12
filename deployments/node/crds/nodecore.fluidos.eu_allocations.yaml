@@ -17,7 +17,21 @@ spec:
     singular: allocation
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The status of the allocation
+      jsonPath: .status.status
+      name: Status
+      type: string
+    - description: The message of the status
+      jsonPath: .status.message
+      name: Status Message
+      type: string
+    - description: The reference to the resource
+      jsonPath: .status.resourceRef.name
+      name: Resource Reference
+      priority: 1
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Allocation is the Schema for the allocations API.
@@ -46,6 +60,12 @@ spec:
                 description: This is the reference to the contract related to the
                   allocation
                 properties:
+                  apiVersion:
+                    description: The API version of the resource to be referenced.
+                    type: string
+                  kind:
+                    description: The kind of the resource to be referenced.
+                    type: string
                   name:
                     description: The name of the resource to be referenced.
                     type: string
@@ -70,6 +90,24 @@ spec:
               message:
                 description: Message contains the last message of the allocation
                 type: string
+              resourceRef:
+                description: Related resource of the allocation
+                properties:
+                  apiVersion:
+                    description: The API version of the resource to be referenced.
+                    type: string
+                  kind:
+                    description: The kind of the resource to be referenced.
+                    type: string
+                  name:
+                    description: The name of the resource to be referenced.
+                    type: string
+                  namespace:
+                    description: |-
+                      The namespace containing the resource to be referenced. It should be left
+                      empty in case of cluster-wide resources.
+                    type: string
+                type: object
               status:
                 description: This allow to know the current status of the allocation
                 type: string

@@ -86,11 +86,16 @@ spec:
               buyer:
                 description: This is the Node identity of the buyer FLUIDOS Node.
                 properties:
+                  additionalInformation:
+                    description: NodeIdentityAdditionalInfo contains additional information
+                      about the node.
+                    properties:
+                      liqoID:
+                        type: string
+                    type: object
                   domain:
                     type: string
                   ip:
-                    type: string
-                  liqoID:
                     type: string
                   nodeID:
                     type: string
@@ -118,6 +123,12 @@ spec:
                 description: PeeringCandidate is the reference to the PeeringCandidate
                   of the Reservation
                 properties:
+                  apiVersion:
+                    description: The API version of the resource to be referenced.
+                    type: string
+                  kind:
+                    description: The kind of the resource to be referenced.
+                    type: string
                   name:
                     description: The name of the resource to be referenced.
                     type: string
@@ -138,11 +149,16 @@ spec:
               seller:
                 description: This is the Node identity of the seller FLUIDOS Node.
                 properties:
+                  additionalInformation:
+                    description: NodeIdentityAdditionalInfo contains additional information
+                      about the node.
+                    properties:
+                      liqoID:
+                        type: string
+                    type: object
                   domain:
                     type: string
                   ip:
-                    type: string
-                  liqoID:
                     type: string
                   nodeID:
                     type: string
@@ -165,6 +181,12 @@ spec:
               contract:
                 description: Contract is the reference to the Contract of the Reservation
                 properties:
+                  apiVersion:
+                    description: The API version of the resource to be referenced.
+                    type: string
+                  kind:
+                    description: The kind of the resource to be referenced.
+                    type: string
                   name:
                     description: The name of the resource to be referenced.
                     type: string

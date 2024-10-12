@@ -84,3 +84,17 @@ type K8Slice struct {
 func (K8Slice) GetFlavorTypeName() FlavorTypeName {
 	return K8SliceNameDefault
 }
+
+// K8SliceSelector represents the criteria for selecting a K8Slice Flavor.
+type K8SliceSelector struct {
+	Architecture *StringFilter           `json:"architecture,omitempty"`
+	CPU          *ResourceQuantityFilter `scheme:"cpu,omitempty"`
+	Memory       *ResourceQuantityFilter `scheme:"memory,omitempty"`
+	Pods         *ResourceQuantityFilter `scheme:"pods,omitempty"`
+	Storage      *ResourceQuantityFilter `scheme:"storage,omitempty"`
+}
+
+// GetSelectorType returns the type of the Selector.
+func (ks K8SliceSelector) GetSelectorType() FlavorTypeName {
+	return K8SliceNameDefault
+}

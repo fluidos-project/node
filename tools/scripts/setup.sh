@@ -85,7 +85,7 @@ else
 fi
 
 # Ask the user if they want to use the node discovery from the network resource manager
-read -r -p "Do you want to enable node discovery? [y/n] " enable_node_discovery
+read -r -p "Do you want to enable LAN node discovery? [y/n] " enable_node_discovery
 
 # Check if the input is y or n
 if [ "$enable_node_discovery" == "y" ]; then

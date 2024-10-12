@@ -19,6 +19,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -145,9 +146,11 @@ func init() {
 	SchemeBuilder.Register(&Flavor{}, &FlavorList{})
 }
 
-// ParseFlavorType parses a Flavor into a the type and the unmarsheled raw value.
+// ParseFlavorType parses a Flavor into a the type and the unmarshalled raw value.
 func ParseFlavorType(flavor *Flavor) (FlavorTypeIdentifier, interface{}, error) {
 	var validationErr error
+
+	klog.Infof("Parsing Flavor type %s", flavor.Spec.FlavorType.TypeIdentifier)
 
 	switch flavor.Spec.FlavorType.TypeIdentifier {
 	case TypeK8Slice:
@@ -162,11 +165,21 @@ func ParseFlavorType(flavor *Flavor) (FlavorTypeIdentifier, interface{}, error) 
 		return TypeK8Slice, *k8slice, validationErr
 
 	case TypeVM:
-		// TODO: Implement VM flavor parsing
+		// TODO (VM): implement the VM flavor parsing
 		return "", nil, fmt.Errorf("flavor type %s not supported", flavor.Spec.FlavorType.TypeIdentifier)
 
 	case TypeService:
-		// TODO: Implement Service flavor parsing
+		var service *ServiceFlavor
+		// Parse Service flavor
+		service, _, err := ParseServiceFlavor(flavor.Spec.FlavorType)
+		if err != nil {
+			return "", nil, err
+		}
+
+		return TypeService, *service, validationErr
+
+	case TypeSensor:
+		// TODO (Sensor): implement the sensor flavor parsing
 		return "", nil, fmt.Errorf("flavor type %s not supported", flavor.Spec.FlavorType.TypeIdentifier)
 
 	default:

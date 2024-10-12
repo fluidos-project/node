@@ -43,13 +43,28 @@ type GenericRef struct {
 	// The namespace containing the resource to be referenced. It should be left
 	// empty in case of cluster-wide resources.
 	Namespace string `json:"namespace,omitempty"`
+
+	// The API version of the resource to be referenced.
+	APIVersion string `json:"apiVersion,omitempty"`
+
+	// The kind of the resource to be referenced.
+	Kind string `json:"kind,omitempty"`
+}
+
+func (g *GenericRef) String() string {
+	return fmt.Sprintf("%s:%s - %s/%s", g.APIVersion, g.Kind, g.Namespace, g.Name)
 }
 
 // NodeIdentity is the identity of a FLUIDOS Node.
 type NodeIdentity struct {
-	Domain string `json:"domain"`
-	NodeID string `json:"nodeID"`
-	IP     string `json:"ip"`
+	Domain                string                      `json:"domain"`
+	NodeID                string                      `json:"nodeID"`
+	IP                    string                      `json:"ip"`
+	AdditionalInformation *NodeIdentityAdditionalInfo `json:"additionalInformation,omitempty"`
+}
+
+// NodeIdentityAdditionalInfo contains additional information about the node.
+type NodeIdentityAdditionalInfo struct {
 	LiqoID string `json:"liqoID,omitempty"`
 }
 
@@ -71,16 +86,41 @@ type LiqoCredentials struct {
 
 // ParseConfiguration parses the configuration data into the correct type.
 // Returns the FlavorTypeIdentifier, aka the ConfigurationTypeIdentifier and the configuration data.
-func ParseConfiguration(p *Configuration) (FlavorTypeIdentifier, interface{}, error) {
+func ParseConfiguration(configuration *Configuration, flavor *Flavor) (FlavorTypeIdentifier, interface{}, error) {
 	var validationError error
 
-	switch p.ConfigurationTypeIdentifier {
+	switch configuration.ConfigurationTypeIdentifier {
 	case TypeK8Slice:
-		var partition K8SliceConfiguration
-		validationError = json.Unmarshal(p.ConfigurationData.Raw, &partition)
-		return TypeK8Slice, partition, validationError
-	// TODO: implement other type of partition (if any)
+		var k8SliceConfiguration K8SliceConfiguration
+		validationError = json.Unmarshal(configuration.ConfigurationData.Raw, &k8SliceConfiguration)
+		return TypeK8Slice, k8SliceConfiguration, validationError
+	case TypeService:
+		var serviceConfiguration ServiceConfiguration
+		validationError = json.Unmarshal(configuration.ConfigurationData.Raw, &serviceConfiguration)
+		if validationError != nil {
+			return "", nil, validationError
+		}
+		// Parse Flavor
+		flavorType, flavorData, err := ParseFlavorType(flavor)
+		if err != nil {
+			return "", nil, err
+		}
+		// Forcing the type to be ServiceFlavor
+		if flavorType != TypeService {
+			return "", nil, fmt.Errorf("flavor type %s does not match the configuration type %s", flavorType, TypeService)
+		}
+		// Get ServiceFlavor
+		serviceFlavor := flavorData.(ServiceFlavor)
+		validationError = serviceConfiguration.Validate(&serviceFlavor)
+
+		return TypeService, serviceConfiguration, validationError
+	case TypeVM:
+		// TODO (VM): implement the VM configuration parsing
+		return TypeVM, nil, nil
+	case TypeSensor:
+		// TODO (Sensor): implement the sensor configuration parsing
+		return TypeSensor, nil, nil
 	default:
-		return "", nil, fmt.Errorf("partition type %s not supported", p.ConfigurationTypeIdentifier)
+		return "", nil, fmt.Errorf("partition type %s not supported", configuration.ConfigurationTypeIdentifier)
 	}
 }

@@ -23,11 +23,13 @@ type Status string
 
 // Status is the status of the allocation.
 const (
-	Active   Status = "Active"
-	Reserved Status = "Reserved"
-	Released Status = "Released"
-	Inactive Status = "Inactive"
-	Error    Status = "Error"
+	Active           Status = "Active"
+	Provisioning     Status = "Provisioning"
+	ResourceCreation Status = "ResourceCreation"
+	Peering          Status = "Peering"
+	Released         Status = "Released"
+	Inactive         Status = "Inactive"
+	Error            Status = "Error"
 )
 
 // AllocationSpec defines the desired state of Allocation.
@@ -51,10 +53,17 @@ type AllocationStatus struct {
 
 	// Message contains the last message of the allocation
 	Message string `json:"message,omitempty"`
+
+	// Related resource of the allocation
+	ResourceRef GenericRef `json:"resourceRef,omitempty"`
 }
 
+//nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="The status of the allocation"
+//+kubebuilder:printcolumn:name="Status Message",type="string",JSONPath=".status.message",description="The message of the status"
+//+kubebuilder:printcolumn:name="Resource Reference",type="string",JSONPath=".status.resourceRef.name",description="The reference to the resource",priority=1
 //+kubebuilder:resource:shortName=alloc;allocs
 
 // Allocation is the Schema for the allocations API.

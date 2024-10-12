@@ -64,6 +64,33 @@ The other field is `data` that specifies the effective value of the filter and i
 
 The **Range** filter can have only the `min` field, the `max` field or both.
 
+#### StringFilter
+
+The `StringFilter` is a specific type of filter used by some specific filters in specific selectors. It can be of two types and it is specified by the `name` field. The possible values are:
+
+- `Match`: that specifies the exact value that the Peering Candidate must have.
+- `Range`: that specifies a range of values (array) that the Peering Candidate can have (at least one of them).
+
+The other field is `data` that specifies the effective value of the filter and its structure depends on the type of the filter.
+
+- `Match` filter: Its structure is as follows:
+
+```yaml
+  name: Match
+  data:
+    value: "cateogory-example"
+```
+
+- `Range` filter: Its structure is as follows:
+
+```yaml
+  name: Range
+  data:
+    values:
+      - "tag1"
+      - "tag2"
+```
+
 ### Selector types
 
 The `Selector` field can be of different types. The possible types are:
@@ -98,7 +125,23 @@ A structure example of a `K8Slice` filter is as follows:
 
 #### Service Filters
 
-*Not yet implemented.*
+Service filters are the filters that you can set for a Peering Candidate that has a Service flavor. They are specifically fields:
+
+- `CategoryFilter`: that specifies the Category that the Peering Candidate must have. It is a `StringFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+- `TagsFilter`: that specifies the Tags that the Peering Candidate must have. It is a `StringFilter` and can be both a `Match` or a `Range` filter type. (Optional)
+
+A structure example of a `Service` filter is as follows:
+
+```yaml
+  categoryFilter:
+    name: Match
+    value: "category-example"
+  tagsFilter:
+    name: Range
+    values:
+      - "tag1"
+      - "tag2"
+```
 
 #### Sensor Filters
 
@@ -156,15 +199,24 @@ A structure example of a `K8Slice` configuration is as follows:
     pods: "10"
 ```
 
+#### Service Configuration
+
+Service configuration is the configuration that you can set for a Peering Candidate that has a Service flavor. The configuration of the Service leads to configuration of the service that will be provided. The fields that you have set are:
+
+- `hostingPolicy`: that specifies the Hosting Policy chosen for the Service. The set of possibile values are previously defined by the Flavor chosen to be reserved and configured, but they generally are:
+  - `Provider`: for a Service that will be hosted by the Provider.
+  - `Consumer`: for a Service that will be hosted by the Consumer.
+  - `Shared`: for a Service that will be hosted by both the Provider and the Consumer, effective scheduling will be in charge of the scheduler of the provider cluster.
+
 ## Purchase
 
 When you want to permanently buy a Peering Candidate, you need to edit its related `Reservation` CR and set the `purchase` field to `true`.
 
 Doing so, the FLUIDOS Node will proceed with the purchase of the Peering Candidate and you will have a contract in your cluster. Information about the contract can be found inside the Status of the `Reservation` CR.
 
-## Peering
+## Allocation
 
-After the purchase of the Peering Candidate, the FLUIDOS Node can establish the peering between the consumer and provider. You need to create an `Allocation` CR.
+After the purchase of the Peering Candidate, the FLUIDOS Node can establish the peering between the consumer and provider and allocate the negotiated resources. You need to create an `Allocation` CR.
 
 You can find an example here: [allocation.yaml](../../deployments/node/samples/allocation.yaml)
 

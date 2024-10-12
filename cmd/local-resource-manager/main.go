@@ -109,7 +109,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Print something abou the mgr
+	// Print something about the mgr
 	setupLog.Info("Manager started", "manager", mgr)
 
 	// Register the controller
@@ -123,11 +123,26 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Register the controller
+	if err = (&localresourcemanager.ServiceBlueprintReconciler{
+		Client:              cl,
+		Scheme:              mgr.GetScheme(),
+		EnableAutoDiscovery: *enableAutoDiscovery,
+		WebhookServer:       webhookServer,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceBlueprint")
+		os.Exit(1)
+	}
+
 	if *enableWH {
 		// Register Flavor webhook
 		klog.Info("Registering webhooks to the manager")
 		if err = (&nodecorev1alpha1.Flavor{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Flavor")
+			os.Exit(1)
+		}
+		if err = (&nodecorev1alpha1.ServiceBlueprint{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "ServiceBlueprint")
 			os.Exit(1)
 		}
 	} else {

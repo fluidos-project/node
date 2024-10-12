@@ -18,9 +18,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/klog/v2"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/consts"
 )
 
 // Flavor represents a Flavor object with its characteristics and policies.
@@ -108,88 +109,6 @@ type Selector interface {
 	GetSelectorType() FlavorTypeName
 }
 
-// K8SliceSelector represents the criteria for selecting a K8Slice Flavor.
-type K8SliceSelector struct {
-	Architecture *StringFilter           `json:"architecture,omitempty"`
-	CPU          *ResourceQuantityFilter `scheme:"cpu,omitempty"`
-	Memory       *ResourceQuantityFilter `scheme:"memory,omitempty"`
-	Pods         *ResourceQuantityFilter `scheme:"pods,omitempty"`
-	Storage      *ResourceQuantityFilter `scheme:"storage,omitempty"`
-}
-
-// GetSelectorType returns the type of the Selector.
-func (ks K8SliceSelector) GetSelectorType() FlavorTypeName {
-	return K8SliceNameDefault
-}
-
-// ResourceQuantityFilter represents a filter for a resource quantity.
-type ResourceQuantityFilter struct {
-	Name FilterType      `scheme:"name"`
-	Data json.RawMessage `scheme:"data"`
-}
-
-// ResourceQuantityFilterData represents the data of a ResourceQuantityFilter.
-type ResourceQuantityFilterData interface {
-	GetFilterType() FilterType
-}
-
-// StringFilter represents a filter for a string.
-type StringFilter struct {
-	Name FilterType      `scheme:"name"`
-	Data json.RawMessage `scheme:"data"`
-}
-
-// StringFilterData represents the data of a StringFilter.
-type StringFilterData interface {
-	GetFilterType() FilterType
-}
-
-// FilterType represents the type of a Filter.
-type FilterType string
-
-const (
-	// MatchFilter is the identifier for a match filter.
-	MatchFilter FilterType = "Match"
-	// RangeFilter is the identifier for a range filter.
-	RangeFilter FilterType = "Range"
-)
-
-// ResourceQuantityMatchFilter represents a match filter for a resource quantity.
-type ResourceQuantityMatchFilter struct {
-	Value resource.Quantity `scheme:"value"`
-}
-
-// GetFilterType returns the type of the Filter.
-func (fq ResourceQuantityMatchFilter) GetFilterType() FilterType {
-	return MatchFilter
-}
-
-// ResourceQuantityRangeFilter represents a range filter for a resource quantity.
-type ResourceQuantityRangeFilter struct {
-	Min *resource.Quantity `scheme:"min,omitempty"`
-	Max *resource.Quantity `scheme:"max,omitempty"`
-}
-
-// GetFilterType returns the type of the Filter.
-func (fq ResourceQuantityRangeFilter) GetFilterType() FilterType {
-	return RangeFilter
-}
-
-// StringMatchFilter represents a match filter for a string.
-type StringMatchFilter struct {
-	Value string `scheme:"value"`
-}
-
-// GetFilterType returns the type of the Filter.
-func (fq StringMatchFilter) GetFilterType() FilterType {
-	return MatchFilter
-}
-
-// StringRangeFilter represents a range filter for a string.
-type StringRangeFilter struct {
-	Regex string `scheme:"regex"`
-}
-
 // MapToFlavorTypeName maps a nodecorev1alpha1.FlavorTypeIdentifier to a models.FlavorTypeName.
 func MapToFlavorTypeName(flavorType nodecorev1alpha1.FlavorTypeIdentifier) FlavorTypeName {
 	switch flavorType {
@@ -213,6 +132,8 @@ func MapFromFlavorTypeName(flavorType FlavorTypeName) nodecorev1alpha1.FlavorTyp
 		return nodecorev1alpha1.TypeVM
 	case ServiceNameDefault:
 		return nodecorev1alpha1.TypeService
+	case SensorNameDefault:
+		return nodecorev1alpha1.TypeSensor
 	default:
 		return ""
 	}
@@ -237,6 +158,48 @@ func MapFromFilterType(filterType FilterType) nodecorev1alpha1.FilterType {
 		return nodecorev1alpha1.TypeMatchFilter
 	case RangeFilter:
 		return nodecorev1alpha1.TypeRangeFilter
+	default:
+		return ""
+	}
+}
+
+// MapFromModelHostingPolicy maps a models.HostingPolicy to a nodecorev1alpha1.HostingPolicy.
+func MapFromModelHostingPolicy(hostingPolicy HostingPolicy) nodecorev1alpha1.HostingPolicy {
+	switch hostingPolicy {
+	case HostingPolicyProvider:
+		return nodecorev1alpha1.HostingPolicyProvider
+	case HostingPolicyConsumer:
+		return nodecorev1alpha1.HostingPolicyConsumer
+	case HostingPolicyShared:
+		return nodecorev1alpha1.HostingPolicyShared
+	default:
+		return ""
+	}
+}
+
+// MapToModelHostingPolicy maps a nodecorev1alpha1.HostingPolicy to a models.HostingPolicy.
+func MapToModelHostingPolicy(hostingPolicy nodecorev1alpha1.HostingPolicy) HostingPolicy {
+	switch hostingPolicy {
+	case nodecorev1alpha1.HostingPolicyProvider:
+		return HostingPolicyProvider
+	case nodecorev1alpha1.HostingPolicyConsumer:
+		return HostingPolicyConsumer
+	case nodecorev1alpha1.HostingPolicyShared:
+		return HostingPolicyShared
+	default:
+		return ""
+	}
+}
+
+// MapToServiceCategory maps a string to a consts.ServiceCategory.
+func MapToServiceCategory(serviceCategory string) consts.ServiceCategory {
+	klog.Info("Service category: ", serviceCategory)
+	switch serviceCategory {
+	case string(consts.Database):
+		return consts.Database
+	case string(consts.MessageQueue):
+		return consts.MessageQueue
+		// TODO(Service): Implement the mapping for the other service categories according to the ontology.
 	default:
 		return ""
 	}
