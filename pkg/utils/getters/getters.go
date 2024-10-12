@@ -17,7 +17,6 @@ package getters
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/liqotech/liqo/pkg/auth"
 	"github.com/liqotech/liqo/pkg/utils"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
@@ -54,20 +54,27 @@ func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.No
 	}
 }
 
-// GetLocalProviders retrieves the list of local providers ip addresses from the Network Manager configMap.
+// GetLocalProviders retrieves the list of local providers ip addresses from the Cluster CRs.
 func GetLocalProviders(ctx context.Context, cl client.Client) []string {
-	cm := &corev1.ConfigMap{}
+	clusters := networkv1alpha1.ClusterList{}
+	result := []string{}
 
-	// Get the configmap
-	err := cl.Get(ctx, types.NamespacedName{
-		Name:      consts.NetworkConfigMapName,
-		Namespace: flags.FluidosNamespace,
-	}, cm)
-	if err != nil {
-		klog.Errorf("Error getting the configmap: %s", err)
+	// Get the list of Clusters
+	if err := cl.List(ctx, &clusters); err != nil {
+		klog.Errorf("Error when listing Clusters: %s", err)
 		return nil
 	}
-	return strings.Split(cm.Data["local"], ",")
+
+	if len(clusters.Items) == 0 {
+		klog.Infof("No Cluster found")
+		return nil
+	}
+
+	for i := range clusters.Items {
+		result = append(result, clusters.Items[i].Address)
+	}
+
+	return result
 }
 
 // GetLiqoCredentials retrieves the Liqo credentials from the local cluster.

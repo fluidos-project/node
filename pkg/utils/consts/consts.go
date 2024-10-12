@@ -15,7 +15,6 @@
 package consts
 
 const (
-	NetworkConfigMapName          = "fluidos-network-manager-config"
 	NodeIdentityConfigMapName     = "fluidos-network-manager-identity"
 	LiqoClusterIdConfigMapName    = "liqo-clusterid-configmap"
 	LiqoNamespace                 = "liqo"

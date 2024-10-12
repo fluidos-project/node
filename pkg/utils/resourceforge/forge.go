@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
@@ -1429,4 +1430,15 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 	secretCredentials.Labels[consts.FluidosServiceCredentials] = "true"
 
 	return secretCredentials, nil
+}
+
+// ForgeCluster creates a Cluster from a String.
+func ForgeCluster(address string) *networkv1alpha1.Cluster {
+	return &networkv1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namings.ForgeClusterName(address),
+			Namespace: flags.FluidosNamespace,
+		},
+		Address: address,
+	}
 }

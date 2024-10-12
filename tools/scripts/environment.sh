@@ -72,6 +72,19 @@ create_kind_clusters() {
                 role="consumer"
                 # Create the cluster
                 kind create cluster --name "$name" --config "$SCRIPT_DIR"/../../quickstart/kind/configs/standard.yaml --kubeconfig "$SCRIPT_DIR"/"$name"-config -q
+                # Install macvlan plugin to enable multicast node discovery, if required
+                if [ "$6" == "true" ]; then
+                    num_workers=$(kind get nodes --name fluidos-consumer-1 | grep worker -c)
+                    for j in $(seq 1 "$num_workers"); do
+                        (
+                            docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" mkdir -p cni-plugins
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" cp macvlan /opt/cni/bin
+                            docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" rm -r cni-plugins
+                        )
+                    done
+                fi
                 # Get the IP of the control plane of the cluster
                 controlplane_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name"-control-plane)                
                 # Write the cluster info to a file
@@ -91,6 +104,19 @@ create_kind_clusters() {
                 role="provider"
                 # Create the cluster
                 kind create cluster --name "$name" --config "$SCRIPT_DIR"/../../quickstart/kind/configs/standard.yaml --kubeconfig "$SCRIPT_DIR"/"$name"-config -q
+                # Install macvlan plugin to enable multicast node discovery, if required
+                if [ "$6" == "true" ]; then
+                    num_workers=$(kind get nodes --name fluidos-provider-1 | grep worker -c)
+                    for j in $(seq 1 "$num_workers"); do
+                        (
+                            docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" mkdir -p cni-plugins
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" cp macvlan /opt/cni/bin
+                            docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" rm -r cni-plugins
+                        )
+                    done
+                fi
                 # Get the IP of the control plane of the cluster
                 controlplane_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name"-control-plane)         
                  # Write the cluster info to a file

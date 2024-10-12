@@ -6,8 +6,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR"/utils.sh
 
-declare -A providers_ips
-
 # PIDs of the processes in background
 pids=()
 
@@ -57,14 +55,13 @@ build_and_load() {
 # $2: provider JSON tmp file
 # $3: local repositories boolean
 # $4: local resource manager boolean
+# $5: kubernetes clusters type
+# $6: network manager installation boolean
 # Return: none
 function install_components() {
 
     unset clusters
     declare -A clusters
-
-    unset providers_ips
-    declare -A providers_ips
 
     # Get consumer JSON tmp file from parameter
     consumers_json=$1
@@ -80,6 +77,9 @@ function install_components() {
 
     # Get the kubernetes clusters type from parameters
     installation_type=$5
+
+    # Get the network manager installation boolean from parameters
+    enable_node_discovery=$6
 
     helm repo add fluidos https://fluidos-project.github.io/node/
 
@@ -112,11 +112,12 @@ function install_components() {
         COMPONENT_MAP["rear-controller"]="rearController.imageName"
         COMPONENT_MAP["rear-manager"]="rearManager.imageName"
         COMPONENT_MAP["local-resource-manager"]="localResourceManager.imageName"
+        COMPONENT_MAP["network-manager"]="networkManager.imageName"
         # Build the image name using the username
         IMAGE_SET_STRING=""
         DOCKER_USERNAME="fluidoscustom"
         VERSION="0.0.1"
-        for component in rear-controller rear-manager local-resource-manager; do
+        for component in rear-controller rear-manager local-resource-manager network-manager; do
             helm_key="${COMPONENT_MAP[$component]}"
             IMAGE_SET_STRING="$IMAGE_SET_STRING --set $helm_key=$DOCKER_USERNAME/$component"
             # Build and load the docker image
@@ -144,36 +145,15 @@ function install_components() {
         echo "Cluster is: $cluster"
         echo "Cluster value is: ${clusters[$cluster]}"
 
-        # Create list of providers ip taking all the clusters controlplane IPs from the map and put it ina  string separated by commas
-        for provider in "${!clusters[@]}"; do
-            # Check if the cluster is not the current one
-            # Check if the cluster is a provider
-            cluster_role=$(jq -r '.role' <<< "${clusters[$provider]}")
-            # Print cluster role
-            echo "Cluster role is: $cluster_role"
-            if [ "$provider" != "$cluster" ] && [ "$cluster_role" == "provider" ]; then
-                # Print the specific cluster informations
-                echo "Provider cluster: $provider"
-                echo "Value: ${clusters[$provider]}"
-                ip_value="${clusters[$provider]}"
-                ip=$(jq -r '.ip' <<< "$ip_value")
-                # Add the provider port to the IP
-                ip="$ip:$provider_node_port"
-
-                if [ -z "${providers_ips[$cluster]}" ]; then
-                    providers_ips[$cluster]="$ip"
-                else
-                    providers_ips[$cluster]="${providers_ips[$cluster]}\,$ip"
-                fi
-            fi
-        done
-
-        echo "Providers IPs for cluster $cluster: ${providers_ips[$cluster]}"
-
         # Get the kubeconfig file which depends on variable installation_type
         KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
 
         echo "The KUBECONFIG is $KUBECONFIG"
+
+        # Setup CNI to enable multicast node discovery
+        if [ "$enable_node_discovery" == "true" ]; then
+            kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml --kubeconfig "$KUBECONFIG"
+        fi
       
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
@@ -231,7 +211,7 @@ function install_components() {
                 --set tag=$VERSION \
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
+                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
             else
@@ -239,7 +219,7 @@ function install_components() {
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
                 --set "provider=$installation_type" \
                 --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
+                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"
             fi
