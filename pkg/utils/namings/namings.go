@@ -125,9 +125,9 @@ func RetrieveFlavorNameFromPC(pcName string) string {
 }
 
 // ForgeClusterName generates a name for the Cluster.
-func ForgeClusterName(IPaddress string) string {
-	hash := ForgeHashString(IPaddress, 4)
-	return fmt.Sprintf("cluster-%s-%s", strings.Replace(strings.Replace(IPaddress, ":", "-", -1), ".", "-", -1), hash)
+func ForgeClusterName(address string) string {
+	hash := ForgeHashString(address, 4)
+	return fmt.Sprintf("cluster-%s-%s", strings.ReplaceAll(strings.ReplaceAll(address, ":", "-"), ".", "-"), hash)
 }
 
 // ForgeRandomString generates a random string of 16 bytes.

@@ -1433,12 +1433,12 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 }
 
 // ForgeCluster creates a Cluster from a String.
-func ForgeCluster(IPaddress string) *networkv1alpha1.Cluster {
+func ForgeCluster(address string) *networkv1alpha1.Cluster {
 	return &networkv1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgeClusterName(IPaddress),
+			Name:      namings.ForgeClusterName(address),
 			Namespace: flags.FluidosNamespace,
 		},
-		Address: IPaddress,
+		Address: address,
 	}
 }
