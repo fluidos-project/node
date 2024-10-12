@@ -33,12 +33,12 @@ import (
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
-// ClusterInfo keeps the address of the discovered cluster
+// ClusterInfo keeps the address of the discovered cluster.
 type ClusterInfo struct {
 	Address string `json:"address"`
 }
 
-// NetworkManager keeps all the necessary class data
+// NetworkManager keeps all the necessary class data.
 type NetworkManager struct {
 	context            context.Context
 	client             client.Client
@@ -128,7 +128,7 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 	}
 }
 
-// This is the entrypoint of the Network Manager
+// This is the entrypoint of the Network Manager.
 func Start(ctx context.Context, cl client.Client) error {
 	fmt.Println("Starting Kubernetes cluster discovery")
 
