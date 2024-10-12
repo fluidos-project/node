@@ -23,9 +23,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
@@ -38,7 +38,6 @@ var (
 )
 
 func init() {
-	utilruntime.Must(metricsv1beta1.AddToScheme(scheme))
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(networkv1alpha1.AddToScheme(scheme))
@@ -46,16 +45,17 @@ func init() {
 }
 
 func main() {
-
-	setupLog.Info("AAAAAAAAA", "BBBBBBBB", "probeAddr", ":8081")
-
 	var probeAddr string
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	cfg := ctrl.GetConfigOrDie()
-	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	cl, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "Unable to create client")
 		os.Exit(1)
@@ -70,8 +70,6 @@ func main() {
 		Addr:    ":8081",
 		Handler: mux,
 	}
-
-	setupLog.Info("Starting server", "address", probeAddr)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

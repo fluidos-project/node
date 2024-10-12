@@ -26,7 +26,7 @@ import (
 
 	clst "github.com/fluidos-project/node/apis/network/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/getters"
-	frg "github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
 // clusterRole
@@ -42,7 +42,7 @@ type NetworkManager struct {
 	client             client.Client
 	address            string
 	iface              *net.Interface
-	discoveredClusters map[string]*clst.Cluster //da rivedere
+	discoveredClusters map[string]*clst.Cluster
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
@@ -111,18 +111,18 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			_, found := nm.discoveredClusters[info.Address]
 
 			if !found {
-				fmt.Printf("Discovered cluster:  Address=%s\n", info.Address)
+				fmt.Printf("Discovered new cluster:  Address=%s\n", info.Address)
 
 				// Create Cluster CR reference
-				discClst := frg.ForgeCluster(info.Address)
-				if err := nm.client.Create(nm.context, discClst); err != nil {
+				cluster := resourceforge.ForgeCluster(info.Address)
+				if err := nm.client.Create(nm.context, cluster); err != nil {
 					fmt.Printf("Error when creating Cluster: %s", err)
 					return err
 				}
-				fmt.Printf("Cluster %s created\n", discClst.Name)
+				fmt.Printf("Cluster %s created\n", cluster.Name)
 
 				// Add recently discovered Cluster *CR to the map
-				nm.discoveredClusters[info.Address] = discClst
+				nm.discoveredClusters[info.Address] = cluster
 			}
 		}
 	}
@@ -146,7 +146,7 @@ func Start(ctx context.Context, cl client.Client) error {
 		return err
 	}
 
-	fmt.Printf("Interface: %s - MAC address: %s\n", ifi.Name, ifi.HardwareAddr)
+	fmt.Printf("Interface: %s - MAC address: %s - Address: %s\n", ifi.Name, ifi.HardwareAddr, clusterAddress)
 
 	nm := &NetworkManager{
 		context:            ctx,
@@ -185,8 +185,6 @@ func Start(ctx context.Context, cl client.Client) error {
 }
 
 func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
-	// First, try to get the IP from the API server
-
 	// Get NodeIdentity
 	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
 	if nodeIdentity != nil {
