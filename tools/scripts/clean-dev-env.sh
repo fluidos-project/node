@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/bash
 
 # Function to delete a kind cluster and its config file
 delete_kind_cluster_and_config() {

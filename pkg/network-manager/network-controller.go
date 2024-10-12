@@ -128,7 +128,7 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 	}
 }
 
-// This is the entrypoint of the Network Manager.
+// Start function is the entrypoint of the Network Manager.
 func Start(ctx context.Context, cl client.Client) error {
 	fmt.Println("Starting Kubernetes cluster discovery")
 

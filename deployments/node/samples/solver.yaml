@@ -16,7 +16,7 @@ spec:
         # In demo environments, be careful with the architecture, it may be different
         name: Match
         data:
-          value: "arm64"
+          value: "amd64"
       # The cpuFilter is used to filter the Flavors (FLUIDOS nodes) based on the CPU
       cpuFilter:
         # This filter specifies that the Flavors (FLUIDOS nodes) should have at least 100m of CPU
