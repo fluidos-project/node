@@ -408,7 +408,7 @@ status:
   solverPhase:
     endTime: "2023-11-16T16:16:49Z"
     lastChangeTime: "2023-11-16T16:16:49Z"
-    message: Node has established a peering triggered by Solver
+    message: New active peering, triggered by Solver
     phase: Solved
 ```
 
