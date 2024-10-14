@@ -248,7 +248,7 @@ func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Conte
 			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
 			fcutils.IsAuthenticated(fc) &&
 			!fcutils.IsUnpeered(fc) {
-			klog.Infof("ForeignCluster %s is ready, incoming peering enstablished", contract.Spec.PeeringTargetCredentials.ClusterID)
+			klog.Infof("ForeignCluster %s is ready, incoming peering established", contract.Spec.PeeringTargetCredentials.ClusterID)
 			allocation.SetStatus(nodecorev1alpha1.Active, "Incoming peering ready, Allocation is now Active")
 		} else {
 			klog.Infof("ForeignCluster %s is not ready yet", contract.Spec.PeeringTargetCredentials.ClusterID)
