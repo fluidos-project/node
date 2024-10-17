@@ -15,9 +15,11 @@
 package main
 
 import (
+	"container/list"
 	"context"
 	"flag"
-	"net/http"
+
+	//"net/http"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +27,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
@@ -45,8 +48,15 @@ func init() {
 }
 
 func main() {
+	var metricsAddr string
+	var enableLeaderElection bool
 	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+	//enableWH := flag.Bool("enable-webhooks", true, "Enable webhooks server")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -55,37 +65,77 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	//Client for StartDiscovery
 	cl, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "Unable to create client")
 		os.Exit(1)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", healthHandler) // health check endpoint
-	mux.HandleFunc("/readyz", healthHandler)  // readiness check endpoint
+	/* 	var webhookServer webhook.Server
+	   	if *enableWH {
+	   		webhookServer = webhook.NewServer(webhook.Options{Port: 9443})
+	   	} else {
+	   		setupLog.Info("Webhooks are disabled")
+	   	} */
 
-	//nolint:gosec // We don't need this kind of security check
-	server := &http.Server{
-		Addr:    ":8081",
-		Handler: mux,
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: metricsAddr,
+		//WebhookServer:          webhookServer,
+		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "temp0011.fluidos.eu",
+	})
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			setupLog.Error(err, "Server stopped unexpectedly")
-			os.Exit(1)
-		}
-	}()
+	//Buffer for clusters multicast messages
+	discoveredClusters := list.New()
 
-	// Start the NetworkManager
-	if err := networkmanager.Start(context.Background(), cl); err != nil {
+	// Print something about the mgr
+	setupLog.Info("Manager started", "manager", mgr)
+
+	// Register the controller
+	if err = (&networkmanager.KnownClusterReconciler{
+		Client:                 mgr.GetClient(),
+		Scheme:                 mgr.GetScheme(),
+		DiscoveredClustersList: *discoveredClusters,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KnownCluster")
+		os.Exit(1)
+	}
+
+	// Register health checks
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	// Start the NetworkManager reconcile
+	setupLog.Info("Starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+
+	// Start the NetworkManager goroutines
+	if err := networkmanager.StartDiscovery(context.Background(), cl, discoveredClusters); err != nil {
 		setupLog.Error(err, "Unable to start NetworkManager")
 		os.Exit(1)
 	}
-}
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("OK"))
+	/*
+		 	// Start the NetworkManager
+			if err := networkmanager.Start(context.Background(), cl); err != nil {
+				setupLog.Error(err, "Unable to start NetworkManager")
+				os.Exit(1)
+			}
+	*/
 }

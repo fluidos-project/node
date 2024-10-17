@@ -15,6 +15,7 @@
 package networkmanager
 
 import (
+	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,33 +23,109 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clst "github.com/fluidos-project/node/apis/network/v1alpha1"
+	//clst "github.com/fluidos-project/node/apis/network/v1alpha1"
+	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
 )
 
 // clusterRole
-// +kubebuilder:rbac:groups=network.fluidos.eu,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
+// DiscoveryReconciler reconciles a Discovery object.
+type KnownClusterReconciler struct {
+	client.Client
+	Scheme                 *runtime.Scheme
+	DiscoveredClustersList list.List
+}
+
+// Reconcile reconciles a Node object to create KnownCluster objects.
+func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := ctrl.LoggerFrom(ctx, "KnownCluster", req.NamespacedName)
+	ctx = ctrl.LoggerInto(ctx, log)
+
+	e := r.DiscoveredClustersList.Front() // Last element
+	if e == nil {
+		return ctrl.Result{}, nil
+	}
+
+	id := e.Value.(KnownClusterInfo).ID
+	address := e.Value.(KnownClusterInfo).Address
+
+	// Fetch the KnownCluster instance
+	var clst networkv1alpha1.KnownCluster
+	if err := r.Get(ctx, client.ObjectKey{Name: id}, &clst); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			klog.Info("KnownCluster not found: creating")
+
+			// Create Cluster CR reference
+			cluster := resourceforge.ForgeKnownCluster(id, address)
+			if err := r.Client.Create(ctx, cluster); err != nil {
+				fmt.Printf("Error when creating Cluster: %s", err)
+				return ctrl.Result{}, err
+			}
+			fmt.Printf("Cluster %s created\n", cluster.Name)
+			r.DiscoveredClustersList.Remove(e)
+		}
+	} else {
+		//update var
+		clst.Status.LastUpdateTime = time.Now().Local().UnixMilli()
+		clst.Status.ExpirationTime = time.Now().Local().Add(time.Second * 10).UnixMilli()
+
+		//update CR
+		err := r.Client.Status().Update(ctx, &clst)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.DiscoveredClustersList.Remove(e)
+	}
+
+	//retrieve the CR list
+	clstList := networkv1alpha1.KnownClusterList{}
+	err := r.Client.List(ctx, &clstList)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	//remove all CR with expiration time < now
+	for _, cr := range clstList.Items {
+		if cr.Status.ExpirationTime < time.Now().Local().UnixMilli() {
+			err := r.Client.Delete(ctx, &cr)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
 // ClusterInfo keeps the address of the discovered cluster.
-type ClusterInfo struct {
+type KnownClusterInfo struct {
+	ID      string `json:"id"`
 	Address string `json:"address"`
 }
 
 // NetworkManager keeps all the necessary class data.
 type NetworkManager struct {
-	context            context.Context
-	client             client.Client
-	address            string
-	iface              *net.Interface
-	discoveredClusters map[string]*clst.Cluster
+	context context.Context
+	client  client.Client
+	id      string
+	address string
+	iface   *net.Interface
+	//discoveredClusters map[string]*clst.KnownCluster //uso queue
+	discoveredClusters *list.List //As queue
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
-	info := ClusterInfo{
+	info := KnownClusterInfo{
+		ID:      nm.id,
 		Address: nm.address,
 	}
 
@@ -99,7 +176,7 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			return err
 		}
 
-		var info ClusterInfo
+		var info KnownClusterInfo
 
 		err = json.Unmarshal(buffer[:n], &info)
 		if err != nil {
@@ -107,29 +184,13 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			continue
 		}
 
-		if info.Address != nm.address {
-			_, found := nm.discoveredClusters[info.Address]
-
-			if !found {
-				fmt.Printf("Discovered new cluster:  Address=%s\n", info.Address)
-
-				// Create Cluster CR reference
-				cluster := resourceforge.ForgeCluster(info.Address)
-				if err := nm.client.Create(nm.context, cluster); err != nil {
-					fmt.Printf("Error when creating Cluster: %s", err)
-					return err
-				}
-				fmt.Printf("Cluster %s created\n", cluster.Name)
-
-				// Add recently discovered Cluster *CR to the map
-				nm.discoveredClusters[info.Address] = cluster
-			}
-		}
+		//enqueue any announcing cluster
+		nm.discoveredClusters.PushBack(info)
 	}
 }
 
 // Start function is the entrypoint of the Network Manager.
-func Start(ctx context.Context, cl client.Client) error {
+func StartDiscovery(ctx context.Context, cl client.Client, discClusters *list.List) error {
 	fmt.Println("Starting Kubernetes cluster discovery")
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
@@ -150,9 +211,10 @@ func Start(ctx context.Context, cl client.Client) error {
 	fmt.Printf("Interface: %s - MAC address: %s - Address: %s\n", ifi.Name, ifi.HardwareAddr, clusterAddress)
 
 	nm := &NetworkManager{
-		context:            ctx,
-		client:             cl,
-		discoveredClusters: make(map[string]*clst.Cluster),
+		context: ctx,
+		client:  cl,
+		//discoveredClusters: make(map[string]*clst.KnownCluster),
+		discoveredClusters: discClusters,
 		address:            clusterAddress,
 		iface:              ifi,
 	}
@@ -193,4 +255,11 @@ func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
 	}
 
 	return "", fmt.Errorf("no suitable IPv4 address found for cluster")
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&networkv1alpha1.KnownCluster{}).
+		Complete(r)
 }

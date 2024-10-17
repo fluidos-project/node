@@ -1432,13 +1432,20 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 	return secretCredentials, nil
 }
 
-// ForgeCluster creates a Cluster from a String.
-func ForgeCluster(address string) *networkv1alpha1.Cluster {
-	return &networkv1alpha1.Cluster{
+// ForgeKnownCluster creates a KnownCluster from a String.
+func ForgeKnownCluster(id string, address string) *networkv1alpha1.KnownCluster {
+	return &networkv1alpha1.KnownCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namings.ForgeClusterName(address),
+			Name:      id, //namings.ForgeClusterName(address),
 			Namespace: flags.FluidosNamespace,
 		},
-		Address: address,
+		Spec: networkv1alpha1.KnownClusterSpec{
+			Address: address,
+		},
+		Status: networkv1alpha1.KnownClusterStatus{
+			ExpirationTime: time.Now().Local().Add(time.Second * 10).UnixMilli(),
+			CreationTime:   time.Now().Local().UnixMilli(),
+			LastUpdateTime: time.Now().Local().UnixMilli(),
+		},
 	}
 }

@@ -54,24 +54,24 @@ func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.No
 	}
 }
 
-// GetLocalProviders retrieves the list of local providers ip addresses from the Cluster CRs.
+// GetLocalProviders retrieves the list of local providers ip addresses from the KnownCluster CRs.
 func GetLocalProviders(ctx context.Context, cl client.Client) []string {
-	clusters := networkv1alpha1.ClusterList{}
+	knownclusters := networkv1alpha1.KnownClusterList{}
 	result := []string{}
 
-	// Get the list of Clusters
-	if err := cl.List(ctx, &clusters); err != nil {
-		klog.Errorf("Error when listing Clusters: %s", err)
+	// Get the list of KnownClusters
+	if err := cl.List(ctx, &knownclusters); err != nil {
+		klog.Errorf("Error when listing KnownClusters: %s", err)
 		return nil
 	}
 
-	if len(clusters.Items) == 0 {
-		klog.Infof("No Cluster found")
+	if len(knownclusters.Items) == 0 {
+		klog.Infof("No KnownCluster found")
 		return nil
 	}
 
-	for i := range clusters.Items {
-		result = append(result, clusters.Items[i].Address)
+	for i := range knownclusters.Items {
+		result = append(result, knownclusters.Items[i].Spec.Address)
 	}
 
 	return result

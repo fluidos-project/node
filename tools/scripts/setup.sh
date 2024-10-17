@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/opt/homebrew/bin/bash
 
 # Enable job control
 set -e

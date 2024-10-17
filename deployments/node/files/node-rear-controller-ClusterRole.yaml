@@ -70,7 +70,7 @@ rules:
 - apiGroups:
   - network.fluidos.eu
   resources:
-  - clusters
+  - knownclusters
   verbs:
   - get
   - list
