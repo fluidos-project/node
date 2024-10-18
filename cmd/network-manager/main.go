@@ -18,8 +18,6 @@ import (
 	"container/list"
 	"context"
 	"flag"
-
-	//"net/http"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -65,8 +63,9 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	//Client for StartDiscovery
-	cl, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	//Client
+	cfg := ctrl.GetConfigOrDie()
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "Unable to create client")
 		os.Exit(1)
@@ -85,7 +84,7 @@ func main() {
 		//WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "temp0011.fluidos.eu",
+		LeaderElectionID:       "a0b0c1d1.fluidos.eu",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -100,7 +99,7 @@ func main() {
 
 	// Register the controller
 	if err = (&networkmanager.KnownClusterReconciler{
-		Client:                 mgr.GetClient(),
+		Client:                 cl,
 		Scheme:                 mgr.GetScheme(),
 		DiscoveredClustersList: *discoveredClusters,
 	}).SetupWithManager(mgr); err != nil {
@@ -118,16 +117,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Start the NetworkManager goroutines
+	if err := networkmanager.StartDiscovery(context.Background(), cl, discoveredClusters); err != nil {
+		setupLog.Error(err, "Unable to start NetworkManager")
+		os.Exit(1)
+	}
+
 	// Start the NetworkManager reconcile
 	setupLog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-
-	// Start the NetworkManager goroutines
-	if err := networkmanager.StartDiscovery(context.Background(), cl, discoveredClusters); err != nil {
-		setupLog.Error(err, "Unable to start NetworkManager")
 		os.Exit(1)
 	}
 
