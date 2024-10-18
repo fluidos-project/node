@@ -1,6 +1,6 @@
-{{- $subnet := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".0/24"}}
-{{- $rangeStart := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".101"}}
-{{- $rangeEnd := print .Values.networkManager.configMaps.network.firstOctet "." .Values.networkManager.configMaps.network.secondOctet "." .Values.networkManager.configMaps.network.thirdOctet ".101"}}
+{{- $subnet := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".0/24"}}
+{{- $rangeStart := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101"}}
+{{- $rangeEnd := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101"}}
 
 apiVersion: "k8s.cni.cncf.io/v1"
 kind: NetworkAttachmentDefinition

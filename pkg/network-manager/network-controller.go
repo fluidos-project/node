@@ -36,6 +36,7 @@ import (
 // clusterRole
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 
 // KnownClusterReconciler reconciles a KnownCluster object.
 type KnownClusterReconciler struct {
@@ -185,7 +186,7 @@ func StartDiscovery(ctx context.Context, cl client.Client, discClusters *list.Li
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
-		multicastAddress = "239.11.11.1:4000" // Default multicast address if not specified
+		return fmt.Errorf("failed to get multicast address")
 	}
 
 	clusterAddress, err := getClusterAddress(ctx, cl)

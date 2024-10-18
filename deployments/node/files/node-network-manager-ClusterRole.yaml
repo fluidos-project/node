@@ -8,6 +8,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - network.fluidos.eu
   resources:
   - knownclusters
