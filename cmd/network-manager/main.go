@@ -56,7 +56,6 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	//enableWH := flag.Bool("enable-webhooks", true, "Enable webhooks server")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -72,17 +71,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	/* 	var webhookServer webhook.Server
-	   	if *enableWH {
-	   		webhookServer = webhook.NewServer(webhook.Options{Port: 9443})
-	   	} else {
-	   		setupLog.Info("Webhooks are disabled")
-	   	} */
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		//WebhookServer:          webhookServer,
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "temp0011.fluidos.eu",
@@ -92,7 +83,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	//Buffer for clusters multicast messages
+	// Buffer for clusters multicast messages
 	discoveredClusters := list.New()
 
 	// Print something about the mgr
@@ -100,7 +91,7 @@ func main() {
 
 	// Register the controller
 	if err = (&networkmanager.KnownClusterReconciler{
-		Client:                 mgr.GetClient(),
+		Client:                 cl,
 		Scheme:                 mgr.GetScheme(),
 		DiscoveredClustersList: *discoveredClusters,
 	}).SetupWithManager(mgr); err != nil {
@@ -118,24 +109,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Start the NetworkManager reconcile
-	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-
 	// Start the NetworkManager goroutines
 	if err := networkmanager.StartDiscovery(context.Background(), cl, discoveredClusters); err != nil {
 		setupLog.Error(err, "Unable to start NetworkManager")
 		os.Exit(1)
 	}
 
-	/*
-		 	// Start the NetworkManager
-			if err := networkmanager.Start(context.Background(), cl); err != nil {
-				setupLog.Error(err, "Unable to start NetworkManager")
-				os.Exit(1)
-			}
-	*/
+	// Start the NetworkManager reconcile
+	setupLog.Info("Starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 }

@@ -28,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	//clst "github.com/fluidos-project/node/apis/network/v1alpha1"
 	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/getters"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
@@ -47,8 +46,10 @@ type KnownClusterReconciler struct {
 
 // Reconcile reconciles a Node object to create KnownCluster objects.
 func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx, "KnownCluster", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx, "knowncluster", req.NamespacedName)
 	ctx = ctrl.LoggerInto(ctx, log)
+
+	klog.Info("Reconcile started")
 
 	e := r.DiscoveredClustersList.Front() // Last element
 	if e == nil {
@@ -184,8 +185,12 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			continue
 		}
 
-		//enqueue any announcing cluster
-		nm.discoveredClusters.PushBack(info)
+		fmt.Printf("Discovered new cluster:  ID=%s - Address=%s\n", info.ID, info.Address)
+
+		// Enqueue any announcing cluster
+		if nm.address != info.Address {
+			nm.discoveredClusters.PushBack(info)
+		}
 	}
 }
 

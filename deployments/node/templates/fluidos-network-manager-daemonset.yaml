@@ -47,6 +47,14 @@ spec:
         - name: MULTICAST_ADDRESS
           value: "239.11.11.1:4000"
         resources: {{- toYaml .Values.networkManager.pod.resources | nindent 10 }}
+        ports:
+        - name: healthz
+          containerPort: 8081
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
       {{- if ((.Values.common).nodeSelector) }}
       nodeSelector:
       {{- toYaml .Values.common.nodeSelector | nindent 8 }}
