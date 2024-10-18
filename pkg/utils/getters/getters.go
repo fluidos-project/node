@@ -22,6 +22,7 @@ import (
 	"github.com/liqotech/liqo/pkg/utils"
 	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,10 +48,27 @@ func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.No
 		return nil
 	}
 
+	// Get the control plane IP address if not available in the ConfigMap
+	if cm.Data["ip"] == "" {
+		ep := &corev1.Endpoints{}
+
+		// Get the "kubernetes" endpoint
+		err := cl.Get(ctx, types.NamespacedName{
+			Name:      "kubernetes",
+			Namespace: metav1.NamespaceDefault,
+		}, ep)
+		if err != nil {
+			klog.Errorf("Error getting the endpoint: %s", err)
+			return nil
+		}
+
+		cm.Data["ip"] = ep.Subsets[0].Addresses[0].IP
+	}
+
 	return &nodecorev1alpha1.NodeIdentity{
 		NodeID: cm.Data["nodeID"],
 		Domain: cm.Data["domain"],
-		IP:     cm.Data["ip"],
+		IP:     cm.Data["ip"] + ":" + cm.Data["port"],
 	}
 }
 

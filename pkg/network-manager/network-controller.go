@@ -32,6 +32,7 @@ import (
 // clusterRole
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 
 // ClusterInfo keeps the address of the discovered cluster.
 type ClusterInfo struct {
@@ -134,7 +135,7 @@ func Start(ctx context.Context, cl client.Client) error {
 
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
-		multicastAddress = "239.11.11.1:4000" // Default multicast address if not specified
+		return fmt.Errorf("failed to get multicast address")
 	}
 
 	clusterAddress, err := getClusterAddress(ctx, cl)

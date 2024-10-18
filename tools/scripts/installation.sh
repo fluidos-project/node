@@ -83,9 +83,6 @@ function install_components() {
 
     helm repo add fluidos https://fluidos-project.github.io/node/
 
-    consumer_node_port=30000
-    provider_node_port=30001
-
     # Read the results from the files
     while IFS= read -r line; do
         echo 
@@ -163,10 +160,9 @@ function install_components() {
             else
                 value_file="$SCRIPT_DIR/../../quickstart/utils/consumer-values-no-ad.yaml"
             fi
-            # Get cluster IP and port
+            # Get control plane IP
             ip_value="${clusters[$cluster]}"
             ip=$(jq -r '.ip' <<< "$ip_value")
-            port=$consumer_node_port
         else
             # Skip this installation if the cluster is a provider and its installation type is not kind
             if [ "$installation_type" != "kind" ]; then
@@ -179,10 +175,9 @@ function install_components() {
                 else
                     value_file="$SCRIPT_DIR/../../quickstart/utils/provider-values-no-ad.yaml"
                 fi
-                # Get cluster IP and port
+                # Get control plane IP
                 ip_value="${clusters[$cluster]}"
                 ip=$(jq -r '.ip' <<< "$ip_value")
-                port=$provider_node_port
                 fi
         fi
 
@@ -210,16 +205,16 @@ function install_components() {
                 -n fluidos --create-namespace -f $value_file $IMAGE_SET_STRING \
                 --set tag=$VERSION \
                 --set "provider=$installation_type" \
-                --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
+                --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
             else
                 echo "Installing remote repositories in cluster $cluster with local resource manager"
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
                 --set "provider=$installation_type" \
-                --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set "networkManager.configMaps.network.thirdOctet=${cluster: -1}" \
+                --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"
             fi

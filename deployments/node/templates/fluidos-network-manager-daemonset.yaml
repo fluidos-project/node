@@ -45,7 +45,7 @@ spec:
         name: {{ $networkManagerConfig.name }}
         env:
         - name: MULTICAST_ADDRESS
-          value: "239.11.11.1:4000"
+          value: {{ print .Values.networkManager.config.multicast.address ":" .Values.networkManager.config.multicast.port}}
         resources: {{- toYaml .Values.networkManager.pod.resources | nindent 10 }}
       {{- if ((.Values.common).nodeSelector) }}
       nodeSelector:
