@@ -76,18 +76,18 @@ func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			r.DiscoveredClustersList.Remove(e)
 		}
 	} else {
-		//update var
+		// Update var
 		clst.Status.LastUpdateTime = time.Now().Local().UnixMilli()
 		clst.Status.ExpirationTime = time.Now().Local().Add(time.Second * 10).UnixMilli()
 
-		//update CR
+		// Update CR
 		err := r.Client.Status().Update(ctx, &clst)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		r.DiscoveredClustersList.Remove(e)
 	}
-	//remove all the timed-out CRs
+	// Remove all the timed-out CRs
 	err := houseKeeping(ctx, r)
 
 	return ctrl.Result{}, err
@@ -101,13 +101,12 @@ type KnownClusterInfo struct {
 
 // NetworkManager keeps all the necessary class data.
 type NetworkManager struct {
-	context context.Context
-	client  client.Client
-	id      string
-	address string
-	iface   *net.Interface
-	//discoveredClusters map[string]*clst.KnownCluster
-	discoveredClusters *list.List //As queue
+	context            context.Context
+	client             client.Client
+	id                 string
+	address            string
+	iface              *net.Interface
+	discoveredClusters *list.List
 }
 
 func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
@@ -171,10 +170,9 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			continue
 		}
 
-		fmt.Printf("Discovered new cluster:  ID=%s - Address=%s\n", info.ID, info.Address)
-
 		// Enqueue any announcing cluster
 		if nm.address != info.Address {
+			fmt.Printf("Discovered new cluster:  ID=%s - Address=%s\n", info.ID, info.Address)
 			nm.discoveredClusters.PushBack(info)
 		}
 	}
@@ -202,9 +200,8 @@ func StartDiscovery(ctx context.Context, cl client.Client, discClusters *list.Li
 	fmt.Printf("Interface: %s - MAC address: %s - Address: %s\n", ifi.Name, ifi.HardwareAddr, clusterAddress)
 
 	nm := &NetworkManager{
-		context: ctx,
-		client:  cl,
-		//discoveredClusters: make(map[string]*clst.KnownCluster),
+		context:            ctx,
+		client:             cl,
 		discoveredClusters: discClusters,
 		address:            clusterAddress,
 		iface:              ifi,
@@ -257,13 +254,13 @@ func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Delete all the expired KnownCluster CRs.
 func houseKeeping(ctx context.Context, r *KnownClusterReconciler) error {
-	//retrieve the CR list
+	// Retrieve the CR list
 	clstList := networkv1alpha1.KnownClusterList{}
 	err := r.Client.List(ctx, &clstList)
 	if err != nil {
 		return err
 	}
-	//remove all CR with expiration time < now
+	// Remove all CR with expiration time < now
 	for _, cr := range clstList.Items {
 		if cr.Status.ExpirationTime < time.Now().Local().UnixMilli() {
 			err := r.Client.Delete(ctx, &cr)

@@ -62,7 +62,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	//Client
+	// Client
 	cfg := ctrl.GetConfigOrDie()
 	cl, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
