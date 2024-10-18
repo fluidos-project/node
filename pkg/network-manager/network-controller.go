@@ -37,21 +37,21 @@ import (
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
-// DiscoveryReconciler reconciles a Discovery object.
+// KnownClusterReconciler reconciles a KnownCluster object.
 type KnownClusterReconciler struct {
 	client.Client
 	Scheme                 *runtime.Scheme
 	DiscoveredClustersList list.List
 }
 
-// Reconcile reconciles a Node object to create KnownCluster objects.
+// Reconcile reconciles a KnownClusters from DiscoveredClustersList.
 func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx, "knowncluster", req.NamespacedName)
 	ctx = ctrl.LoggerInto(ctx, log)
 
 	klog.Info("Reconcile started")
 
-	e := r.DiscoveredClustersList.Front() // Last element
+	e := r.DiscoveredClustersList.Front() // FIFO
 	if e == nil {
 		return ctrl.Result{}, nil
 	}
@@ -86,25 +86,10 @@ func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 		r.DiscoveredClustersList.Remove(e)
 	}
+	//remove all the timed-out CRs
+	err := houseKeeping(ctx, r)
 
-	//retrieve the CR list
-	clstList := networkv1alpha1.KnownClusterList{}
-	err := r.Client.List(ctx, &clstList)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	//remove all CR with expiration time < now
-	for _, cr := range clstList.Items {
-		if cr.Status.ExpirationTime < time.Now().Local().UnixMilli() {
-			err := r.Client.Delete(ctx, &cr)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	}
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, err
 }
 
 // ClusterInfo keeps the address of the discovered cluster.
@@ -120,7 +105,7 @@ type NetworkManager struct {
 	id      string
 	address string
 	iface   *net.Interface
-	//discoveredClusters map[string]*clst.KnownCluster //uso queue
+	//discoveredClusters map[string]*clst.KnownCluster
 	discoveredClusters *list.List //As queue
 }
 
@@ -267,4 +252,24 @@ func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.KnownCluster{}).
 		Complete(r)
+}
+
+// Delete all the expired KnownCluster CRs.
+func houseKeeping(ctx context.Context, r *KnownClusterReconciler) error {
+	//retrieve the CR list
+	clstList := networkv1alpha1.KnownClusterList{}
+	err := r.Client.List(ctx, &clstList)
+	if err != nil {
+		return err
+	}
+	//remove all CR with expiration time < now
+	for _, cr := range clstList.Items {
+		if cr.Status.ExpirationTime < time.Now().Local().UnixMilli() {
+			err := r.Client.Delete(ctx, &cr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

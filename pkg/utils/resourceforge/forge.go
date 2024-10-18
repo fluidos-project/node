@@ -1432,7 +1432,7 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 	return secretCredentials, nil
 }
 
-// ForgeKnownCluster creates a KnownCluster from a String.
+// ForgeKnownCluster creates a KnownCluster from cluster ID and IP address.
 func ForgeKnownCluster(id string, address string) *networkv1alpha1.KnownCluster {
 	return &networkv1alpha1.KnownCluster{
 		ObjectMeta: metav1.ObjectMeta{

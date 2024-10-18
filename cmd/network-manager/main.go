@@ -18,8 +18,6 @@ import (
 	"container/list"
 	"context"
 	"flag"
-
-	//"net/http"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -64,8 +62,9 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	//Client for StartDiscovery
-	cl, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	//Client
+	cfg := ctrl.GetConfigOrDie()
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Error(err, "Unable to create client")
 		os.Exit(1)
@@ -76,7 +75,7 @@ func main() {
 		MetricsBindAddress:     metricsAddr,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "temp0011.fluidos.eu",
+		LeaderElectionID:       "a0b0c1d1.fluidos.eu",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
