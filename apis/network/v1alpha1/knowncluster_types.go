@@ -22,25 +22,22 @@ import (
 type KnownClusterSpec struct {
 
 	// Address of the KnownCluster.
-	Address string `json:"subscribe"`
+	Address string `json:"address"`
 }
 
 // KnownClusterStatus defines the observed state of KnownCluster.
 type KnownClusterStatus struct {
 
 	// This field represents the expiration time of the KnownCluster. It is used to determine when the KnownCluster is no longer valid.
-	ExpirationTime int64 `json:"expirationTime"`
-
-	// This field represents the creation time of the KnownCluster.
-	CreationTime int64 `json:"creationTime"`
+	ExpirationTime string `json:"expirationTime"`
 
 	// This field represents the last update time of the KnownCluster.
-	LastUpdateTime int64 `json:"lastUpdateTime"`
+	LastUpdateTime string `json:"lastUpdateTime"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=knowncluster;knownclusters
+//+kubebuilder:resource:shortName=kclust;kclusts
 
 // KnownCluster is the Schema for the clusters API.
 type KnownCluster struct {

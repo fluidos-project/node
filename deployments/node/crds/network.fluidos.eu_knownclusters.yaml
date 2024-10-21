@@ -12,8 +12,8 @@ spec:
     listKind: KnownClusterList
     plural: knownclusters
     shortNames:
-    - knowncluster
-    - knownclusters
+    - kclust
+    - kclusts
     singular: knowncluster
   scope: Namespaced
   versions:
@@ -42,30 +42,23 @@ spec:
           spec:
             description: KnownClusterSpec defines the desired state of KnownCluster.
             properties:
-              subscribe:
+              address:
                 description: Address of the KnownCluster.
                 type: string
             required:
-            - subscribe
+            - address
             type: object
           status:
             description: KnownClusterStatus defines the observed state of KnownCluster.
             properties:
-              creationTime:
-                description: This field represents the creation time of the KnownCluster.
-                format: int64
-                type: integer
               expirationTime:
                 description: This field represents the expiration time of the KnownCluster.
                   It is used to determine when the KnownCluster is no longer valid.
-                format: int64
-                type: integer
+                type: string
               lastUpdateTime:
                 description: This field represents the last update time of the KnownCluster.
-                format: int64
-                type: integer
+                type: string
             required:
-            - creationTime
             - expirationTime
             - lastUpdateTime
             type: object

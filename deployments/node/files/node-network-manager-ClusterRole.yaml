@@ -27,3 +27,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - network.fluidos.eu
+  resources:
+  - knownclusters/status
+  verbs:
+  - get
+  - patch
+  - update

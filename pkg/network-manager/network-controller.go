@@ -15,7 +15,6 @@
 package networkmanager
 
 import (
-	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -29,98 +28,110 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
+	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
+	"github.com/fluidos-project/node/pkg/utils/flags"
 	"github.com/fluidos-project/node/pkg/utils/getters"
+	"github.com/fluidos-project/node/pkg/utils/namings"
 	"github.com/fluidos-project/node/pkg/utils/resourceforge"
+	"github.com/fluidos-project/node/pkg/utils/tools"
 )
 
 // clusterRole
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
+
+// NetworkManager keeps all the necessary class data.
+type NetworkManager struct {
+	ID        *nodecorev1alpha1.NodeIdentity
+	Multicast string
+	Iface     *net.Interface
+}
 
 // KnownClusterReconciler reconciles a KnownCluster object.
 type KnownClusterReconciler struct {
 	client.Client
-	Scheme                 *runtime.Scheme
-	DiscoveredClustersList list.List
+	Scheme *runtime.Scheme
 }
 
 // Reconcile reconciles a KnownClusters from DiscoveredClustersList.
 func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx, "knowncluster", req.NamespacedName)
-	ctx = ctrl.LoggerInto(ctx, log)
+	// log := ctrl.LoggerFrom(ctx, "knowncluster", req.NamespacedName)
+	// ctx = ctrl.LoggerInto(ctx, log)
 
-	klog.Info("Reconcile started")
+	klog.Info("Reconcile triggered")
 
-	e := r.DiscoveredClustersList.Front() // FIFO
-	if e == nil {
-		return ctrl.Result{}, nil
-	}
-
-	id := e.Value.(KnownClusterInfo).ID
-	address := e.Value.(KnownClusterInfo).Address
-
-	// Fetch the KnownCluster instance
-	var clst networkv1alpha1.KnownCluster
-	if err := r.Get(ctx, client.ObjectKey{Name: id}, &clst); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			klog.Info("KnownCluster not found: creating")
-
-			// Create Cluster CR reference
-			cluster := resourceforge.ForgeKnownCluster(id, address)
-			if err := r.Client.Create(ctx, cluster); err != nil {
-				fmt.Printf("Error when creating Cluster: %s", err)
-				return ctrl.Result{}, err
-			}
-			fmt.Printf("Cluster %s created\n", cluster.Name)
-			r.DiscoveredClustersList.Remove(e)
-		}
-	} else {
-		// Update var
-		clst.Status.LastUpdateTime = time.Now().Local().UnixMilli()
-		clst.Status.ExpirationTime = time.Now().Local().Add(time.Second * 10).UnixMilli()
-
-		// Update CR
-		err := r.Client.Status().Update(ctx, &clst)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		r.DiscoveredClustersList.Remove(e)
-	}
-	// Remove all the timed-out CRs
-	err := houseKeeping(ctx, r)
-
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }
 
-// ClusterInfo keeps the address of the discovered cluster.
-type KnownClusterInfo struct {
-	ID      string `json:"id"`
-	Address string `json:"address"`
+// SetupWithManager sets up the controller with the Manager.
+func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&networkv1alpha1.KnownCluster{}).
+		Complete(r)
 }
 
-// NetworkManager keeps all the necessary class data.
-type NetworkManager struct {
-	context            context.Context
-	client             client.Client
-	id                 string
-	address            string
-	iface              *net.Interface
-	discoveredClusters *list.List
-}
+// Setup the Network Manager.
+func Setup(ctx context.Context, cl client.Client, nm *NetworkManager) error {
+	klog.Info("Setting up Network Manager routines")
 
-func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
-	info := KnownClusterInfo{
-		ID:      nm.id,
-		Address: nm.address,
+	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
+	if nodeIdentity == nil {
+		return fmt.Errorf("failed to get Node Identity")
 	}
 
-	message, err := json.Marshal(info)
+	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
+	if multicastAddress == "" {
+		return fmt.Errorf("failed to get multicast address")
+	}
+
+	ifi, err := net.InterfaceByName("eth1")
 	if err != nil {
 		return err
 	}
 
-	laddr, err := nm.iface.Addrs()
+	nm.ID = nodeIdentity
+	nm.Multicast = multicastAddress
+	nm.Iface = ifi
+
+	klog.InfoS("Node", "ID", nodeIdentity.NodeID, "Address", nodeIdentity.IP)
+	klog.InfoS("Interface", "Name", ifi.Name, "MAC address", ifi.HardwareAddr)
+
+	return nil
+}
+
+func Execute(ctx context.Context, cl client.Client, nm *NetworkManager) error {
+	// Start sending multicast messages
+	go func() {
+		if err := sendMulticastMessage(ctx, nm); err != nil {
+			klog.ErrorS(err, "Error sending advertisemente")
+		}
+	}()
+
+	// Start receiving multicast messages
+	go func() {
+		if err := receiveMulticastMessage(ctx, cl, nm); err != nil {
+			klog.ErrorS(err, "Error receiving advertisement")
+		}
+	}()
+
+	// Do housekeeping
+	go func() {
+		if err := doHousekeeping(ctx, cl); err != nil {
+			klog.ErrorS(err, "Error doing housekeeping")
+		}
+	}()
+	return nil
+}
+
+func sendMulticastMessage(ctx context.Context, nm *NetworkManager) error {
+	message, err := json.Marshal(nm.ID)
+	if err != nil {
+		return err
+	}
+
+	laddr, err := nm.Iface.Addrs()
 	if err != nil {
 		return err
 	}
@@ -132,23 +143,35 @@ func (nm *NetworkManager) sendMulticastMessage(multicastAddress string) error {
 		},
 	}
 
-	conn, err := dialer.Dial("udp", multicastAddress)
+	conn, err := dialer.Dial("udp", nm.Multicast)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	_, err = conn.Write(message)
-	return err
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			_, err = conn.Write(message)
+			if err != nil {
+				return err
+			}
+			klog.Info("Advertisement multicasted")
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
 }
 
-func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error {
-	addr, err := net.ResolveUDPAddr("udp", multicastAddress)
+func receiveMulticastMessage(ctx context.Context, cl client.Client, local *NetworkManager) error {
+	addr, err := net.ResolveUDPAddr("udp", local.Multicast)
 	if err != nil {
 		return err
 	}
 
-	conn, err := net.ListenMulticastUDP("udp", nm.iface, addr)
+	conn, err := net.ListenMulticastUDP("udp", local.Iface, addr)
 	if err != nil {
 		return err
 	}
@@ -162,112 +185,78 @@ func (nm *NetworkManager) receiveMulticastMessage(multicastAddress string) error
 			return err
 		}
 
-		var info KnownClusterInfo
+		var remote NetworkManager
 
-		err = json.Unmarshal(buffer[:n], &info)
+		err = json.Unmarshal(buffer[:n], &remote.ID)
 		if err != nil {
-			fmt.Printf("Error unmarshalling message: %v\n", err)
+			klog.Error("Error unmarshalling message: ", err)
 			continue
 		}
 
-		// Enqueue any announcing cluster
-		if nm.address != info.Address {
-			fmt.Printf("Discovered new cluster:  ID=%s - Address=%s\n", info.ID, info.Address)
-			nm.discoveredClusters.PushBack(info)
-		}
-	}
-}
+		// Check if received advertisement is remote
+		if local.ID.IP != remote.ID.IP {
+			klog.InfoS("Received remote advertisement", "ID", remote.ID.NodeID, "Address", remote.ID.IP)
 
-// Start function is the entrypoint of the Network Manager.
-func StartDiscovery(ctx context.Context, cl client.Client, discClusters *list.List) error {
-	fmt.Println("Starting Kubernetes cluster discovery")
+			// Fetch the KnownCluster instance if already present
+			kc := &networkv1alpha1.KnownCluster{}
 
-	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
-	if multicastAddress == "" {
-		return fmt.Errorf("failed to get multicast address")
-	}
+			if err := cl.Get(ctx, client.ObjectKey{Name: namings.ForgeKnownClusterName(remote.ID.NodeID), Namespace: flags.FluidosNamespace}, kc); err != nil {
+				if client.IgnoreNotFound(err) == nil {
+					klog.Info("KnownCluster not found: creating")
 
-	clusterAddress, err := getClusterAddress(ctx, cl)
-	if err != nil {
-		return fmt.Errorf("failed to get cluster address: %w", err)
-	}
-
-	ifi, err := net.InterfaceByName("eth1")
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Interface: %s - MAC address: %s - Address: %s\n", ifi.Name, ifi.HardwareAddr, clusterAddress)
-
-	nm := &NetworkManager{
-		context:            ctx,
-		client:             cl,
-		discoveredClusters: discClusters,
-		address:            clusterAddress,
-		iface:              ifi,
-	}
-
-	// Start sending multicast messages
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				if err := nm.sendMulticastMessage(multicastAddress); err != nil {
-					fmt.Printf("Error sending multicast message: %v\n", err)
+					// Create new KnownCluster CR
+					if err := cl.Create(ctx, resourceforge.ForgeKnownCluster(remote.ID.NodeID, remote.ID.IP)); err != nil {
+						return err
+					}
+					klog.InfoS("KnownCluster created", "ID", remote.ID.NodeID)
 				}
-			case <-ctx.Done():
-				ticker.Stop()
-				return
+			} else {
+				klog.Info("KnownCluster already present: updating")
+				// Update Status
+				kc.UpdateStatus()
+
+				// Update fetched KnownCluster CR
+				err := cl.Status().Update(ctx, kc)
+				if err != nil {
+					return err
+				}
+				klog.InfoS("KnownCluster updated", "ID", kc.ObjectMeta.Name)
 			}
 		}
-	}()
-
-	// Start receiving multicast messages
-	go func() {
-		if err := nm.receiveMulticastMessage(multicastAddress); err != nil {
-			fmt.Printf("Error receiving multicast message: %v\n", err)
-		}
-	}()
-
-	// Block until context is canceled
-	<-ctx.Done()
-	return nil
-}
-
-func getClusterAddress(ctx context.Context, cl client.Client) (string, error) {
-	// Get NodeIdentity
-	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
-	if nodeIdentity != nil {
-		return nodeIdentity.IP, nil
 	}
-
-	return "", fmt.Errorf("no suitable IPv4 address found for cluster")
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkv1alpha1.KnownCluster{}).
-		Complete(r)
-}
+func doHousekeeping(ctx context.Context, cl client.Client) error {
+	ticker := time.NewTicker(20 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			klog.Info("Starting housekeeping")
 
-// Delete all the expired KnownCluster CRs.
-func houseKeeping(ctx context.Context, r *KnownClusterReconciler) error {
-	// Retrieve the CR list
-	clstList := networkv1alpha1.KnownClusterList{}
-	err := r.Client.List(ctx, &clstList)
-	if err != nil {
-		return err
-	}
-	// Remove all CR with expiration time < now
-	for _, cr := range clstList.Items {
-		if cr.Status.ExpirationTime < time.Now().Local().UnixMilli() {
-			err := r.Client.Delete(ctx, &cr)
+			// Retrieve KnownClusterList
+			kcList := networkv1alpha1.KnownClusterList{}
+			err := cl.List(ctx, &kcList)
 			if err != nil {
 				return err
 			}
+			if len(kcList.Items) == 0 {
+				klog.Info("Housekeeping not needed, no KnownClusters available")
+				continue
+			}
+
+			// Remove all KnownCluster CR with expiration time < now
+			for _, kc := range kcList.Items {
+				if tools.CheckExpiration(kc.Status.ExpirationTime) {
+					err := cl.Delete(ctx, &kc)
+					klog.InfoS("KnownCluster expired and deleted", "ID", kc.Name)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil
 		}
 	}
-	return nil
 }

@@ -387,7 +387,7 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 	// Check if the Transaction already exists
 	t, found := g.SearchTransaction(request.Buyer.NodeID, flavorID)
 	if found {
-		t.ExpirationTime = tools.GetExpirationTime()
+		t.ExpirationTime = tools.GetExpirationTime(1, 0, 0)
 		transaction = t
 		g.addNewTransaction(t)
 	}

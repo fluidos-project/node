@@ -15,7 +15,6 @@
 package main
 
 import (
-	"container/list"
 	"context"
 	"flag"
 	"os"
@@ -82,17 +81,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Buffer for clusters multicast messages
-	discoveredClusters := list.New()
-
 	// Print something about the mgr
 	setupLog.Info("Manager started", "manager", mgr)
 
+	// Buffer for clusters multicast messages
+	nm := &networkmanager.NetworkManager{}
+
+	// Start the NetworkManager setup
+	if err := networkmanager.Setup(context.Background(), cl, nm); err != nil {
+		setupLog.Error(err, "Unable to setup NetworkManager")
+		os.Exit(1)
+	}
+
+	// Start the NetworkManager extecution
+	if err := networkmanager.Execute(context.Background(), cl, nm); err != nil {
+		setupLog.Error(err, "Unable to execute NetworkManager")
+		os.Exit(1)
+	}
+
 	// Register the controller
 	if err = (&networkmanager.KnownClusterReconciler{
-		Client:                 cl,
-		Scheme:                 mgr.GetScheme(),
-		DiscoveredClustersList: *discoveredClusters,
+		Client: cl,
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KnownCluster")
 		os.Exit(1)
@@ -105,12 +115,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	// Start the NetworkManager goroutines
-	if err := networkmanager.StartDiscovery(context.Background(), cl, discoveredClusters); err != nil {
-		setupLog.Error(err, "Unable to start NetworkManager")
 		os.Exit(1)
 	}
 

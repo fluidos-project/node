@@ -414,7 +414,7 @@ func ForgeTransactionObj(id string, req *models.ReserveRequest) *models.Transact
 			}
 			return nil
 		}(),
-		ExpirationTime: tools.GetExpirationTime(),
+		ExpirationTime: tools.GetExpirationTime(1, 0, 0),
 	}
 }
 
@@ -1436,16 +1436,15 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 func ForgeKnownCluster(id string, address string) *networkv1alpha1.KnownCluster {
 	return &networkv1alpha1.KnownCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      id, //namings.ForgeClusterName(address),
+			Name:      namings.ForgeKnownClusterName(id),
 			Namespace: flags.FluidosNamespace,
 		},
 		Spec: networkv1alpha1.KnownClusterSpec{
 			Address: address,
 		},
 		Status: networkv1alpha1.KnownClusterStatus{
-			ExpirationTime: time.Now().Local().Add(time.Second * 10).UnixMilli(),
-			CreationTime:   time.Now().Local().UnixMilli(),
-			LastUpdateTime: time.Now().Local().UnixMilli(),
+			ExpirationTime: tools.GetExpirationTime(0, 0, 10),
+			LastUpdateTime: tools.GetTimeNow(),
 		},
 	}
 }
