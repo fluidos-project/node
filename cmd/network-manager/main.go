@@ -53,8 +53,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	enableLocalDiscovery := flag.Bool("enable-network-discovery", true, "Enable network discovery of other clusters on same LAN")
-
+	enableLocalDiscovery := flag.Bool("enable-local-discovery", true, "Enable discovery of other clusters on same LAN")
 	opts := zap.Options{
 		Development: true,
 	}
