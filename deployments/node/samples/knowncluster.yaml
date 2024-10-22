@@ -1,0 +1,13 @@
+apiVersion: network.fluidos.eu/v1alpha1
+kind: KnownCluster
+metadata:
+  name: knowncluster-sample
+  namespace: fluidos
+spec:
+  # Set ip:port with the provider cluster control plane
+  address: 172.8.0.2:30001
+status:
+  # Set these timestamps to a future time, otherwise the housekeeping will delete the CR
+  expirationTime: "2024-01-01T09:00:10Z"
+  lastUpdateTime: "2024-01-01T09:00:00Z"
+    

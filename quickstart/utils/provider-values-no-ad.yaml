@@ -18,6 +18,16 @@ common:
   affinity: {}
   # -- Extra arguments for all fluidos-node pods
   extraArgs: []
+  configMaps:
+    nodeIdentity:
+      # -- The name of the ConfigMap containing the FLUIDOS Node identity info.
+      name: "fluidos-node-identity"
+      # -- The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes
+      domain: "fluidos.eu"
+      # -- The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster.
+      ip: 
+      # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
+      nodeID: 
 
 localResourceManager:
   # -- The number of REAR Controller, which can be increased for active/passive high availability.
@@ -121,7 +131,9 @@ networkManager:
   replicas: 1
   pod:
     # -- Annotations for the network-manager pod.
-    annotations: {}
+    annotations: {
+      k8s.v1.cni.cncf.io/networks: macvlan-conf@eth1
+    }
     # -- Labels for the network-manager pod.
     labels: {}
     # -- Extra arguments for the network-manager pod.
@@ -132,26 +144,18 @@ networkManager:
       requests: {}
     # -- The resource image to be used by the network-manager pod.
   imageName: "ghcr.io/fluidos/network-manager"
-  configMaps:
-    providers:
-      # -- The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue).
-      name: "fluidos-network-manager-config"
-      # -- The IP List of Local knwon FLUIDOS Nodes separated by commas.
-      local: "host.docker.internal:9000"
-      # -- The IP List of Remote known FLUIDOS Nodes separated by commas.
-      remote: 
-      # -- The IP List of SuperNodes separated by commas.
-      default: 
-    nodeIdentity:
-      # -- The name of the ConfigMap containing the FLUIDOS Node identity info.
-      name: "fluidos-network-manager-identity"
-      # -- The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes
-      domain: "fluidos.eu"
-      # -- The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster.
-      ip: 
-      # -- The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain
-      nodeID: 
-
+  config:
+    enableLocalDiscovery: 
+    address:
+      # -- The first octet of the CNI virtual network subnet
+      firstOctet: "10"
+      # -- The second octet of the CNI virtual network subnet
+      secondOctet: "202"
+      # -- The third octet of the CNI virtual network subnet
+      thirdOctet: 
+    multicast:
+      address: "239.11.11.1"
+      port: 4000
 
 webhook:
   # -- Enable the webhook server for the local-resource-manager.
