@@ -44,9 +44,10 @@ import (
 
 // NetworkManager keeps all the necessary class data.
 type NetworkManager struct {
-	ID        *nodecorev1alpha1.NodeIdentity
-	Multicast string
-	Iface     *net.Interface
+	ID                   *nodecorev1alpha1.NodeIdentity
+	Multicast            string
+	Iface                *net.Interface
+	EnableLocalDiscovery bool
 }
 
 // KnownClusterReconciler reconciles a KnownCluster object.
@@ -86,35 +87,39 @@ func Setup(ctx context.Context, cl client.Client, nm *NetworkManager) error {
 		return fmt.Errorf("failed to get multicast address")
 	}
 
-	ifi, err := net.InterfaceByName("eth1")
-	if err != nil {
-		return err
-	}
-
 	nm.ID = nodeIdentity
 	nm.Multicast = multicastAddress
-	nm.Iface = ifi
+
+	if nm.EnableLocalDiscovery {
+		ifi, err := net.InterfaceByName("eth1")
+		if err != nil {
+			return err
+		}
+		nm.Iface = ifi
+		klog.InfoS("Interface", "Name", ifi.Name, "MAC address", ifi.HardwareAddr)
+	}
 
 	klog.InfoS("Node", "ID", nodeIdentity.NodeID, "Address", nodeIdentity.IP)
-	klog.InfoS("Interface", "Name", ifi.Name, "MAC address", ifi.HardwareAddr)
 
 	return nil
 }
 
 func Execute(ctx context.Context, cl client.Client, nm *NetworkManager) error {
 	// Start sending multicast messages
-	go func() {
-		if err := sendMulticastMessage(ctx, nm); err != nil {
-			klog.ErrorS(err, "Error sending advertisemente")
-		}
-	}()
+	if nm.EnableLocalDiscovery {
+		go func() {
+			if err := sendMulticastMessage(ctx, nm); err != nil {
+				klog.ErrorS(err, "Error sending advertisemente")
+			}
+		}()
 
-	// Start receiving multicast messages
-	go func() {
-		if err := receiveMulticastMessage(ctx, cl, nm); err != nil {
-			klog.ErrorS(err, "Error receiving advertisement")
-		}
-	}()
+		// Start receiving multicast messages
+		go func() {
+			if err := receiveMulticastMessage(ctx, cl, nm); err != nil {
+				klog.ErrorS(err, "Error receiving advertisement")
+			}
+		}()
+	}
 
 	// Do housekeeping
 	go func() {
@@ -122,6 +127,7 @@ func Execute(ctx context.Context, cl client.Client, nm *NetworkManager) error {
 			klog.ErrorS(err, "Error doing housekeeping")
 		}
 	}()
+
 	return nil
 }
 

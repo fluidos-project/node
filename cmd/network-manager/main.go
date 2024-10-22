@@ -53,6 +53,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	enableLocalDiscovery := flag.Bool("enable-local-discovery", true, "Enable discovery of other clusters on same LAN")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -85,7 +86,7 @@ func main() {
 	setupLog.Info("Manager started", "manager", mgr)
 
 	// Buffer for clusters multicast messages
-	nm := &networkmanager.NetworkManager{}
+	nm := &networkmanager.NetworkManager{EnableLocalDiscovery: *enableLocalDiscovery}
 
 	// Start the NetworkManager setup
 	if err := networkmanager.Setup(context.Background(), cl, nm); err != nil {
