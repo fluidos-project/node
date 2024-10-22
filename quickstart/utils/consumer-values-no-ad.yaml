@@ -146,6 +146,7 @@ networkManager:
     # -- The resource image to be used by the network-manager pod.
   imageName: "ghcr.io/fluidos/network-manager"
   config:
+    enableLocalDiscovery: 
     address:
       # -- The first octet of the CNI virtual network subnet
       firstOctet: "10"

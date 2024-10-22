@@ -1,6 +1,7 @@
-{{- $subnet := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".0/24"}}
-{{- $rangeStart := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101"}}
-{{- $rangeEnd := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101"}}
+{{- if eq .Values.networkManager.config.enableLocalDiscovery true -}}
+{{- $subnet := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".0/24" -}}
+{{- $rangeStart := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101" -}}
+{{- $rangeEnd := print .Values.networkManager.config.address.firstOctet "." .Values.networkManager.config.address.secondOctet "." .Values.networkManager.config.address.thirdOctet ".101" -n}}
 
 apiVersion: "k8s.cni.cncf.io/v1"
 kind: NetworkAttachmentDefinition
@@ -23,3 +24,4 @@ spec:
         "rangeEnd": "{{ $rangeEnd }}"
       }
     }'
+{{- end }}

@@ -13,7 +13,7 @@ spec:
       {{- include "fluidos.labels" $networkManagerConfig | nindent 6 }}
   template:
     metadata:
-    {{ if .Values.networkManager.pod.annotations }}
+    {{ if and .Values.networkManager.pod.annotations (eq .Values.networkManager.config.enableLocalDiscovery true) }}
       annotations:
         {{- toYaml .Values.networkManager.pod.annotations | nindent 8 }}
     {{ end }}
@@ -43,6 +43,9 @@ spec:
         securityContext:
           {{- include "fluidos.containerSecurityContext" $networkManagerConfig | nindent 10 }}
         name: {{ $networkManagerConfig.name }}
+        command: ["/usr/bin/network-manager"]
+        args:
+          - --enable-local-discovery={{ .Values.networkManager.config.enableLocalDiscovery | toString }}
         env:
         - name: MULTICAST_ADDRESS
           value: {{ print .Values.networkManager.config.multicast.address ":" .Values.networkManager.config.multicast.port}}

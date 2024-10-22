@@ -79,7 +79,7 @@ function install_components() {
     installation_type=$5
 
     # Get the network manager installation boolean from parameters
-    enable_node_discovery=$6
+    enable_local_discovery=$6
 
     helm repo add fluidos https://fluidos-project.github.io/node/
 
@@ -148,7 +148,7 @@ function install_components() {
         echo "The KUBECONFIG is $KUBECONFIG"
 
         # Setup CNI to enable multicast node discovery
-        if [ "$enable_node_discovery" == "true" ]; then
+        if [ "$enable_local_discovery" == "true" ]; then
             kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml --kubeconfig "$KUBECONFIG"
         fi
       
@@ -206,6 +206,7 @@ function install_components() {
                 --set tag=$VERSION \
                 --set "provider=$installation_type" \
                 --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.enableLocalDiscovery=$enable_local_discovery" \
                 --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
@@ -214,6 +215,7 @@ function install_components() {
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
                 --set "provider=$installation_type" \
                 --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.enableLocalDiscovery=$enable_local_discovery" \
                 --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"
