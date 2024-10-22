@@ -68,6 +68,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - network.fluidos.eu
+  resources:
+  - knownclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - nodecore.fluidos.eu
   resources:
   - allocations

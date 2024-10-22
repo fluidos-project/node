@@ -1,0 +1,28 @@
+{{- $nodeIdentityConfig := (merge (dict "name" "node-identity" "module" "node-identity") .) -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "fluidos.labels" $nodeIdentityConfig | nindent 4 }}
+  name: {{ .Values.common.configMaps.nodeIdentity.name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ if .Values.common.configMaps.nodeIdentity.domain }}
+  domain: {{ .Values.common.configMaps.nodeIdentity.domain }}
+  {{- else }}
+  {{- fail "The FLUIDOS Node domain (.Values.common.configMaps.nodeIdentity.domain) must be set." }}
+  {{- end }}
+  {{- if .Values.common.configMaps.nodeIdentity.nodeID }}
+  nodeID: {{ .Values.commmon.configMaps.nodeIdentity.nodeID }}
+  {{- else }}
+  nodeID: {{ randAlphaNum 10 | lower }}
+  {{- end }}
+  {{- if .Values.common.configMaps.nodeIdentity.ip }}
+  ip: {{ .Values.common.configMaps.nodeIdentity.ip }}
+  {{- end }}
+  {{- if .Values.rearController.service.gateway.nodePort.port }}
+  port: {{ .Values.rearController.service.gateway.nodePort.port | quote }}
+  {{- else }}
+  {{- fail "The FLUIDOS Node port (.Values.rearController.service.gateway.nodePort.port) must be set." }}
+  {{- end }}

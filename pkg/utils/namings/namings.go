@@ -124,6 +124,11 @@ func RetrieveFlavorNameFromPC(pcName string) string {
 	return strings.TrimPrefix(pcName, "peeringcandidate-")
 }
 
+// ForgeKnownClusterName generates a name for the Cluster.
+func ForgeKnownClusterName(nodeID string) string {
+	return fmt.Sprintf("knowncluster-%s", nodeID)
+}
+
 // ForgeRandomString generates a random string of 16 bytes.
 func ForgeRandomString() (string, error) {
 	randomBytes := make([]byte, 16)

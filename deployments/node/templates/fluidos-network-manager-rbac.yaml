@@ -1,0 +1,32 @@
+{{- $networkManagerConfig := (merge (dict "name" "network-manager" "module" "network-manager") .) -}}
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+{{ .Files.Get (include "fluidos.cluster-role-filename" (dict "prefix" ( include "fluidos.prefixedName" $networkManagerConfig )))}}
+

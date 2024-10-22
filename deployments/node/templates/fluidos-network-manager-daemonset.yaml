@@ -1,0 +1,75 @@
+{{- $networkManagerConfig := (merge (dict "name" "network-manager" "module" "network-manager") .) -}}
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    {{- include "fluidos.labels" $networkManagerConfig | nindent 4 }}
+  name: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "fluidos.labels" $networkManagerConfig | nindent 6 }}
+  template:
+    metadata:
+    {{- if and .Values.networkManager.pod.annotations (eq .Values.networkManager.config.enableLocalDiscovery true) }}
+      annotations:
+        {{- toYaml .Values.networkManager.pod.annotations | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "fluidos.labels" $networkManagerConfig | nindent 8 }}
+      {{- if .Values.networkManager.pod.labels }}
+        {{ toYaml .Values.networkManager.pod.labels | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if gt .Values.networkManager.replicas 1.0 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "fluidos.labels" $networkManagerConfig | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      securityContext:
+        {{- include "fluidos.podSecurityContext" $networkManagerConfig | nindent 8 }}
+      serviceAccountName: {{ include "fluidos.prefixedName" $networkManagerConfig }}
+      containers:
+      - image: {{ .Values.networkManager.imageName }}:{{ include "fluidos.version" $networkManagerConfig }}
+        imagePullPolicy: {{ .Values.pullPolicy }}
+        securityContext:
+          {{- include "fluidos.containerSecurityContext" $networkManagerConfig | nindent 10 }}
+        name: {{ $networkManagerConfig.name }}
+        command: ["/usr/bin/network-manager"]
+        args:
+          - --enable-local-discovery={{ .Values.networkManager.config.enableLocalDiscovery | toString }}
+          {{- if eq .Values.networkManager.config.enableLocalDiscovery true }}
+          - --cniInterface={{ (get .Values.networkManager.pod.annotations "k8s.v1.cni.cncf.io/networks" | split "@")._1 }}
+          {{- end }}
+        env:
+        - name: MULTICAST_ADDRESS
+          value: {{ print .Values.networkManager.config.multicast.address ":" .Values.networkManager.config.multicast.port}}
+        resources: {{- toYaml .Values.networkManager.pod.resources | nindent 10 }}
+        ports:
+        - name: healthz
+          containerPort: 8081
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: healthz
+      {{- if ((.Values.common).nodeSelector) }}
+      nodeSelector:
+      {{- toYaml .Values.common.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).tolerations) }}
+      tolerations:
+      {{- toYaml .Values.common.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).affinity) }}
+      affinity:
+      {{- toYaml .Values.common.affinity | nindent 8 }}
+      {{- end }}

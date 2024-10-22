@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
+	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
@@ -413,7 +414,7 @@ func ForgeTransactionObj(id string, req *models.ReserveRequest) *models.Transact
 			}
 			return nil
 		}(),
-		ExpirationTime: tools.GetExpirationTime(),
+		ExpirationTime: tools.GetExpirationTime(1, 0, 0),
 	}
 }
 
@@ -1429,4 +1430,21 @@ func ForgeSecretForService(contract *reservationv1alpha1.Contract,
 	secretCredentials.Labels[consts.FluidosServiceCredentials] = "true"
 
 	return secretCredentials, nil
+}
+
+// ForgeKnownCluster creates a KnownCluster from cluster ID and IP address.
+func ForgeKnownCluster(id, address string) *networkv1alpha1.KnownCluster {
+	return &networkv1alpha1.KnownCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namings.ForgeKnownClusterName(id),
+			Namespace: flags.FluidosNamespace,
+		},
+		Spec: networkv1alpha1.KnownClusterSpec{
+			Address: address,
+		},
+		Status: networkv1alpha1.KnownClusterStatus{
+			ExpirationTime: tools.GetExpirationTime(0, 0, 10),
+			LastUpdateTime: tools.GetTimeNow(),
+		},
+	}
 }

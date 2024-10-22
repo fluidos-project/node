@@ -9,6 +9,10 @@ A Helm chart for Fluidos Node
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | common.affinity | object | `{}` | Affinity for all fluidos-node pods |
+| common.configMaps.nodeIdentity.domain | string | `"fluidos.eu"` | The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes |
+| common.configMaps.nodeIdentity.ip | string | `nil` | The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster. |
+| common.configMaps.nodeIdentity.name | string | `"fluidos-node-identity"` | The name of the ConfigMap containing the FLUIDOS Node identity info. |
+| common.configMaps.nodeIdentity.nodeID | string | `nil` | The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain |
 | common.extraArgs | list | `[]` | Extra arguments for all fluidos-node pods |
 | common.nodeSelector | object | `{}` | NodeSelector for all fluidos-node pods |
 | common.tolerations | list | `[]` | Tolerations for all fluidos-node pods |
@@ -25,14 +29,11 @@ A Helm chart for Fluidos Node
 | localResourceManager.pod.labels | object | `{}` | Labels for the local-resource-manager pod. |
 | localResourceManager.pod.resources | object | `{"limits":{},"requests":{}}` | Resource requests and limits (https://kubernetes.io/docs/user-guide/compute-resources/) for the local-resource-manager pod. |
 | localResourceManager.replicas | int | `1` | The number of REAR Controller, which can be increased for active/passive high availability. |
-| networkManager.configMaps.nodeIdentity.domain | string | `""` | The domain name of the FLUIDOS closed domani: It represents for instance the Enterprise and it is used to generate the FQDN of the owned FLUIDOS Nodes |
-| networkManager.configMaps.nodeIdentity.ip | string | `nil` | The IP address of the FLUIDOS Node. It can be public or private, depending on the network configuration and it corresponds to the IP address to reach the Network Manager from the outside of the cluster. |
-| networkManager.configMaps.nodeIdentity.name | string | `"fluidos-network-manager-identity"` | The name of the ConfigMap containing the FLUIDOS Node identity info. |
-| networkManager.configMaps.nodeIdentity.nodeID | string | `nil` | The NodeID is a UUID that identifies the FLUIDOS Node. It is used to generate the FQDN of the owned FLUIDOS Nodes and it is unique in the FLUIDOS closed domain |
-| networkManager.configMaps.providers.default | string | `nil` | The IP List of SuperNodes separated by commas. |
-| networkManager.configMaps.providers.local | string | `""` | The IP List of Local knwon FLUIDOS Nodes separated by commas. |
-| networkManager.configMaps.providers.name | string | `"fluidos-network-manager-config"` | The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue). |
-| networkManager.configMaps.providers.remote | string | `nil` | The IP List of Remote known FLUIDOS Nodes separated by commas. |
+| networkManager.config.address.firstOctet | string | `"10"` | The first octet of the CNI virtual network subnet |
+| networkManager.config.address.secondOctet | string | `nil` | The second octet of the CNI virtual network subnet |
+| networkManager.config.address.thirdOctet | string | `nil` | The third octet of the CNI virtual network subnet |
+| networkManager.config.multicast.address | string | `"239.11.11.1"` |  |
+| networkManager.config.multicast.port | int | `4000` |  |
 | networkManager.imageName | string | `"ghcr.io/fluidos-project/network-manager"` |  |
 | networkManager.pod.annotations | object | `{}` | Annotations for the network-manager pod. |
 | networkManager.pod.extraArgs | list | `[]` | Extra arguments for the network-manager pod. |
