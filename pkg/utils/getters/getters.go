@@ -17,16 +17,17 @@ package getters
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/liqotech/liqo/pkg/auth"
 	"github.com/liqotech/liqo/pkg/utils"
 	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	networkv1alpha1 "github.com/fluidos-project/node/apis/network/v1alpha1"
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
@@ -47,27 +48,51 @@ func GetNodeIdentity(ctx context.Context, cl client.Client) *nodecorev1alpha1.No
 		return nil
 	}
 
+	// Get the control plane IP address if not available in the ConfigMap
+	if cm.Data["ip"] == "" {
+		ep := &corev1.Endpoints{}
+
+		// Get the "kubernetes" endpoint
+		err := cl.Get(ctx, types.NamespacedName{
+			Name:      "kubernetes",
+			Namespace: metav1.NamespaceDefault,
+		}, ep)
+		if err != nil {
+			klog.Errorf("Error getting the endpoint: %s", err)
+			return nil
+		}
+
+		cm.Data["ip"] = ep.Subsets[0].Addresses[0].IP
+	}
+
 	return &nodecorev1alpha1.NodeIdentity{
 		NodeID: cm.Data["nodeID"],
 		Domain: cm.Data["domain"],
-		IP:     cm.Data["ip"],
+		IP:     cm.Data["ip"] + ":" + cm.Data["port"],
 	}
 }
 
-// GetLocalProviders retrieves the list of local providers ip addresses from the Network Manager configMap.
+// GetLocalProviders retrieves the list of local providers ip addresses from the KnownCluster CRs.
 func GetLocalProviders(ctx context.Context, cl client.Client) []string {
-	cm := &corev1.ConfigMap{}
+	knownclusters := networkv1alpha1.KnownClusterList{}
+	result := []string{}
 
-	// Get the configmap
-	err := cl.Get(ctx, types.NamespacedName{
-		Name:      consts.NetworkConfigMapName,
-		Namespace: flags.FluidosNamespace,
-	}, cm)
-	if err != nil {
-		klog.Errorf("Error getting the configmap: %s", err)
+	// Get the list of KnownClusters
+	if err := cl.List(ctx, &knownclusters); err != nil {
+		klog.Errorf("Error when listing KnownClusters: %s", err)
 		return nil
 	}
-	return strings.Split(cm.Data["local"], ",")
+
+	if len(knownclusters.Items) == 0 {
+		klog.Infof("No KnownCluster found")
+		return nil
+	}
+
+	for i := range knownclusters.Items {
+		result = append(result, knownclusters.Items[i].Spec.Address)
+	}
+
+	return result
 }
 
 // GetLiqoCredentials retrieves the Liqo credentials from the local cluster.

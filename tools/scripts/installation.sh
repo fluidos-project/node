@@ -6,8 +6,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR"/utils.sh
 
-declare -A providers_ips
-
 # PIDs of the processes in background
 pids=()
 
@@ -57,14 +55,13 @@ build_and_load() {
 # $2: provider JSON tmp file
 # $3: local repositories boolean
 # $4: local resource manager boolean
+# $5: kubernetes clusters type
+# $6: network manager installation boolean
 # Return: none
 function install_components() {
 
     unset clusters
     declare -A clusters
-
-    unset providers_ips
-    declare -A providers_ips
 
     # Get consumer JSON tmp file from parameter
     consumers_json=$1
@@ -81,10 +78,10 @@ function install_components() {
     # Get the kubernetes clusters type from parameters
     installation_type=$5
 
-    helm repo add fluidos https://fluidos-project.github.io/node/
+    # Get the network manager installation boolean from parameters
+    enable_local_discovery=$6
 
-    consumer_node_port=30000
-    provider_node_port=30001
+    helm repo add fluidos https://fluidos-project.github.io/node/
 
     # Read the results from the files
     while IFS= read -r line; do
@@ -112,11 +109,12 @@ function install_components() {
         COMPONENT_MAP["rear-controller"]="rearController.imageName"
         COMPONENT_MAP["rear-manager"]="rearManager.imageName"
         COMPONENT_MAP["local-resource-manager"]="localResourceManager.imageName"
+        COMPONENT_MAP["network-manager"]="networkManager.imageName"
         # Build the image name using the username
         IMAGE_SET_STRING=""
         DOCKER_USERNAME="fluidoscustom"
         VERSION="0.0.1"
-        for component in rear-controller rear-manager local-resource-manager; do
+        for component in rear-controller rear-manager local-resource-manager network-manager; do
             helm_key="${COMPONENT_MAP[$component]}"
             IMAGE_SET_STRING="$IMAGE_SET_STRING --set $helm_key=$DOCKER_USERNAME/$component"
             # Build and load the docker image
@@ -144,36 +142,15 @@ function install_components() {
         echo "Cluster is: $cluster"
         echo "Cluster value is: ${clusters[$cluster]}"
 
-        # Create list of providers ip taking all the clusters controlplane IPs from the map and put it ina  string separated by commas
-        for provider in "${!clusters[@]}"; do
-            # Check if the cluster is not the current one
-            # Check if the cluster is a provider
-            cluster_role=$(jq -r '.role' <<< "${clusters[$provider]}")
-            # Print cluster role
-            echo "Cluster role is: $cluster_role"
-            if [ "$provider" != "$cluster" ] && [ "$cluster_role" == "provider" ]; then
-                # Print the specific cluster informations
-                echo "Provider cluster: $provider"
-                echo "Value: ${clusters[$provider]}"
-                ip_value="${clusters[$provider]}"
-                ip=$(jq -r '.ip' <<< "$ip_value")
-                # Add the provider port to the IP
-                ip="$ip:$provider_node_port"
-
-                if [ -z "${providers_ips[$cluster]}" ]; then
-                    providers_ips[$cluster]="$ip"
-                else
-                    providers_ips[$cluster]="${providers_ips[$cluster]}\,$ip"
-                fi
-            fi
-        done
-
-        echo "Providers IPs for cluster $cluster: ${providers_ips[$cluster]}"
-
         # Get the kubeconfig file which depends on variable installation_type
         KUBECONFIG=$(jq -r '.kubeconfig' <<< "${clusters[$cluster]}")
 
         echo "The KUBECONFIG is $KUBECONFIG"
+
+        # Setup CNI to enable multicast node discovery
+        if [ "$enable_local_discovery" == "true" ]; then
+            kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml --kubeconfig "$KUBECONFIG"
+        fi
       
         # Decide value file to use based on the role of the cluster
         if [ "$(jq -r '.role' <<< "${clusters[$cluster]}")" == "consumer" ]; then
@@ -183,10 +160,9 @@ function install_components() {
             else
                 value_file="$SCRIPT_DIR/../../quickstart/utils/consumer-values-no-ad.yaml"
             fi
-            # Get cluster IP and port
+            # Get control plane IP
             ip_value="${clusters[$cluster]}"
             ip=$(jq -r '.ip' <<< "$ip_value")
-            port=$consumer_node_port
         else
             # Skip this installation if the cluster is a provider and its installation type is not kind
             if [ "$installation_type" != "kind" ]; then
@@ -199,10 +175,9 @@ function install_components() {
                 else
                     value_file="$SCRIPT_DIR/../../quickstart/utils/provider-values-no-ad.yaml"
                 fi
-                # Get cluster IP and port
+                # Get control plane IP
                 ip_value="${clusters[$cluster]}"
                 ip=$(jq -r '.ip' <<< "$ip_value")
-                port=$provider_node_port
                 fi
         fi
 
@@ -230,16 +205,18 @@ function install_components() {
                 -n fluidos --create-namespace -f $value_file $IMAGE_SET_STRING \
                 --set tag=$VERSION \
                 --set "provider=$installation_type" \
-                --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set "networkManager.configMaps.providers.local=${providers_ips[$cluster]}" \
+                --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.enableLocalDiscovery=$enable_local_discovery" \
+                --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig $KUBECONFIG
             else
                 echo "Installing remote repositories in cluster $cluster with local resource manager"
                 helm upgrade --install node fluidos/node -n fluidos --create-namespace -f "$value_file" \
                 --set "provider=$installation_type" \
-                --set "networkManager.configMaps.nodeIdentity.ip=$ip:$port" \
-                --set 'networkManager.configMaps.providers.local'="${providers_ips[$cluster]}" \
+                --set "common.configMaps.nodeIdentity.ip=$ip" \
+                --set "networkManager.config.enableLocalDiscovery=$enable_local_discovery" \
+                --set "networkManager.config.address.thirdOctet=${cluster: -1}" \
                 --wait \
                 --kubeconfig "$KUBECONFIG"
             fi
