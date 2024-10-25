@@ -915,6 +915,12 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 				},
 			},
 		}
+
+		if err := forgeK8SlicePropertyAdditionalPropertiesFromObj(&flavorTypeDataModel.Properties, &flavorTypeData.Properties); err != nil {
+			klog.Errorf("Error when forging K8Slice additional properties: %s", err)
+			return nil, err
+		}
+
 		flavorTypeDataJSON, err := json.Marshal(flavorTypeData)
 		if err != nil {
 			klog.Errorf("Error when marshaling K8SliceType: %s", err)
@@ -993,6 +999,43 @@ func ForgeFlavorFromObj(flavor *models.Flavor) (*nodecorev1alpha1.Flavor, error)
 		},
 	}
 	return f, nil
+}
+
+func forgeK8SlicePropertyAdditionalPropertiesFromObj(k8SliceObjProperties *models.K8SliceProperties,
+	k8SliceProperties *nodecorev1alpha1.Properties) error {
+	if k8SliceObjProperties == nil {
+		klog.Info("K8Slice properties not found")
+		return nil
+	}
+
+	if k8SliceProperties == nil {
+		klog.Info("K8Slice additional properties not found")
+		return nil
+	}
+
+	// Check additional properties
+	if k8SliceObjProperties.AdditionalProperties == nil {
+		klog.Info("K8Slice additional properties not found")
+		return nil
+	}
+
+	// Initialize additional properties
+	k8SliceProperties.AdditionalProperties = make(map[string]runtime.RawExtension)
+
+	// Forge additional properties
+	for key, value := range k8SliceObjProperties.AdditionalProperties {
+		// Check for empty value
+		if value == nil {
+			klog.Errorf("Empty value for additional property %s", key)
+			return fmt.Errorf("empty value for additional property %s", key)
+		}
+		// Convert json.RawMessage to runtime.RawExtension
+		rawExtension := runtime.RawExtension{Raw: value}
+		// Add additional property to K8SliceProperties
+		k8SliceProperties.AdditionalProperties[key] = rawExtension
+	}
+
+	return nil
 }
 
 // ForgeK8SliceConfiguration creates a Configuration from a FlavorSelector.

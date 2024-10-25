@@ -626,6 +626,14 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 			},
 		}
 
+		if err := parseK8SlicePropertyAdditionalProperties(
+			&flavorTypeStruct.Properties,
+			&modelFlavorTypeData.Properties,
+		); err != nil {
+			klog.Errorf("Error parsing K8Slice additional properties: %s", err)
+			return nil
+		}
+
 		// Encode the K8Slice data into JSON
 		encodedFlavorTypeData, err := json.Marshal(modelFlavorTypeData)
 		if err != nil {
@@ -707,6 +715,39 @@ func ParseFlavor(flavor *nodecorev1alpha1.Flavor) *models.Flavor {
 	}
 
 	return &modelFlavor
+}
+
+func parseK8SlicePropertyAdditionalProperties(k8SliceProperty *nodecorev1alpha1.Properties, k8SliceObjProperty *models.K8SliceProperties) error {
+	if k8SliceProperty == nil {
+		klog.Info("K8Slice property is nil")
+		return nil
+	}
+
+	if k8SliceObjProperty == nil {
+		klog.Info("K8Slice object property is nil")
+		return nil
+	}
+
+	// Check the additional properties
+	if k8SliceProperty.AdditionalProperties == nil {
+		klog.Info("Additional properties is nil")
+		return nil
+	}
+
+	// Initialize the additional properties map
+	k8SliceObjProperty.AdditionalProperties = make(map[string]json.RawMessage)
+
+	// Parse the additional properties
+	for key, value := range k8SliceProperty.AdditionalProperties {
+		// Parse runtime.RawExtension to json.RawMessage
+		jsonValue, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		k8SliceObjProperty.AdditionalProperties[key] = jsonValue
+	}
+
+	return nil
 }
 
 // ParseContract creates a Contract Object.

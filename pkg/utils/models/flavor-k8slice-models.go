@@ -15,6 +15,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -52,10 +53,11 @@ type K8SliceCharacteristics struct {
 
 // K8SliceProperties represents the properties of a Kubernetes slice.
 type K8SliceProperties struct {
-	Latency               int                    `json:"latency,omitempty"`
-	SecurityStandards     []string               `json:"securityStandards,omitempty"`
-	CarbonFootprint       *CarbonFootprint       `json:"carbonFootprint,omitempty"`
-	NetworkAuthorizations *NetworkAuthorizations `json:"networkAuthorizations,omitempty"`
+	Latency               int                        `json:"latency,omitempty"`
+	SecurityStandards     []string                   `json:"securityStandards,omitempty"`
+	CarbonFootprint       *CarbonFootprint           `json:"carbonFootprint,omitempty"`
+	NetworkAuthorizations *NetworkAuthorizations     `json:"networkAuthorizations,omitempty"`
+	AdditionalProperties  map[string]json.RawMessage `json:"additionalProperties,omitempty"`
 }
 
 // K8SlicePartitionability represents the partitionability of a Kubernetes slice.
