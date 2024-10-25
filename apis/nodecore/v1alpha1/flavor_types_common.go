@@ -14,6 +14,8 @@
 
 package v1alpha1
 
+import "k8s.io/apimachinery/pkg/runtime"
+
 // CarbonFootprint represents the carbon footprint of a Flavor.
 type CarbonFootprint struct {
 	Embodied    int   `json:"embodied"`
@@ -38,4 +40,6 @@ type Properties struct {
 	CarbonFootprint *CarbonFootprint `json:"carbon-footprint,omitempty"`
 	// Network authorization policies of the K8Slice Flavor
 	NetworkAuthorizations *NetworkAuthorizations `json:"networkAuthorizations,omitempty"`
+	// AdditionalProperties represents the additional properties of the K8Slice Flavor.
+	AdditionalProperties map[string]runtime.RawExtension `json:"additionalProperties,omitempty"`
 }
