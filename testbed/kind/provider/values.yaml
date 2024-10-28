@@ -135,7 +135,7 @@ networkManager:
       # -- The name of the ConfigMap containing the list of the FLUIDOS Providers and the default FLUIDOS Provider (SuperNode or Catalogue).
       name: "fluidos-network-manager-config"
       # -- The IP List of Local knwon FLUIDOS Nodes separated by commas.
-      local: "host.docker.internal:9000"
+      local: ""
       # -- The IP List of Remote known FLUIDOS Nodes separated by commas.
       remote: 
       # -- The IP List of SuperNodes separated by commas.

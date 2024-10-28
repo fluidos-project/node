@@ -25,9 +25,9 @@ func GetTimeNow() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-// GetExpirationTime returns the current time plus 24 hours in RFC3339 format.
-func GetExpirationTime() string {
-	return time.Now().Add(time.Hour * 24).Format(time.RFC3339)
+// GetExpirationTime returns the current time plus h hours, m minutes and s seconds in RFC3339 format.
+func GetExpirationTime(h, m, s int) string {
+	return time.Now().Add(time.Hour * time.Duration(h)).Add(time.Minute * time.Duration(m)).Add(time.Second * time.Duration(s)).Format(time.RFC3339)
 }
 
 // CheckExpiration checks if the expirationTimestamp has already expired.
