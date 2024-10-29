@@ -71,6 +71,7 @@ jobs:
           - rear-manager
           - rear-controller
           - local-resource-manager
+          - network-manager
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.0.0
