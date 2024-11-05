@@ -871,7 +871,22 @@ func (r *SolverReconciler) reservationToSolver(_ context.Context, o client.Objec
 }
 
 func (r *SolverReconciler) allocationToSolver(_ context.Context, o client.Object) []reconcile.Request {
-	solverName := o.(*nodecorev1alpha1.Allocation).Spec.Contract.Name
+	var solverName string
+	contractName := o.(*nodecorev1alpha1.Allocation).Spec.Contract.Name
+	// Get the reservation with status.Contract.Name == solverName
+	reservationList := &reservationv1alpha1.ReservationList{}
+	if err := r.Client.List(context.Background(), reservationList); err != nil {
+		klog.Errorf("Error when listing Reservations: %s", err)
+		return nil
+	}
+
+	for i := range reservationList.Items {
+		if reservationList.Items[i].Status.Contract.Name == contractName {
+			solverName = reservationList.Items[i].Spec.SolverID
+			break
+		}
+	}
+
 	return []reconcile.Request{
 		{
 			NamespacedName: types.NamespacedName{
