@@ -1,0 +1,63 @@
+{{ if Values.npDiscovery.enabled }}
+{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "fluidos.labels" $rearControllerConfig | nindent 4 }}
+  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "fluidos.labels" $rearControllerConfig | nindent 6 }}
+  template:
+    metadata: 
+    {{ if .Values.rearController.pod.annotations }}
+      annotations:
+        {{- toYaml .Values.rearController.pod.annotations | nindent 8 }}
+    {{ end }}
+      labels:
+        {{- include "fluidos.labels" $rearControllerConfig | nindent 8 }}
+      {{ if .Values.rearController.pod.labels }}
+        {{ toYaml .Values.rearController.pod.labels | nindent 8 }}
+      {{ end }}
+    spec:
+      {{- if gt .Values.rearController.replicas 1.0 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "fluidos.labels" $rearControllerConfig | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+      securityContext:
+        {{- include "fluidos.podSecurityContext" $rearControllerConfig | nindent 8 }}
+      serviceAccountName: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+      containers:
+      - image: {{ .Values.npDiscovery.imageName }}
+        imagePullPolicy: {{ .Values.pullPolicy }}
+        securityContext:
+          {{- include "fluidos.containerSecurityContext" $rearControllerConfig | nindent 10 }}
+        name: {{ .Values.npDiscovery.name }}
+        resources: {{- toYaml .Values.rearController.pod.resources | nindent 10 }}
+        env:
+          - name: NP_BOOTSTRAP_URL
+            value: {{ .Values.npDiscovery.np_bootstrap_url }}
+      {{- if (.Values.common).nodeSelector }}
+      nodeSelector:
+      {{- toYaml .Values.common.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).tolerations) }}
+      tolerations:
+      {{- toYaml .Values.common.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if ((.Values.common).affinity) }}
+      affinity:
+      {{- toYaml .Values.common.affinity | nindent 8 }}
+      {{- end }}
+{{- end }}
