@@ -34,6 +34,7 @@ A Helm chart for Fluidos Node
 | networkManager.config.address.thirdOctet | string | `nil` | The third octet of the CNI virtual network subnet |
 | networkManager.config.multicast.address | string | `"239.11.11.1"` |  |
 | networkManager.config.multicast.port | int | `4000` |  |
+| networkManager.config.netInterface | string | `"eth0"` |  |
 | networkManager.imageName | string | `"ghcr.io/fluidos-project/network-manager"` |  |
 | networkManager.pod.annotations | object | `{}` | Annotations for the network-manager pod. |
 | networkManager.pod.extraArgs | list | `[]` | Extra arguments for the network-manager pod. |
