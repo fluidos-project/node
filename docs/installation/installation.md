@@ -89,18 +89,24 @@ Once we have Liqo running, we can install the FLUIDOS Node component via helm:
 helm repo add fluidos https://fluidos-project.github.io/node/
 
 
-helm install node fluidos/node -n fluidos \
---create-namespace -f ../../quickstart/utils/consumer-values.yaml \
---set networkManager.configMaps.nodeIdentity.ip="LOCAL_K8S_CLUSTER_CP_IP:LOCAL_REAR_PORT"\
---set networkManager.configMaps.providers.local="REMOTE_K8S_CLUSTER_CP_IP:REMOTE_REAR_PORT"\
---wait 
+helm upgrade --install node fluidos/node \
+    -n fluidos --version "$FLUIDOS_VERSION" \
+    --create-namespace -f consumer-values.yaml \
+    --set networkManager.configMaps.nodeIdentity.ip="$NODE_IP" \
+    --set rearController.service.gateway.nodePort.port="$REAR_PORT" \
+    --set networkManager.config.enableLocalDiscovery="$ENABLE_LOCAL_DISCOVERY" \
+    --set networkManager.config.address.thirdOctet="$THIRD_OCTET" \
+    --set networkManager.config.netInterface="$NET_INTERFACE" \
+    --wait \
+    --debug \
+    --v=2
 ```
-
-Due to the absence of the Network Manager component that enable the auto-discovery among FLUIDOS Nodes, we need to setup some parameters manually to allow Nodes discovery.
 
 Here, the meaning of the various parameters:
 
-- LOCAL_K8S_CLUSTER_CP_IP: The IP address of your local Kubernetes cluster Control Plane
-- LOCAL_REAR_PORT: The port on which your local cluster uses the REAR protocol
-- REMOTE_K8S_CLUSTER_CP_IP: It's the IP address of the remote Kubernetes cluster to which you want to negotiate Flavors thorugh REAR with.
-- REMOTE_REAR_PORT: It's the port on which the remote cluster uses the REAR protocol.
+- FLUIDOS_VERSION: The FLUIDOS Node version to be installed
+- NODE_IP: The IP address of your local Kubernetes cluster Control Plane
+- REAR_PORT: The port on which your local cluster uses the REAR protocol
+- ENABLE_LOCAL_DISCOVERY: A flag that enables the Network Manager, which is the component advertising the local FLUIDOS Node into a LAN
+- THIRD_OCTET: This is the third byte of the IP address used by Multus CNI for sending broadcast messages into the LAN. **Warning**: this parameters should be different for each FLUIDOS Node to be working (e.g. 1 for the 1st cluster, 2 for the 2nd cluster, etc.)
+- NET_INTERFACE: The host network interface that Multus binds to

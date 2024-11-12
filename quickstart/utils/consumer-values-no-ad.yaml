@@ -144,7 +144,7 @@ networkManager:
       limits: {}
       requests: {}
     # -- The resource image to be used by the network-manager pod.
-  imageName: "ghcr.io/fluidos/network-manager"
+  imageName: "ghcr.io/fluidos-project/network-manager"
   config:
     enableLocalDiscovery: 
     address:
