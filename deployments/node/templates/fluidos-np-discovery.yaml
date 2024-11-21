@@ -5,7 +5,7 @@ kind: Deployment
 metadata:
   labels:
     {{- include "fluidos.labels" $rearControllerConfig | nindent 4 }}
-  name: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+  name: np-fluidos-discovery
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
