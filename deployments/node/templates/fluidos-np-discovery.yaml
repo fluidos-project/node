@@ -1,4 +1,4 @@
-{{ if Values.npDiscovery.enabled }}
+{{ if .Values.npDiscovery.enabled }}
 {{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -47,7 +47,7 @@ spec:
         resources: {{- toYaml .Values.rearController.pod.resources | nindent 10 }}
         env:
           - name: NP_BOOTSTRAP_URL
-            value: {{ .Values.npDiscovery.np_bootstrap_url }}
+            value: {{ .Values.npDiscovery.np_bootstrap_url | quote }}
       {{- if (.Values.common).nodeSelector }}
       nodeSelector:
       {{- toYaml .Values.common.nodeSelector | nindent 8 }}
