@@ -1,0 +1,34 @@
+{{ if .Values.npDiscovery.enabled }}
+{{- $npDiscoveryConfig := (merge (dict "name" "np-discovery" "module" "np-discovery") .) -}}
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
+  labels:
+    {{- include "fluidos.labels" $npDiscoveryConfig | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
+  labels:
+    {{- include "fluidos.labels" $npDiscoveryConfig | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
+  labels:
+    {{- include "fluidos.labels" $npDiscoveryConfig | nindent 4 }}
+{{ .Files.Get (include "fluidos.cluster-role-filename" (dict "prefix" ( include "fluidos.prefixedName" $npDiscoveryConfig )))}}
+
+{{- end }}

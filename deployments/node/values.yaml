@@ -124,6 +124,12 @@ rearController:
       # -- The target port used by the REAR Gateway service.
       targetPort: 3004
 
+npDiscovery:
+  enabled: false
+  name: np-fluidos-discovery
+  imageName: registry.gitlab.com/pi-lar/neuropil-k8s/fluidos_discovery
+  np_bootstrap_url: '*:udp4:demo.neuropil.io:3400'
+
 networkManager:
   # -- The number of Network Manager, which can be increased for active/passive high availability.
   replicas: 1
