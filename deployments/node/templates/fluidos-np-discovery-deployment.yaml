@@ -1,17 +1,17 @@
 {{ if .Values.npDiscovery.enabled }}
-{{- $rearControllerConfig := (merge (dict "name" "rear-controller" "module" "rear-controller") .) -}}
+{{- $npDiscoveryConfig := (merge (dict "name" "np-discovery" "module" "np-discovery") .) -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{- include "fluidos.labels" $rearControllerConfig | nindent 4 }}
+    {{- include "fluidos.labels" $npDiscoveryConfig | nindent 4 }}
   name: np-fluidos-discovery
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "fluidos.labels" $rearControllerConfig | nindent 6 }}
+      {{- include "fluidos.labels" $npDiscoveryConfig | nindent 6 }}
   template:
     metadata: 
     {{ if .Values.rearController.pod.annotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml .Values.rearController.pod.annotations | nindent 8 }}
     {{ end }}
       labels:
-        {{- include "fluidos.labels" $rearControllerConfig | nindent 8 }}
+        {{- include "fluidos.labels" $npDiscoveryConfig | nindent 8 }}
       {{ if .Values.rearController.pod.labels }}
         {{ toYaml .Values.rearController.pod.labels | nindent 8 }}
       {{ end }}
@@ -32,17 +32,16 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchLabels:
-                  {{- include "fluidos.labels" $rearControllerConfig | nindent 18 }}
+                  {{- include "fluidos.labels" $npDiscoveryConfig | nindent 18 }}
               topologyKey: kubernetes.io/hostname
       {{- end }}
       securityContext:
-        {{- include "fluidos.podSecurityContext" $rearControllerConfig | nindent 8 }}
-      serviceAccountName: {{ include "fluidos.prefixedName" $rearControllerConfig }}
+        {{- include "fluidos.podSecurityContext" $npDiscoveryConfig | nindent 8 }}
+      serviceAccountName: {{ include "fluidos.prefixedName" $npDiscoveryConfig }}
       containers:
       - image: {{ .Values.npDiscovery.imageName }}
-        imagePullPolicy: {{ .Values.pullPolicy }}
         securityContext:
-          {{- include "fluidos.containerSecurityContext" $rearControllerConfig | nindent 10 }}
+          {{- include "fluidos.containerSecurityContext" $npDiscoveryConfig | nindent 10 }}
         name: {{ .Values.npDiscovery.name }}
         resources: {{- toYaml .Values.rearController.pod.resources | nindent 10 }}
         env:
