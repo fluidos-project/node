@@ -36,10 +36,12 @@ var k8sClientTransaction client.Client
 // Context.
 var ctxTransaction context.Context
 
-// SetupWebhookWithManager sets up and registers the webhook with the manager.
+// SetupWebhookWithManager sets up and registers the webhook with the managetransaction.
 func (r *Transaction) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&Transaction{}).
+		WithDefaulter(&Transaction{}).
+		WithValidator(&Transaction{}).
 		Complete()
 
 	if err != nil {
@@ -58,26 +60,32 @@ func (r *Transaction) SetupWebhookWithManager(mgr ctrl.Manager) error {
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-reservation-fluidos-eu-v1alpha1-transaction,mutating=true,failurePolicy=fail,sideEffects=None,groups=reservation.fluidos.eu,resources=transactions,verbs=create;update,versions=v1alpha1,name=mtransaction.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Transaction{}
+var _ webhook.CustomDefaulter = &Transaction{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *Transaction) Default() {
+func (r *Transaction) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	transaction := obj.(*Transaction)
 	transactionlog.Info("TRANSACTION DEFAULT WEBHOOK")
-	transactionlog.Info("default", "name", r.Name)
+	transactionlog.Info("default", "name", transaction.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-reservation-fluidos-eu-v1alpha1-transaction,mutating=false,failurePolicy=fail,sideEffects=None,groups=reservation.fluidos.eu,resources=transactions,verbs=create;update,versions=v1alpha1,name=vtransaction.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Transaction{}
+var _ webhook.CustomValidator = &Transaction{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Transaction) ValidateCreate() (admission.Warnings, error) {
+func (r *Transaction) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	transaction := obj.(*Transaction)
 	transactionlog.Info("TRANSACTION VALIDATE CREATE WEBHOOK")
-	transactionlog.Info("validate create", "name", r.Name)
+	transactionlog.Info("validate create", "name", transaction.Name)
 
-	if err := validateTransaction(r); err != nil {
+	if err := validateTransaction(transaction); err != nil {
 		transactionlog.Error(err, "Error validating Transaction in update")
 		return nil, err
 	}
@@ -86,13 +94,15 @@ func (r *Transaction) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Transaction) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Transaction) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	transaction := newObj.(*Transaction)
 	transactionlog.Info("TRANSACTION VALIDATE UPDATE WEBHOOK")
-	transactionlog.Info("validate update", "name", r.Name)
+	transactionlog.Info("validate update", "name", transaction.Name)
 
-	transactionlog.Info("old", "name", old)
+	transactionlog.Info("old", "name", oldObj)
 
-	if err := validateTransaction(r); err != nil {
+	if err := validateTransaction(transaction); err != nil {
 		transactionlog.Error(err, "Error validating Transaction in update")
 		return nil, err
 	}
@@ -101,9 +111,11 @@ func (r *Transaction) ValidateUpdate(old runtime.Object) (admission.Warnings, er
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *Transaction) ValidateDelete() (admission.Warnings, error) {
+func (r *Transaction) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	transaction := obj.(*Transaction)
 	transactionlog.Info("TRANSACTION VALIDATE DELETE WEBHOOK")
-	transactionlog.Info("validate delete", "name", r.Name)
+	transactionlog.Info("validate delete", "name", transaction.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
-	offloadingv1alpha1 "github.com/liqotech/liqo/apis/offloading/v1alpha1"
+	offloadingv1beta1 "github.com/liqotech/liqo/apis/offloading/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -427,10 +427,8 @@ func ForgeContractObj(contract *reservationv1alpha1.Contract) models.Contract {
 		BuyerClusterID: contract.Spec.BuyerClusterID,
 		Seller:         parseutil.ParseNodeIdentity(contract.Spec.Seller),
 		PeeringTargetCredentials: models.LiqoCredentials{
-			ClusterID:   contract.Spec.PeeringTargetCredentials.ClusterID,
-			ClusterName: contract.Spec.PeeringTargetCredentials.ClusterName,
-			Token:       contract.Spec.PeeringTargetCredentials.Token,
-			Endpoint:    contract.Spec.PeeringTargetCredentials.Endpoint,
+			ClusterID:  contract.Spec.PeeringTargetCredentials.ClusterID,
+			Kubeconfig: contract.Spec.PeeringTargetCredentials.Kubeconfig,
 		},
 		Configuration: func() *models.Configuration {
 			if contract.Spec.Configuration != nil {
@@ -489,10 +487,8 @@ func ForgeContractFromObj(contract *models.Contract) (*reservationv1alpha1.Contr
 			BuyerClusterID: contract.BuyerClusterID,
 			Seller:         *ForgeNodeIdentitiesFromObj(&contract.Seller),
 			PeeringTargetCredentials: nodecorev1alpha1.LiqoCredentials{
-				ClusterID:   contract.PeeringTargetCredentials.ClusterID,
-				ClusterName: contract.PeeringTargetCredentials.ClusterName,
-				Token:       contract.PeeringTargetCredentials.Token,
-				Endpoint:    contract.PeeringTargetCredentials.Endpoint,
+				ClusterID:  contract.PeeringTargetCredentials.ClusterID,
+				Kubeconfig: contract.PeeringTargetCredentials.Kubeconfig,
 			},
 			TransactionID: contract.TransactionID,
 			Configuration: func() *nodecorev1alpha1.Configuration {
@@ -1217,32 +1213,28 @@ func ForgeDefaultServiceConfiguration(serviceFlavor *nodecorev1alpha1.ServiceFla
 // ForgeLiqoCredentialsObj creates a LiqoCredentials object from a LiqoCredentials CR.
 func ForgeLiqoCredentialsObj(liqoCredentials *nodecorev1alpha1.LiqoCredentials) (*models.LiqoCredentials, error) {
 	return &models.LiqoCredentials{
-		ClusterID:   liqoCredentials.ClusterID,
-		ClusterName: liqoCredentials.ClusterName,
-		Token:       liqoCredentials.Token,
-		Endpoint:    liqoCredentials.Endpoint,
+		ClusterID:  liqoCredentials.ClusterID,
+		Kubeconfig: liqoCredentials.Kubeconfig,
 	}, nil
 }
 
 // ForgeLiqoCredentialsFromObj creates a LiqoCredentials CR from a LiqoCredentials object.
 func ForgeLiqoCredentialsFromObj(liqoCredentials *models.LiqoCredentials) (*nodecorev1alpha1.LiqoCredentials, error) {
 	return &nodecorev1alpha1.LiqoCredentials{
-		ClusterID:   liqoCredentials.ClusterID,
-		ClusterName: liqoCredentials.ClusterName,
-		Token:       liqoCredentials.Token,
-		Endpoint:    liqoCredentials.Endpoint,
+		ClusterID:  liqoCredentials.ClusterID,
+		Kubeconfig: liqoCredentials.Kubeconfig,
 	}, nil
 }
 
 // ForgePodOffloadingStrategy creates a PodOffloadingStrategy CR from a nodecorev1alpha1.HostingPolicy.
-func ForgePodOffloadingStrategy(hostingPolicy *nodecorev1alpha1.HostingPolicy) (offloadingv1alpha1.PodOffloadingStrategyType, error) {
+func ForgePodOffloadingStrategy(hostingPolicy *nodecorev1alpha1.HostingPolicy) (offloadingv1beta1.PodOffloadingStrategyType, error) {
 	switch *hostingPolicy {
 	case nodecorev1alpha1.HostingPolicyProvider:
-		return offloadingv1alpha1.LocalPodOffloadingStrategyType, nil
+		return offloadingv1beta1.LocalPodOffloadingStrategyType, nil
 	case nodecorev1alpha1.HostingPolicyConsumer:
-		return offloadingv1alpha1.RemotePodOffloadingStrategyType, nil
+		return offloadingv1beta1.RemotePodOffloadingStrategyType, nil
 	case nodecorev1alpha1.HostingPolicyShared:
-		return offloadingv1alpha1.LocalAndRemotePodOffloadingStrategyType, nil
+		return offloadingv1beta1.LocalAndRemotePodOffloadingStrategyType, nil
 	default:
 		return "", fmt.Errorf("hosting policy not recognized")
 	}

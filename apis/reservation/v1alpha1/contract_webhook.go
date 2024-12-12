@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,36 +29,44 @@ import (
 // log is for logging in this package.
 var contractlog = logf.Log.WithName("contract-resource")
 
-// SetupWebhookWithManager sets up and registers the webhook with the manager.
+// SetupWebhookWithManager sets up and registers the webhook with the managecontract.
 func (r *Contract) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&Contract{}).
+		WithDefaulter(&Contract{}).
+		WithValidator(&Contract{}).
 		Complete()
 }
 
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-contract-fluidos-eu-v1alpha1-contract,mutating=true,failurePolicy=fail,sideEffects=None,groups=contract.fluidos.eu,resources=contracts,verbs=create;update,versions=v1alpha1,name=mcontract.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Contract{}
+var _ webhook.CustomDefaulter = &Contract{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *Contract) Default() {
+func (r *Contract) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	contract := obj.(*Contract)
 	contractlog.Info("CONTRACT DEFAULT WEBHOOK")
-	contractlog.Info("default", "name", r.Name)
+	contractlog.Info("default", "name", contract.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-contract-fluidos-eu-v1alpha1-contract,mutating=false,failurePolicy=fail,sideEffects=None,groups=contract.fluidos.eu,resources=contracts,verbs=create;update,versions=v1alpha1,name=vcontract.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Contract{}
+var _ webhook.CustomValidator = &Contract{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Contract) ValidateCreate() (admission.Warnings, error) {
+func (r *Contract) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	contract := obj.(*Contract)
 	contractlog.Info("CONTRACT VALIDATE CREATE WEBHOOK")
-	contractlog.Info("validate create", "name", r.Name)
+	contractlog.Info("validate create", "name", contract.Name)
 
-	if err := validateConfiguration(r.Spec.Configuration, &r.Spec.Flavor); err != nil {
+	if err := validateConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor); err != nil {
 		return nil, err
 	}
 
@@ -64,13 +74,15 @@ func (r *Contract) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Contract) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Contract) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	contract := newObj.(*Contract)
 	contractlog.Info("CONTRACT VALIDATE UPDATE WEBHOOK")
-	contractlog.Info("validate update", "name", r.Name)
+	contractlog.Info("validate update", "name", contract.Name)
 
-	contractlog.Info("old", "old", old)
+	contractlog.Info("old", "old", oldObj)
 
-	if err := validateConfiguration(r.Spec.Configuration, &r.Spec.Flavor); err != nil {
+	if err := validateConfiguration(contract.Spec.Configuration, &contract.Spec.Flavor); err != nil {
 		return nil, err
 	}
 
@@ -78,9 +90,11 @@ func (r *Contract) ValidateUpdate(old runtime.Object) (admission.Warnings, error
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *Contract) ValidateDelete() (admission.Warnings, error) {
+func (r *Contract) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	contract := obj.(*Contract)
 	contractlog.Info("CONTRACT VALIDATE DELETE WEBHOOK")
-	contractlog.Info("validate delete", "name", r.Name)
+	contractlog.Info("validate delete", "name", contract.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

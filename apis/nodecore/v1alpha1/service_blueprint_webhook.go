@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,34 +30,42 @@ var serviceblueprintlog = logf.Log.WithName("serviceblueprint-resource")
 // SetupWebhookWithManager setups the webhooks for the ServiceBlueprint resource with the manager.
 func (r *ServiceBlueprint) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&ServiceBlueprint{}).
+		WithDefaulter(&ServiceBlueprint{}).
+		WithValidator(&ServiceBlueprint{}).
 		Complete()
 }
 
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-nodecore-fluidos-eu-v1alpha1-serviceblueprint,mutating=true,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=serviceblueprints,verbs=create;update,versions=v1alpha1,name=mserviceblueprint.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &ServiceBlueprint{}
+var _ webhook.CustomDefaulter = &ServiceBlueprint{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *ServiceBlueprint) Default() {
+func (r *ServiceBlueprint) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	serviceblueprint := obj.(*ServiceBlueprint)
 	serviceblueprintlog.Info("DEFAULT WEBHOOK")
-	serviceblueprintlog.Info("default", "name", r.Name)
+	serviceblueprintlog.Info("default", "name", serviceblueprint.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-nodecore-fluidos-eu-v1alpha1-serviceblueprint,mutating=false,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=serviceblueprints,verbs=create;update,versions=v1alpha1,name=vserviceblueprint.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &ServiceBlueprint{}
+var _ webhook.CustomValidator = &ServiceBlueprint{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *ServiceBlueprint) ValidateCreate() (admission.Warnings, error) {
+func (r *ServiceBlueprint) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	serviceblueprint := obj.(*ServiceBlueprint)
 	serviceblueprintlog.Info("VALIDATE CREATE WEBHOOK")
-	serviceblueprintlog.Info("validate create", "name", r.Name)
+	serviceblueprintlog.Info("validate create", "name", serviceblueprint.Name)
 
 	// Validate ServiceBlueprint templates
-	manifests, err := ValidateAndExtractManifests(r.Spec.Templates)
+	manifests, err := ValidateAndExtractManifests(serviceblueprint.Spec.Templates)
 	if err != nil {
 		return nil, err
 	}
@@ -67,14 +77,16 @@ func (r *ServiceBlueprint) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *ServiceBlueprint) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *ServiceBlueprint) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	serviceblueprint := newObj.(*ServiceBlueprint)
 	serviceblueprintlog.Info("VALIDATE UPDATE WEBHOOK")
-	serviceblueprintlog.Info("validate update", "name", r.Name)
+	serviceblueprintlog.Info("validate update", "name", serviceblueprint.Name)
 
-	serviceblueprintlog.Info("old", "old", old)
+	serviceblueprintlog.Info("old", "old", oldObj)
 
 	// Validate ServiceBlueprint templates
-	manifests, err := ValidateAndExtractManifests(r.Spec.Templates)
+	manifests, err := ValidateAndExtractManifests(serviceblueprint.Spec.Templates)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +98,11 @@ func (r *ServiceBlueprint) ValidateUpdate(old runtime.Object) (admission.Warning
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *ServiceBlueprint) ValidateDelete() (admission.Warnings, error) {
+func (r *ServiceBlueprint) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	serviceblueprint := obj.(*ServiceBlueprint)
 	serviceblueprintlog.Info("VALIDATE DELETE WEBHOOK")
-	serviceblueprintlog.Info("validate delete", "name", r.Name)
+	serviceblueprintlog.Info("validate delete", "name", serviceblueprint.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

@@ -16,6 +16,7 @@ package localresourcemanager
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,6 +165,12 @@ func (r *NodeReconciler) createFlavor(ctx context.Context, nodeInfo *models.Node
 	nodeIdentity nodecorev1alpha1.NodeIdentity, ownerReferences []metav1.OwnerReference) (flavor *nodecorev1alpha1.Flavor, err error) {
 	// Forge the Flavor from the NodeInfo and NodeIdentity
 	flavorResult := resourceforge.ForgeK8SliceFlavorFromMetrics(nodeInfo, nodeIdentity, ownerReferences)
+
+	if flavorResult == nil {
+		klog.Error("Error forging Flavor")
+		return nil, fmt.Errorf("error forging Flavor, Flavor is nil")
+	}
+	klog.Infof("Ready to create Flavor %s of type %s", flavorResult.Name, flavorResult.Spec.FlavorType.TypeIdentifier)
 
 	// Create the Flavor
 	err = r.Create(ctx, flavorResult)

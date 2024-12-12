@@ -39,7 +39,9 @@ var ctxReservation context.Context
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *Reservation) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	err := ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&Reservation{}).
+		WithDefaulter(&Reservation{}).
+		WithValidator(&Reservation{}).
 		Complete()
 
 	if err != nil {
@@ -58,27 +60,33 @@ func (r *Reservation) SetupWebhookWithManager(mgr ctrl.Manager) error {
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-reservation-fluidos-eu-v1alpha1-reservation,mutating=true,failurePolicy=fail,sideEffects=None,groups=reservation.fluidos.eu,resources=reservations,verbs=create;update,versions=v1alpha1,name=mreservation.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Reservation{}
+var _ webhook.CustomDefaulter = &Reservation{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *Reservation) Default() {
+func (r *Reservation) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	reservation := obj.(*Reservation)
 	reservationlog.Info("RESERVATION DEFAULT WEBHOOK")
-	reservationlog.Info("default", "name", r.Name)
+	reservationlog.Info("default", "name", reservation.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-reservation-fluidos-eu-v1alpha1-reservation,mutating=false,failurePolicy=fail,sideEffects=None,groups=reservation.fluidos.eu,resources=reservations,verbs=create;update,versions=v1alpha1,name=vreservation.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Reservation{}
+var _ webhook.CustomValidator = &Reservation{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Reservation) ValidateCreate() (admission.Warnings, error) {
+func (r *Reservation) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	reservation := obj.(*Reservation)
 	reservationlog.Info("RESERVATION VALIDATE CREATE WEBHOOK")
-	reservationlog.Info("validate create", "name", r.Name)
+	reservationlog.Info("validate create", "name", reservation.Name)
 
 	// Validate the Reservation
-	if err := validateReservation(r); err != nil {
+	if err := validateReservation(reservation); err != nil {
 		reservationlog.Error(err, "Error validating Reservation in create")
 		return nil, err
 	}
@@ -87,14 +95,16 @@ func (r *Reservation) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Reservation) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Reservation) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	reservation := newObj.(*Reservation)
 	reservationlog.Info("RESERVATION VALIDATE UPDATE WEBHOOK")
-	reservationlog.Info("validate update", "name", r.Name)
+	reservationlog.Info("validate update", "name", reservation.Name)
 
-	reservationlog.Info("old", "old", old)
+	reservationlog.Info("old", "old", oldObj)
 
 	// Validate the Reservation
-	if err := validateReservation(r); err != nil {
+	if err := validateReservation(reservation); err != nil {
 		reservationlog.Error(err, "Error validating Reservation in update")
 		return nil, err
 	}
@@ -103,9 +113,11 @@ func (r *Reservation) ValidateUpdate(old runtime.Object) (admission.Warnings, er
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *Reservation) ValidateDelete() (admission.Warnings, error) {
+func (r *Reservation) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	reservation := obj.(*Reservation)
 	reservationlog.Info("RESERVATION VALIDATE DELETE WEBHOOK")
-	reservationlog.Info("validate delete", "name", r.Name)
+	reservationlog.Info("validate delete", "name", reservation.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

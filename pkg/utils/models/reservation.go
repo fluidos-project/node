@@ -56,8 +56,6 @@ type Contract struct {
 
 // LiqoCredentials contains the credentials of a Liqo cluster to establish a peering.
 type LiqoCredentials struct {
-	ClusterID   string `json:"clusterID"`
-	ClusterName string `json:"clusterName"`
-	Token       string `json:"token"`
-	Endpoint    string `json:"endpoint"`
+	ClusterID  string `json:"clusterID"`
+	Kubeconfig string `json:"kubeconfig"`
 }

@@ -182,6 +182,18 @@ rules:
   - update
   - watch
 - apiGroups:
+  - authentication.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - batch
   resources:
   - cronjobs
@@ -232,6 +244,38 @@ rules:
   - update
   - watch
 - apiGroups:
+  - core.liqo.io
+  resources:
+  - foreignclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.liqo.io
+  resources:
+  - foreignclusters/finalizers
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.liqo.io
+  resources:
+  - foreignclusters/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - discovery.liqo.io
   resources:
   - foreignclusters
@@ -264,6 +308,18 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ipam.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - networking.k8s.io
   resources:
   - ingresses
@@ -271,6 +327,18 @@ rules:
   - create
   - delete
   - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
   - get
   - list
   - patch
@@ -389,11 +457,15 @@ rules:
 - apiGroups:
   - offloading.liqo.io
   resources:
-  - namespaceoffloadings/status
+  - virtualnodes
   verbs:
+  - create
+  - delete
   - get
+  - list
   - patch
   - update
+  - watch
 - apiGroups:
   - reservation.fluidos.eu
   resources:

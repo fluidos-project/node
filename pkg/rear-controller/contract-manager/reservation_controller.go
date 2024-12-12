@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,11 +37,11 @@ import (
 // ReservationReconciler reconciles a Reservation object.
 type ReservationReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	Gateway *gateway.Gateway
+	RestConfig *rest.Config
+	Scheme     *runtime.Scheme
+	Gateway    *gateway.Gateway
 }
 
-// clusterRole
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=reservations/finalizers,verbs=update
@@ -50,7 +51,17 @@ type ReservationReconciler struct {
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=reservation.fluidos.eu,resources=transactions/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+
+//+kubebuilder:rbac:groups=core,resources=*,verbs=get;list;watch;create;update;patch;delete
+
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,verbs=get;list;watch;create;update;patch;delete;bind;escalate
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+
+//+kubebuilder:rbac:groups=authentication.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=offloading.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ipam.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -316,7 +327,7 @@ func (r *ReservationReconciler) handlePurchase(ctx context.Context,
 		case nodecorev1alpha1.TypeK8Slice:
 			contract, err = r.Gateway.PurchaseFlavor(ctx, transactionID, reservation.Spec.Seller, nil)
 		case nodecorev1alpha1.TypeService:
-			liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), r.Client)
+			liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), r.Client, r.RestConfig)
 			if err != nil {
 				klog.Errorf("Error getting Liqo Credentials: %s", err)
 				return ctrl.Result{}, err

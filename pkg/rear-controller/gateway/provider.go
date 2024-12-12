@@ -365,7 +365,7 @@ func (g *Gateway) reserveFlavor(w http.ResponseWriter, r *http.Request) {
 				}
 
 				if !supported {
-					klog.Errorf("Hosting policy %s not supported by the flavor", serviceConfiguration.HostingPolicy)
+					klog.Errorf("Hosting policy %v not supported by the flavor", serviceConfiguration.HostingPolicy)
 					http.Error(w, "Hosting policy not supported by the flavor", http.StatusBadRequest)
 					return
 				}
@@ -494,7 +494,7 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 	switch flavorSold.Spec.FlavorType.TypeIdentifier {
 	case nodecorev1alpha1.TypeK8Slice:
 		// Create a new Liqo credentials for the K8Slice flavor based on the ones provided by the provider
-		liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), g.client)
+		liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), g.client, g.restConfig)
 		if err != nil {
 			klog.Errorf("Error getting Liqo Credentials: %s", err)
 			http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)
@@ -513,7 +513,7 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Override the Liqo credentials with the ones sent by the client
-		liqoCredentials, err = resourceforge.ForgeLiqoCredentialsFromObj(purchase.LiqoCredentials)
+		liqoCredentials, err = getters.GetLiqoCredentials(context.Background(), g.client, g.restConfig)
 		if err != nil {
 			klog.Errorf("Error forging the Liqo credentials: %s", err)
 			http.Error(w, "Error forging the Liqo credentials", http.StatusInternalServerError)
@@ -531,7 +531,7 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Obtaining the Seller Liqo Cluster ID
-	sellerLiqoCredentials, err := getters.GetLiqoCredentials(context.Background(), g.client)
+	sellerLiqoCredentials, err := getters.GetLiqoCredentials(context.Background(), g.client, g.restConfig)
 	if err != nil {
 		klog.Errorf("Error getting Liqo Credentials: %s", err)
 		http.Error(w, "Error getting Liqo Credentials", http.StatusInternalServerError)

@@ -771,10 +771,8 @@ func ParseContract(contract *reservationv1alpha1.Contract) *models.Contract {
 		}(),
 		Seller: ParseNodeIdentity(contract.Spec.Seller),
 		PeeringTargetCredentials: models.LiqoCredentials{
-			ClusterID:   contract.Spec.PeeringTargetCredentials.ClusterID,
-			ClusterName: contract.Spec.PeeringTargetCredentials.ClusterName,
-			Token:       contract.Spec.PeeringTargetCredentials.Token,
-			Endpoint:    contract.Spec.PeeringTargetCredentials.Endpoint,
+			ClusterID:  contract.Spec.PeeringTargetCredentials.ClusterID,
+			Kubeconfig: contract.Spec.PeeringTargetCredentials.Kubeconfig,
 		},
 		ExpirationTime:   contract.Spec.ExpirationTime,
 		ExtraInformation: contract.Spec.ExtraInformation,

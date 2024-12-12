@@ -579,7 +579,7 @@ func (r *SolverReconciler) handlePeering(
 			return ctrl.Result{}, err
 		}
 		// VirtualNode Name is not used in the current implementation
-		vnName := namings.ForgeVirtualNodeName(contract.Spec.PeeringTargetCredentials.ClusterName)
+		vnName := namings.ForgeVirtualNodeName(contract.Spec.PeeringTargetCredentials.ClusterID)
 		klog.Infof("Virtual Node Name: %s", vnName)
 
 		allocation := resourceforge.ForgeAllocation(&contract)

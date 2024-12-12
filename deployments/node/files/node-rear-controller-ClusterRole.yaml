@@ -52,12 +52,28 @@ rules:
   - patch
   - update
 - apiGroups:
+  - authentication.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - ""
   resources:
   - '*'
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - ""
@@ -68,12 +84,48 @@ rules:
   - list
   - watch
 - apiGroups:
+  - core.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ipam.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - network.fluidos.eu
   resources:
   - knownclusters
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - networking.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - nodecore.fluidos.eu
@@ -127,6 +179,44 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - offloading.liqo.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  - create
+  - delete
+  - escalate
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - reservation.fluidos.eu
   resources:

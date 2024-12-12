@@ -289,19 +289,13 @@ spec:
                 description: This credentials will be used by the customer to connect
                   and enstablish a peering with the seller FLUIDOS Node through Liqo.
                 properties:
-                  clusterID:
+                  kubeconfig:
                     type: string
-                  clusterName:
-                    type: string
-                  endpoint:
-                    type: string
-                  token:
+                  liqoID:
                     type: string
                 required:
-                - clusterID
-                - clusterName
-                - endpoint
-                - token
+                - kubeconfig
+                - liqoID
                 type: object
               seller:
                 description: This is the Node identity of the seller FLUIDOS Node.
