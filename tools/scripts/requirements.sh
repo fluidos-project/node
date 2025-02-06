@@ -158,17 +158,48 @@ function install_liqoctl() {
 # Check liqoctl function
 function check_liqoctl() {
     print_title "Check liqoctl..."    
-    if ! liqoctl version --client; then
-        echo "Please install liqoctl first."
-        # Ask the user if they want to install liqoctl
-        read -r -p "Do you want to install liqoctl? (y/n): " install_liqoctl
-        if [ "$install_liqoctl" == "y" ]; then
-            install_liqoctl
-        else
-            echo "LIQO is required to continue. Exiting..."
-            exit 1
-        fi
+    check_and_install_liqoctl
+}
+
+# Function to check if liqoctl is installed
+check_and_install_liqoctl() {
+  if ! command -v liqoctl &> /dev/null; then
+    echo "liqoctl not found. Installing liqoctl..."
+    # Example installation command for liqoctl, you may need to update this based on the official installation instructions
+    install_liqo_not_stable_version
+    echo "liqoctl installed successfully."
+  else
+    # Check the version of the client version of liqo
+    CLIENT_VERSION=$(liqoctl version 2>&1 | grep -oP 'Client version: \K\S+')
+    if [ -z "$CLIENT_VERSION" ]; then
+      echo "Failed to retrieve liqoctl client version"
+      exit 1
+    else
+      echo "liqoctl client version: $CLIENT_VERSION"
+      # TODO: Update the version check based on the stable version
+      # Version currently used is an unstable version, rc.3
+      if [ "$CLIENT_VERSION" != "v1.0.0-rc.3" ]; then
+        echo "liqoctl is not installed at the desired version of v1.0.0-rc.3. Installing liqoctl..."
+        install_liqo_not_stable_version
+      else 
+        echo "liqoctl is already installed at the version $CLIENT_VERSION."
+      fi
     fi
+  fi
+}
+
+install_liqo_not_stable_version() {
+  # Delete if exists the temporary liqo folder
+  rm -rf /tmp/liqo
+  # Clone Liqo repository to local tmp folder
+  git clone --depth 1 --branch v1.0.0-rc.3 https://github.com/liqotech/liqo.git /tmp/liqo || { echo "Failed to clone Liqo repository"; exit 1; }
+  make -C /tmp/liqo ctl || { echo "Failed to install Liqo"; exit 1; }
+  echo "Liqo compiled successfully in /tmp/liqo."
+  # Create temporary alias for liqoctl to make it available in the current shell
+  alias liqoctl=/tmp/liqo/liqoctl
+  echo "liqoctl alias created to /tmp/liqo/liqoctl for the current shell."
+
+  shopt -s expand_aliases
 }
 
 # Install jq function

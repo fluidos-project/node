@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -56,6 +57,9 @@ type Gateway struct {
 	// client is the Kubernetes client
 	client client.Client
 
+	// restConfig is the Kubernetes REST configuration
+	restConfig *rest.Config
+
 	// Readyness of the Gateway. It is set when liqo is installed
 	LiqoReady bool
 
@@ -64,9 +68,10 @@ type Gateway struct {
 }
 
 // NewGateway creates a new Gateway object.
-func NewGateway(c client.Client) *Gateway {
+func NewGateway(c client.Client, restConfig *rest.Config) *Gateway {
 	return &Gateway{
 		client:       c,
+		restConfig:   restConfig,
 		Transactions: make(map[string]*models.Transaction),
 		LiqoReady:    false,
 		ClusterID:    "",
@@ -178,7 +183,7 @@ func (g *Gateway) checkLiqoReadiness(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	if cm.Data["CLUSTER_ID"] != "" && cm.Data["CLUSTER_NAME"] != "" {
+	if cm.Data["CLUSTER_ID"] != "" {
 		klog.Infof("Liqo is ready")
 		g.LiqoReady = true
 		g.ClusterID = cm.Data["CLUSTER_ID"]

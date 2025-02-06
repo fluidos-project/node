@@ -12,84 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc
+package virtualfabricmanager
 
 import (
-	"context"
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	nodecorev1alpha1 "github.com/fluidos-project/node/apis/nodecore/v1alpha1"
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 )
 
-func getContractResourcesByClusterID(cl client.Client, clusterID string) (map[string]*resource.Quantity, error) {
-	var contracts reservationv1alpha1.ContractList
-
-	var contractsBuyer reservationv1alpha1.ContractList
-	var contractsSeller reservationv1alpha1.ContractList
-
-	// Retrieve contracts where the cluster which is requesting the peering is the buyer
-	if err := cl.List(context.Background(), &contractsBuyer, client.MatchingFields{"spec.buyer.additionalInformation.liqoID": clusterID}); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			klog.Errorf("Error when listing Contracts: %s", err)
-			return nil, err
-		}
-	}
-
-	// Retrieve contracts where the cluster which is requesting the peering is the seller
-	if err := cl.List(context.Background(), &contractsSeller, client.MatchingFields{"spec.seller.additionalInformation.liqoID": clusterID}); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			klog.Errorf("Error when listing Contracts: %s", err)
-			return nil, err
-		}
-	}
-
-	contracts.Items = append(contracts.Items, contractsBuyer.Items...)
-	contracts.Items = append(contracts.Items, contractsSeller.Items...)
-
-	if len(contracts.Items) == 0 {
-		klog.Errorf("No contracts found for cluster %s", clusterID)
-		return nil, fmt.Errorf("no contracts found for cluster %s", clusterID)
-	}
-
-	if len(contracts.Items) > 1 {
-		resources := multipleContractLogic(contracts.Items)
-		return resources, nil
-	}
-
-	contract := contracts.Items[0]
-
+func getContractResourcesByClusterID(contract *reservationv1alpha1.Contract) (map[corev1.ResourceName]string, error) {
 	if contract.Spec.Configuration != nil {
-		return addResources(make(map[string]*resource.Quantity), contract.Spec.Configuration, &contract.Spec.Flavor), nil
+		return addResources(make(map[corev1.ResourceName]string), contract.Spec.Configuration, &contract.Spec.Flavor)
 	}
 
-	return addResourceByFlavor(make(map[string]*resource.Quantity), &contract.Spec.Flavor), nil
+	return addResourceByFlavor(make(map[corev1.ResourceName]string), &contract.Spec.Flavor)
 }
 
-func multipleContractLogic(contracts []reservationv1alpha1.Contract) map[string]*resource.Quantity {
-	resources := make(map[string]*resource.Quantity)
-	for i := range contracts {
-		if contracts[i].Spec.Configuration != nil {
-			resources = addResources(resources, contracts[i].Spec.Configuration, &contracts[i].Spec.Flavor)
-		} else {
-			resources = addResourceByFlavor(resources, &contracts[i].Spec.Flavor)
-		}
-	}
-	return resources
-}
-
-func addResourceByFlavor(resources map[string]*resource.Quantity, flavor *nodecorev1alpha1.Flavor) map[string]*resource.Quantity {
-	var resourcesToAdd = make(map[string]*resource.Quantity)
+func addResourceByFlavor(resources map[corev1.ResourceName]string, flavor *nodecorev1alpha1.Flavor) (map[corev1.ResourceName]string, error) {
+	klog.InfofDepth(1, "Current resources: %v", len(resources))
+	var resourcesToAdd = make(map[corev1.ResourceName]string)
 	// Parse flavor
 	flavorType, flavorData, err := nodecorev1alpha1.ParseFlavorType(flavor)
 	if err != nil {
 		klog.Errorf("Error when parsing flavor: %s", err)
-		return nil
+		return nil, err
 	}
 	switch flavorType {
 	case nodecorev1alpha1.TypeK8Slice:
@@ -109,38 +58,32 @@ func addResourceByFlavor(resources map[string]*resource.Quantity, flavor *nodeco
 		// TODO (Sensor): Implement Liqo resource management for Sensors
 	default:
 		klog.Errorf("Flavor type %s not supported", flavorType)
-		return nil
+		return nil, err
 	}
 
-	for key, value := range resourcesToAdd {
-		if prevRes, ok := resources[key]; !ok {
-			resources[key] = value
-		} else {
-			prevRes.Add(*value)
-			resources[key] = prevRes
-		}
-	}
+	resources = resourcesToAdd
 
-	return resources
+	return resources, nil
 }
 
 // This function adds the resources of a contract to the existing resourceList.
-func addResources(resources map[string]*resource.Quantity,
+func addResources(resources map[corev1.ResourceName]string,
 	configuration *nodecorev1alpha1.Configuration,
-	flavor *nodecorev1alpha1.Flavor) map[string]*resource.Quantity {
-	var resourcesToAdd = make(map[string]*resource.Quantity)
+	flavor *nodecorev1alpha1.Flavor) (map[corev1.ResourceName]string, error) {
+	var resourcesToAdd = make(map[corev1.ResourceName]string)
+	klog.InfofDepth(1, "Current resources: %v", len(resources))
 	// Parse configuration
 	configurationType, configurationData, err := nodecorev1alpha1.ParseConfiguration(configuration, flavor)
 	if err != nil {
 		klog.Errorf("Error when parsing configuration: %s", err)
-		return nil
+		return nil, err
 	}
 
 	// Parse flavor
 	flavorType, flavorData, err := nodecorev1alpha1.ParseFlavorType(flavor)
 	if err != nil {
 		klog.Errorf("Error when parsing flavor: %s", err)
-		return nil
+		return nil, err
 	}
 
 	switch configurationType {
@@ -157,18 +100,18 @@ func addResources(resources map[string]*resource.Quantity,
 		serviceConfiguration, ok := configurationData.(nodecorev1alpha1.ServiceConfiguration)
 		if !ok {
 			klog.Errorf("Error when casting ServiceConfiguration")
-			return nil
+			return nil, err
 		}
 		// Check if the flavor type matches the configuration type
 		if flavorType != nodecorev1alpha1.TypeService {
 			klog.Errorf("Flavor type %s does not match configuration type %s", flavorType, configurationType)
-			return nil
+			return nil, err
 		}
 		// Force casting of the flavor
 		serviceFlavor, ok := flavorData.(nodecorev1alpha1.ServiceFlavor)
 		if !ok {
 			klog.Errorf("Error when casting ServiceFlavor")
-			return nil
+			return nil, err
 		}
 		// Obtain the resources from the configuration
 		resourcesToAdd = mapServiceWithConfigurationToResources(&serviceFlavor, &serviceConfiguration)
@@ -177,36 +120,28 @@ func addResources(resources map[string]*resource.Quantity,
 		klog.Errorf("Sensor configuration not supported yet")
 	default:
 		klog.Errorf("Configuration type %s not supported", configurationType)
-		return nil
+		return nil, err
 	}
 
-	// Add the resources of the flavor to the existing resources
-	for key, value := range resourcesToAdd {
-		if prevRes, ok := resources[key]; !ok {
-			resources[key] = value
-		} else {
-			prevRes.Add(*value)
-			resources[key] = prevRes
-		}
-	}
+	resources = resourcesToAdd
 
-	return resources
+	return resources, nil
 }
 
-func mapK8SliceConfigurationToResources(k8SliceConfiguration *nodecorev1alpha1.K8SliceConfiguration) map[string]*resource.Quantity {
-	resources := make(map[string]*resource.Quantity)
-	resources[corev1.ResourceCPU.String()] = &k8SliceConfiguration.CPU
-	resources[corev1.ResourceMemory.String()] = &k8SliceConfiguration.Memory
-	resources[corev1.ResourcePods.String()] = &k8SliceConfiguration.Pods
+func mapK8SliceConfigurationToResources(k8SliceConfiguration *nodecorev1alpha1.K8SliceConfiguration) map[corev1.ResourceName]string {
+	resources := make(map[corev1.ResourceName]string)
+	resources[corev1.ResourceCPU] = k8SliceConfiguration.CPU.String()
+	resources[corev1.ResourceMemory] = k8SliceConfiguration.Memory.String()
+	resources[corev1.ResourcePods] = k8SliceConfiguration.Pods.String()
 	if k8SliceConfiguration.Storage != nil {
-		resources[corev1.ResourceStorage.String()] = k8SliceConfiguration.Storage
-		resources[corev1.ResourceEphemeralStorage.String()] = k8SliceConfiguration.Storage
+		resources[corev1.ResourceStorage] = k8SliceConfiguration.Storage.String()
+		resources[corev1.ResourceEphemeralStorage] = k8SliceConfiguration.Storage.String()
 	}
 	return resources
 }
 
 func mapServiceWithConfigurationToResources(service *nodecorev1alpha1.ServiceFlavor,
-	serviceConfiguration *nodecorev1alpha1.ServiceConfiguration) map[string]*resource.Quantity {
+	serviceConfiguration *nodecorev1alpha1.ServiceConfiguration) map[corev1.ResourceName]string {
 	var hostingPolicy nodecorev1alpha1.HostingPolicy
 
 	// Check the hosting policy of the service
@@ -230,18 +165,18 @@ func mapServiceWithConfigurationToResources(service *nodecorev1alpha1.ServiceFla
 
 func mapServiceToResourcesWithHostingPolicy(
 	service *nodecorev1alpha1.ServiceFlavor,
-	hostingPolicy nodecorev1alpha1.HostingPolicy) map[string]*resource.Quantity {
-	resources := make(map[string]*resource.Quantity)
+	hostingPolicy nodecorev1alpha1.HostingPolicy) map[corev1.ResourceName]string {
+	resources := make(map[corev1.ResourceName]string)
 
 	// Set default resources to minimum values: 500m CPU, 500MB memory, 10 pod
-	resources[corev1.ResourceCPU.String()] = resource.NewMilliQuantity(800, resource.DecimalSI)
-	resources[corev1.ResourceMemory.String()] = resource.NewScaledQuantity(800, resource.Mega)
-	resources[corev1.ResourcePods.String()] = resource.NewQuantity(10, resource.DecimalSI)
+	resources[corev1.ResourceCPU] = resource.NewMilliQuantity(800, resource.DecimalSI).String()
+	resources[corev1.ResourceMemory] = resource.NewScaledQuantity(800, resource.Mega).String()
+	resources[corev1.ResourcePods] = resource.NewQuantity(10, resource.DecimalSI).String()
 
 	// Print default resources
 	klog.Infof("Default resources for service %s:", service.Name)
 	for key, value := range resources {
-		klog.Infof("%s: %s", key, value.String())
+		klog.Infof("%s: %s", key, value)
 	}
 
 	switch hostingPolicy {
@@ -265,14 +200,14 @@ func mapServiceToResourcesWithHostingPolicy(
 	}
 }
 
-func mapK8SliceToResources(k8Slice *nodecorev1alpha1.K8Slice) map[string]*resource.Quantity {
-	resources := make(map[string]*resource.Quantity)
-	resources[corev1.ResourceCPU.String()] = &k8Slice.Characteristics.CPU
-	resources[corev1.ResourceMemory.String()] = &k8Slice.Characteristics.Memory
-	resources[corev1.ResourcePods.String()] = &k8Slice.Characteristics.Pods
+func mapK8SliceToResources(k8Slice *nodecorev1alpha1.K8Slice) map[corev1.ResourceName]string {
+	resources := make(map[corev1.ResourceName]string)
+	resources[corev1.ResourceCPU] = k8Slice.Characteristics.CPU.String()
+	resources[corev1.ResourceMemory] = k8Slice.Characteristics.Memory.String()
+	resources[corev1.ResourcePods] = k8Slice.Characteristics.Pods.String()
 	if k8Slice.Characteristics.Storage != nil {
-		resources[corev1.ResourceStorage.String()] = k8Slice.Characteristics.Storage
-		resources[corev1.ResourceEphemeralStorage.String()] = k8Slice.Characteristics.Storage
+		resources[corev1.ResourceStorage] = k8Slice.Characteristics.Storage.String()
+		resources[corev1.ResourceEphemeralStorage] = k8Slice.Characteristics.Storage.String()
 	}
 	return resources
 }
