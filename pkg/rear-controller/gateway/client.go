@@ -40,7 +40,7 @@ func (g *Gateway) ReserveFlavor(ctx context.Context,
 		return nil, err
 	}
 
-	liqoCredentials, err := getters.GetLiqoCredentials(ctx, g.client)
+	liqoCredentials, err := getters.GetLiqoCredentials(ctx, g.client, g.restConfig)
 	if err != nil {
 		klog.Errorf("Error when getting Liqo credentials: %s", err)
 		return nil, err
@@ -57,7 +57,8 @@ func (g *Gateway) ReserveFlavor(ctx context.Context,
 			IP:     g.ID.IP,
 			Domain: g.ID.Domain,
 			AdditionalInformation: &models.NodeIdentityAdditionalInfo{
-				LiqoID: liqoCredentials.ClusterID,
+				LiqoID:     liqoCredentials.ClusterID,
+				Kubeconfig: liqoCredentials.Kubeconfig,
 			},
 		},
 		Configuration: func() *models.Configuration {

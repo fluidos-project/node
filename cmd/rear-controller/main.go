@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
@@ -40,7 +41,6 @@ import (
 	contractmanager "github.com/fluidos-project/node/pkg/rear-controller/contract-manager"
 	discoverymanager "github.com/fluidos-project/node/pkg/rear-controller/discovery-manager"
 	gateway "github.com/fluidos-project/node/pkg/rear-controller/gateway"
-	"github.com/fluidos-project/node/pkg/rear-controller/grpc"
 	"github.com/fluidos-project/node/pkg/utils/flags"
 )
 
@@ -64,7 +64,6 @@ func main() {
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&flags.GRPCPort, "grpc-port", "2710", "Port of the HTTP server")
 	flag.StringVar(&flags.HTTPPort, "http-port", "3004", "Port of the HTTP server")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
@@ -86,8 +85,10 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
@@ -168,8 +169,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	gw := gateway.NewGateway(mgr.GetClient())
-	grpcServer := grpc.NewGrpcServer(mgr.GetClient())
+	gw := gateway.NewGateway(mgr.GetClient(), mgr.GetConfig())
 
 	if err = (&discoverymanager.DiscoveryReconciler{
 		Client:  mgr.GetClient(),
@@ -181,9 +181,10 @@ func main() {
 	}
 
 	if err = (&contractmanager.ReservationReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Gateway: gw,
+		Client:     mgr.GetClient(),
+		RestConfig: mgr.GetConfig(),
+		Scheme:     mgr.GetScheme(),
+		Gateway:    gw,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Reservation")
 		os.Exit(1)
@@ -239,12 +240,6 @@ func main() {
 	// Start the REAR Gateway HTTP server
 	if err := mgr.Add(manager.RunnableFunc(gw.Start)); err != nil {
 		klog.Errorf("Unable to set up Gateway HTTP server: %s", err)
-		os.Exit(1)
-	}
-
-	// Start the REAR GRPC server
-	if err := mgr.Add(manager.RunnableFunc(grpcServer.Start)); err != nil {
-		klog.Errorf("Unable to set up Gateway GRPC server: %s", err)
 		os.Exit(1)
 	}
 

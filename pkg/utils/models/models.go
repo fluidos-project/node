@@ -86,7 +86,8 @@ type Location struct {
 
 // NodeIdentityAdditionalInfo represents additional information about a NodeIdentity.
 type NodeIdentityAdditionalInfo struct {
-	LiqoID string `json:"liqoID,omitempty"`
+	LiqoID     string `json:"liqoID,omitempty"`
+	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
 // NodeIdentity represents the owner of a Flavor, with associated ID, IP, and domain name.

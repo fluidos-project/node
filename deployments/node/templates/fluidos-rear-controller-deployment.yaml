@@ -46,7 +46,6 @@ spec:
         name: {{ $rearControllerConfig.name }}
         command: ["/usr/bin/rear-controller"]
         args:
-          - --grpc-port={{ .Values.rearController.service.grpc.port }}
           - --http-port={{ .Values.rearController.service.gateway.port }}
         resources: {{- toYaml .Values.rearController.pod.resources | nindent 10 }}
         ports:

@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/liqotech/liqo/pkg/auth"
 	"github.com/liqotech/liqo/pkg/utils"
-	foreigncluster "github.com/liqotech/liqo/pkg/utils/foreignCluster"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -32,6 +32,7 @@ import (
 	reservationv1alpha1 "github.com/fluidos-project/node/apis/reservation/v1alpha1"
 	"github.com/fluidos-project/node/pkg/utils/consts"
 	"github.com/fluidos-project/node/pkg/utils/flags"
+	virtualfabricmanager "github.com/fluidos-project/node/pkg/virtual-fabric-manager"
 )
 
 // GetNodeIdentity retrieves the node identity from the local cluster.
@@ -96,33 +97,37 @@ func GetLocalProviders(ctx context.Context, cl client.Client) []string {
 }
 
 // GetLiqoCredentials retrieves the Liqo credentials from the local cluster.
-func GetLiqoCredentials(ctx context.Context, cl client.Client) (*nodecorev1alpha1.LiqoCredentials, error) {
-	localToken, err := auth.GetToken(ctx, cl, consts.LiqoNamespace)
+func GetLiqoCredentials(ctx context.Context, cl client.Client, restConfig *rest.Config) (*nodecorev1alpha1.LiqoCredentials, error) {
+	// Transform the client to a clientSet
+	kubeClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
+		klog.Errorf("Error creating the clientSet: %s", err)
 		return nil, err
 	}
 
-	clusterIdentity, err := utils.GetClusterIdentityWithControllerClient(ctx, cl, consts.LiqoNamespace)
+	localClusterID, err := utils.GetClusterID(ctx, kubeClient, consts.LiqoNamespace)
 	if err != nil {
+		klog.Errorf("Error getting the local cluster ID: %s", err)
 		return nil, err
 	}
 
-	authEP, err := foreigncluster.GetHomeAuthURL(ctx, cl, consts.LiqoNamespace)
+	// Generate Local Kubeconfig for remote cluster
+	kubeconfig, err := virtualfabricmanager.CreateKubeconfigForPeering(ctx, cl, string(localClusterID))
 	if err != nil {
+		klog.Errorf("Error generating the kubeconfig: %s", err)
 		return nil, err
 	}
 
-	// If the local cluster has not a cluster name, we print the use the local clusterID to not leave this field empty.
-	// This can be changed by the user when pasting this value in a remote cluster.
-	if clusterIdentity.ClusterName == "" {
-		clusterIdentity.ClusterName = clusterIdentity.ClusterID
+	// Encode the kubeconfig
+	kubeconfigEncoded, err := virtualfabricmanager.EncodeKubeconfig(kubeconfig)
+	if err != nil {
+		klog.Errorf("Error encoding the kubeconfig: %s", err)
+		return nil, err
 	}
 
 	return &nodecorev1alpha1.LiqoCredentials{
-		ClusterName: clusterIdentity.ClusterName,
-		ClusterID:   clusterIdentity.ClusterID,
-		Endpoint:    authEP,
-		Token:       localToken,
+		ClusterID:  string(localClusterID),
+		Kubeconfig: kubeconfigEncoded,
 	}, nil
 }
 

@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,34 +30,43 @@ var flavorlog = logf.Log.WithName("flavor-resource")
 // SetupWebhookWithManager setups the webhooks for the Flavor resource with the manager.
 func (r *Flavor) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&Flavor{}).
+		WithDefaulter(&Flavor{}).
+		WithValidator(&Flavor{}).
 		Complete()
 }
 
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-nodecore-fluidos-eu-v1alpha1-flavor,mutating=true,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=flavors,verbs=create;update,versions=v1alpha1,name=mflavor.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Flavor{}
+var _ webhook.CustomDefaulter = &Flavor{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *Flavor) Default() {
+func (r *Flavor) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	// Parse obj to Flavor
+	flavor := obj.(*Flavor)
 	flavorlog.Info("DEFAULT WEBHOOK")
-	flavorlog.Info("default", "name", r.Name)
+	flavorlog.Info("default", "name", flavor.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-nodecore-fluidos-eu-v1alpha1-flavor,mutating=false,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=flavors,verbs=create;update,versions=v1alpha1,name=vflavor.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Flavor{}
+var _ webhook.CustomValidator = &Flavor{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Flavor) ValidateCreate() (admission.Warnings, error) {
+func (r *Flavor) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	flavor := obj.(*Flavor)
 	flavorlog.Info("VALIDATE CREATE WEBHOOK")
-	flavorlog.Info("validate create", "name", r.Name)
+	flavorlog.Info("validate create", "name", flavor.Name)
 
 	// Validate creation of Flavor checking FlavorType->TypeIdenfier matches the struct inside the FlavorType->TypeData
-	typeIdenfier, _, err := ParseFlavorType(r)
+	typeIdenfier, _, err := ParseFlavorType(flavor)
 	if err != nil {
 		return nil, err
 	}
@@ -74,14 +85,16 @@ func (r *Flavor) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Flavor) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Flavor) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	flavor := newObj.(*Flavor)
 	flavorlog.Info("VALIDATE UPDATE WEBHOOK")
-	flavorlog.Info("validate update", "name", r.Name)
+	flavorlog.Info("validate update", "name", flavor.Name)
 
-	flavorlog.Info("old", "old", old)
+	flavorlog.Info("old", "old", oldObj)
 
 	// Validate creation of Flavor checking FlavorType->TypeIdenfier matches the struct inside the FlavorType->TypeData
-	typeIdenfier, _, err := ParseFlavorType(r)
+	typeIdenfier, _, err := ParseFlavorType(flavor)
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +113,11 @@ func (r *Flavor) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *Flavor) ValidateDelete() (admission.Warnings, error) {
+func (r *Flavor) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	flavor := obj.(*Flavor)
 	flavorlog.Info("VALIDATE DELETE WEBHOOK")
-	flavorlog.Info("validate delete", "name", r.Name)
+	flavorlog.Info("validate delete", "name", flavor.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

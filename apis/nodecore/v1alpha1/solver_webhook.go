@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,33 +30,41 @@ var solverlog = logf.Log.WithName("solver-resource")
 // SetupWebhookWithManager sets up and registers the webhook with the manager.
 func (r *Solver) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&Solver{}).
+		WithDefaulter(&Solver{}).
+		WithValidator(&Solver{}).
 		Complete()
 }
 
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/mutate-nodecore-fluidos-eu-v1alpha1-solver,mutating=true,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=solvers,verbs=create;update,versions=v1alpha1,name=msolver.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Solver{}
+var _ webhook.CustomDefaulter = &Solver{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (r *Solver) Default() {
+func (r *Solver) Default(ctx context.Context, obj runtime.Object) error {
+	_ = ctx
+	solver := obj.(*Solver)
 	solverlog.Info("DEFAULT WEBHOOK")
-	solverlog.Info("default", "name", r.Name)
+	solverlog.Info("default", "name", solver.Name)
+
+	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //nolint:lll // kubebuilder directives are too long, but they must be on the same line
 //+kubebuilder:webhook:path=/validate-nodecore-fluidos-eu-v1alpha1-solver,mutating=false,failurePolicy=fail,sideEffects=None,groups=nodecore.fluidos.eu,resources=solvers,verbs=create;update,versions=v1alpha1,name=vsolver.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Solver{}
+var _ webhook.CustomValidator = &Solver{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Solver) ValidateCreate() (admission.Warnings, error) {
+func (r *Solver) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	solver := obj.(*Solver)
 	solverlog.Info("VALIDATE CREATE WEBHOOK")
-	solverlog.Info("validate create", "name", r.Name)
+	solverlog.Info("validate create", "name", solver.Name)
 
-	if err := validateSelector(r.Spec.Selector); err != nil {
+	if err := validateSelector(solver.Spec.Selector); err != nil {
 		return nil, err
 	}
 
@@ -62,13 +72,15 @@ func (r *Solver) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (r *Solver) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Solver) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	solver := newObj.(*Solver)
 	solverlog.Info("VALIDATE UPDATE WEBHOOK")
-	solverlog.Info("validate update", "name", r.Name)
+	solverlog.Info("validate update", "name", solver.Name)
 
-	solverlog.Info("old", "old", old)
+	solverlog.Info("old", "old", oldObj)
 
-	if err := validateSelector(r.Spec.Selector); err != nil {
+	if err := validateSelector(solver.Spec.Selector); err != nil {
 		return nil, err
 	}
 
@@ -76,9 +88,11 @@ func (r *Solver) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (r *Solver) ValidateDelete() (admission.Warnings, error) {
+func (r *Solver) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	_ = ctx
+	solver := obj.(*Solver)
 	solverlog.Info("VALIDATE DELETE WEBHOOK")
-	solverlog.Info("validate delete", "name", r.Name)
+	solverlog.Info("validate delete", "name", solver.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

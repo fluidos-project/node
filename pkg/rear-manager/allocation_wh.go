@@ -28,7 +28,7 @@ import (
 // Validator is the allocation webhook validator.
 type Validator struct {
 	client  client.Client
-	decoder *admission.Decoder
+	decoder admission.Decoder
 }
 
 // NewValidator creates a new allocation webhook validator.
