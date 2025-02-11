@@ -5,6 +5,7 @@ go 1.21.0
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/liqotech/liqo v0.9.4
+	github.com/rabbitmq/amqp091-go v1.10.0
 	google.golang.org/grpc v1.59.0-dev
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2

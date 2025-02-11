@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import (
 // +kubebuilder:rbac:groups=network.fluidos.eu,resources=knownclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
 
 // NetworkManager keeps all the necessary class data.
 type NetworkManager struct {
@@ -50,45 +51,104 @@ type NetworkManager struct {
 	EnableLocalDiscovery bool
 }
 
-// KnownClusterReconciler reconciles a KnownCluster object.
-type KnownClusterReconciler struct {
+// BrokerReconciler reconciles a Broker object.
+type BrokerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	ActiveBrokers []*BrokerClient
 }
 
-// Reconcile reconciles a KnownClusters from DiscoveredClustersList.
-func (r *KnownClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx, "kowncluster", req.NamespacedName)
+// Reconcile reconciles a Broker.
+func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	klog.InfoS("Reconcile triggered")
+	log := ctrl.LoggerFrom(ctx, "broker", req.NamespacedName)
 	ctx = ctrl.LoggerInto(ctx, log)
 
-	klog.InfoS("Reconcile triggered", "context", ctx)
+	var broker networkv1alpha1.Broker
+
+	if err := r.Get(ctx, req.NamespacedName, &broker); client.IgnoreNotFound(err) != nil {
+		klog.Errorf("Error when getting Broker %s before reconcile: %v", req.NamespacedName, err)
+		return ctrl.Result{}, err
+	} else if err != nil {
+		klog.Infof("Broker %s not found, probably deleted", req.NamespacedName)
+
+		// Deleting BrokerClient
+		for i, brokerCl := range r.ActiveBrokers {
+			if brokerCl.brokerName == req.NamespacedName.Name {
+				klog.Infof("Deleting %s ", brokerCl.brokerName)
+				err = r.brokerDelete(brokerCl, i)
+				for i := range r.ActiveBrokers {
+					klog.Info(r.ActiveBrokers[i])
+				}
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// If found in CR && found in slice -> update
+	found := false
+	sameAddr := false
+	for i, brokerCl := range r.ActiveBrokers {
+		if brokerCl.brokerName == broker.Spec.Name {
+			klog.Info("found brokerClient ", brokerCl.brokerName)
+			klog.Info("and Broker ", broker.Spec.Name)
+			found = true
+
+			// Update
+			if err := r.brokerUpdate(&broker, brokerCl, i); err != nil {
+				klog.Error("brokerUpdate failed: %s", err)
+				if err = cleanBroker(ctx, r.Client, &broker); err != nil {
+					klog.Error("cleanBroker failed: %s", err)
+				}
+				return ctrl.Result{}, err
+			}
+			break
+		} else if brokerCl.serverAddr == broker.Spec.Address {
+			sameAddr = true
+			klog.Error("brokerUpdate failed: same address found in another BrokerClient")
+			if err := cleanBroker(ctx, r.Client, &broker); err != nil {
+				klog.Error("cleanBroker failed: %s", err)
+			}
+		}
+	}
+	// If found in CR && !found in slice && address is free -> create
+	if (!found) && (!sameAddr) {
+		// Create
+		if err := r.brokerCreate(&broker); err != nil {
+			klog.Error("brokerCreate failed: %s", err)
+			if err = cleanBroker(ctx, r.Client, &broker); err != nil {
+				klog.Error("cleanBroker failed: %s", err)
+			}
+			return ctrl.Result{}, err
+		}
+	}
+	klog.Infof("Reconciling Broker %s", req.NamespacedName)
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *KnownClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkv1alpha1.KnownCluster{}).
+		For(&networkv1alpha1.Broker{}).
 		Complete(r)
 }
 
 // Setup the Network Manager.
 func Setup(ctx context.Context, cl client.Client, nm *NetworkManager, cniInterface *string) error {
 	klog.Info("Setting up Network Manager routines")
-
 	nodeIdentity := getters.GetNodeIdentity(ctx, cl)
 	if nodeIdentity == nil {
 		return fmt.Errorf("failed to get Node Identity")
 	}
-
 	multicastAddress := os.Getenv("MULTICAST_ADDRESS")
 	if multicastAddress == "" {
 		return fmt.Errorf("failed to get multicast address")
 	}
-
 	nm.ID = nodeIdentity
 	nm.Multicast = multicastAddress
-
 	if nm.EnableLocalDiscovery {
 		ifi, err := net.InterfaceByName(*cniInterface)
 		if err != nil {
@@ -97,9 +157,7 @@ func Setup(ctx context.Context, cl client.Client, nm *NetworkManager, cniInterfa
 		nm.Iface = ifi
 		klog.InfoS("Interface", "Name", ifi.Name, "MAC address", ifi.HardwareAddr)
 	}
-
 	klog.InfoS("Node", "ID", nodeIdentity.NodeID, "Address", nodeIdentity.IP)
-
 	return nil
 }
 
@@ -112,7 +170,6 @@ func Execute(ctx context.Context, cl client.Client, nm *NetworkManager) error {
 				klog.ErrorS(err, "Error sending advertisemente")
 			}
 		}()
-
 		// Start receiving multicast messages
 		go func() {
 			if err := receiveMulticastMessage(ctx, cl, nm); err != nil {
@@ -120,14 +177,12 @@ func Execute(ctx context.Context, cl client.Client, nm *NetworkManager) error {
 			}
 		}()
 	}
-
 	// Do housekeeping
 	go func() {
 		if err := doHousekeeping(ctx, cl); err != nil {
 			klog.ErrorS(err, "Error doing housekeeping")
 		}
 	}()
-
 	return nil
 }
 
@@ -136,25 +191,21 @@ func sendMulticastMessage(ctx context.Context, nm *NetworkManager) error {
 	if err != nil {
 		return err
 	}
-
 	laddr, err := nm.Iface.Addrs()
 	if err != nil {
 		return err
 	}
-
 	dialer := &net.Dialer{
 		LocalAddr: &net.UDPAddr{
 			IP:   laddr[0].(*net.IPNet).IP,
 			Port: 0,
 		},
 	}
-
 	conn, err := dialer.Dial("udp", nm.Multicast)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-
 	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
@@ -182,7 +233,6 @@ func receiveMulticastMessage(ctx context.Context, cl client.Client, local *Netwo
 		return err
 	}
 	defer conn.Close()
-
 	buffer := make([]byte, 1024)
 
 	for {
@@ -190,9 +240,7 @@ func receiveMulticastMessage(ctx context.Context, cl client.Client, local *Netwo
 		if err != nil {
 			return err
 		}
-
 		var remote NetworkManager
-
 		err = json.Unmarshal(buffer[:n], &remote.ID)
 		if err != nil {
 			klog.Error("Error unmarshalling message: ", err)
@@ -266,4 +314,55 @@ func doHousekeeping(ctx context.Context, cl client.Client) error {
 			return nil
 		}
 	}
+}
+
+// Update the clientBroker.
+func (r *BrokerReconciler) brokerUpdate(broker *networkv1alpha1.Broker, brokerCl *BrokerClient, index int) error {
+	klog.Infof("updating broker: %s", brokerCl.brokerName)
+	if err := r.brokerDelete(brokerCl, index); err != nil {
+		return err
+	}
+	if err := r.brokerCreate(broker); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Create the clientBroker.
+func (r *BrokerReconciler) brokerCreate(broker *networkv1alpha1.Broker) error {
+	var bc BrokerClient
+	var err error
+	if err = bc.SetupBrokerClient(r.Client, broker); err != nil {
+		return err
+	}
+	if err = bc.ExecuteBrokerClient(r.Client); err != nil {
+		return err
+	}
+	r.ActiveBrokers = append(r.ActiveBrokers, &bc)
+	return nil
+}
+
+// Delete the clientBroker.
+func (r *BrokerReconciler) brokerDelete(brokerCl *BrokerClient, index int) error {
+	if err := brokerCl.brokerConn.amqpChan.Close(); err != nil {
+		klog.Errorf("Failed to close channel for broker '%s': %v", brokerCl.brokerName, err)
+		return err
+	}
+	if err := brokerCl.brokerConn.amqpConn.Close(); err != nil {
+		klog.Errorf("Failed to close connection for broker '%s': %v", brokerCl.brokerName, err)
+		return err
+	}
+	brokerCl.canc()
+	r.ActiveBrokers = append(r.ActiveBrokers[:index], r.ActiveBrokers[index+1:]...)
+	return nil
+}
+
+// Delete the Broker CR.
+func cleanBroker(ctx context.Context, cl client.Client, broker *networkv1alpha1.Broker) error {
+	err := cl.Delete(ctx, broker)
+	if err != nil {
+		klog.Error("error during Broker deletion '%s': %w", broker.Spec.Name, err)
+		return err
+	}
+	return nil
 }

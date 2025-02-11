@@ -21,6 +21,7 @@ This repository contains the FLUIDOS Node, along with its essential components, 
 - [**Peering Candidates**](/docs/implementation/components.md#peering-candidates)
 - [**REAR Manager**](/docs/implementation/components.md#rear-manager)
 - [**Contract Manager**](/docs/implementation/components.md#contract-manager)
+- [**Network Manager**](/docs/implementation/components.md#network-manager)
 
 Please note that this repository is continually updated, with additional components slated for future inclusion.
 

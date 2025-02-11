@@ -110,3 +110,24 @@ Here, the meaning of the various parameters:
 - ENABLE_LOCAL_DISCOVERY: A flag that enables the Network Manager, which is the component advertising the local FLUIDOS Node into a LAN
 - THIRD_OCTET: This is the third byte of the IP address used by Multus CNI for sending broadcast messages into the LAN. **Warning**: this parameters should be different for each FLUIDOS Node to be working (e.g. 1 for the 1st cluster, 2 for the 2nd cluster, etc.)
 - NET_INTERFACE: The host network interface that Multus binds to
+
+### Broker CR creation
+
+To enable the Network Manager to discover FLUIDOS Nodes outside a LAN, you need to configure and apply a Broker CR.
+The `broker-creation.sh` script simplifies this process by guiding you through the creation of the Broker YAML file.
+
+What you need:
+
+- Kubeconfig PATH
+
+- Broker's name             (custom name of your choice)
+- Broker's server address
+- Client certificate        (.pem)
+- Client private key        (.pem)
+- Broker's Root certificate (.pem)
+- Role                      (publisher ^ subscriber ^ both)
+
+Two Kubernetes Secrets are created from the certificates and key, one containing the client cert and private key, the other containing the root certificate of the remote broker.
+The script will create and apply the .yaml.
+To inspect the new Broker: `kubectl describe broker my-broker -n fluidos`
+Once applied, the Network Manager Reconcile process starts, enabling message exchange.
