@@ -10,6 +10,8 @@ The following custom resources have been developed for the FLUIDOS Node:
 - [**PeeringCandidate**](./customresources.md#peeringcandidate)
 - [**Solver**](./customresources.md#solver)
 - [**Transaction**](./customresources.md#transaction)
+- [**Broker**](./customresources.md#broker)
+- [**KnownCluster**](./customresources.md#knowncluster)
 
 ## Discovery
 
@@ -441,4 +443,49 @@ spec:
     memory: 1Gi
     storage: "0"
   startTime: "2023-11-16T16:16:44Z"
+```
+
+## Broker
+
+Here is a `Broker` sample:
+
+```yaml
+apiVersion: network.fluidos.eu/v1alpha1
+kind: Broker
+metadata:
+  name: brokera
+  namespace: fluidos
+spec:
+  name: brokera
+  address: fluidos.top-ix.org
+  role: both
+  cacert:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: brokera-ca-442
+      namespace: fluidos
+  clcert:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: brokera-cl-27348
+      namespace: fluidos
+```
+
+## KnownCluster
+
+Here is a `KnownCluster` sample:
+
+```yaml
+apiVersion: network.fluidos.eu/v1alpha1
+kind: KnownCluster
+metadata:
+  name: knowncluster-sample
+  namespace: fluidos
+spec:
+  address: 172.8.0.2:30001
+status:
+  expirationTime: "2024-01-01T09:00:10Z"
+  lastUpdateTime: "2024-01-01T09:00:00Z"
 ```

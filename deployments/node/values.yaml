@@ -151,6 +151,7 @@ networkManager:
     multicast:
       address: "239.11.11.1"
       port: 4000
+    netInterface: "eth0"
 
 provider: "your-provider"
 

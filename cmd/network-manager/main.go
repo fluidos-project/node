@@ -102,11 +102,11 @@ func main() {
 	}
 
 	// Register the controller
-	if err = (&networkmanager.KnownClusterReconciler{
+	if err = (&networkmanager.BrokerReconciler{
 		Client: cl,
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KnownCluster")
+		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
 	}
 

@@ -1,0 +1,26 @@
+---
+apiVersion: network.fluidos.eu/v1alpha1
+kind: Broker
+metadata:
+  name: broker-sample
+  namespace: fluidos
+spec:
+  name: fluidos.top-ix.org
+  address: fluidos.top-ix.org
+  # "publisher" only publisher
+  # "subscriber" only subscriber
+  # anything else both publisher AND subscriber
+  role: both
+  #secrets must be created from certificate and key provided by broker server
+  cacert:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: broker-ca-secret
+      namespace: fluidos
+  clcert:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: broker-client-secret
+      namespace: fluidos

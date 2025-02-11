@@ -15,7 +15,7 @@ spec:
   config: '{
       "cniVersion": "0.3.0",
       "type": "macvlan",
-      "master": "eth0",
+      "master": "{{ .Values.networkManager.config.netInterface }}",
       "mode": "bridge",
       "ipam": {
         "type": "host-local",

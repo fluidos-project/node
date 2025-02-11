@@ -8,6 +8,7 @@ Let's see how each component has been implemented:
 - [**Peering Candidates**](#peering-candidates)
 - [**REAR Manager**](#rear-manager)
 - [**Contract Manager**](#contract-manager)
+- [**Network Manager**](#network-manager)
 
 ## Local ResourceManager
 
@@ -58,3 +59,14 @@ The Contract Manager is in charge of managing the reserve and purchase of resour
 - When a suitable peering candidate is identified and a Reservation is forged, the Contract Manager initiates the `Reserve` phase by sending a **RESERVE\_FLAVOUR** message.
 
 - Upon successful reservation of resources, it proceeds to the `Purchase` phase by sending a **PURCHASE\_FLAVOUR** message. Following this, it stores the contract received.
+
+## Network Manager
+
+The **Network Manager** is the component that allows the discovery of other FLUIDOS Nodes, both in the same LAN and in the WAN.
+To do so it uses two CRDs:
+
+- Broker containing all the parameters to connect to a remote broker (address, certificates etc.).
+- KnownCluster containing the parameters of the newly discovered FLUIDOS node.
+
+In the LAN case it uses a multicast approach, and for each detected node it creates a KnownCluster CR.
+For the WAN case, as a Kubernetes Controller, it monitors the Broker CRs, once a new Broker is applied it will start the messages exchange. As in the multicast approach, KnownCluster CRs are created.

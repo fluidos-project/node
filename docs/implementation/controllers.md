@@ -42,3 +42,13 @@ The Reservation controller, tasked with reconciliation on the `Reservation` obje
 The Allocation controller, tasked with reconciliation on the `Allocation` object, continuously monitors and manages its state to ensure alignment with the desired configuration.
 
 (To be implemented)
+
+## Network Controller (`network_controller.go`)
+
+The Network controller, tasked with reconciliation on the `Broker` object, continuously monitors and manages its state to ensure alignment with the desired configuration. A struct of type ClientBroker is used as an image of the `Broker`. It follows the following steps:
+
+1. After a reconcile is triggered checks if the `Broker` object has been deleted.
+2. If so it performs the cleaning of the BrokerClient structure to disconnect from the broker gracefully and returns.
+3. It checks if another BrokerClient with the same name already exists, if so updates the already existing BrokerClient.
+4. If the name does not match, it checks the address, if it matches raises an error and deletes the `Broker`.
+5. If no ClientBroker with same address or same name is found, it creates a new BrokerClient with the `Broker` data.

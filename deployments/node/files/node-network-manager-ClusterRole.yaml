@@ -2,6 +2,17 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - configmaps
   verbs:
   - get
@@ -15,6 +26,26 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - network.fluidos.eu
+  resources:
+  - brokers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.fluidos.eu
+  resources:
+  - brokers/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - network.fluidos.eu
   resources:
