@@ -39,6 +39,12 @@ type Transaction struct {
 	ExpirationTime string         `json:"expirationTime"`
 }
 
+// TelemetryServer represents a TelemetryServer object with its characteristics.
+type TelemetryServer struct {
+	Endpoint string   `json:"endpoint"`
+	Intents  []string `json:"intents"`
+}
+
 // Contract represents a Contract object with its characteristics.
 type Contract struct {
 	ContractID               string            `json:"contractID"`
@@ -52,6 +58,7 @@ type Contract struct {
 	ExtraInformation         map[string]string `json:"extraInformation,omitempty"`
 	Configuration            *Configuration    `json:"configuration,omitempty"`
 	NetworkRequests          string            `json:"networkAuthorizations,omitempty"`
+	IngressTelemetryEndpoint *TelemetryServer  `json:"ingressTelemetryEndpoint,omitempty"`
 }
 
 // LiqoCredentials contains the credentials of a Liqo cluster to establish a peering.

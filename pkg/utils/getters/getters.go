@@ -126,6 +126,25 @@ func GetLiqoCredentials(ctx context.Context, cl client.Client) (*nodecorev1alpha
 	}, nil
 }
 
+// GetReservationByTransactionID retrieves the Reservation with the given transaction ID.
+func GetReservationByTransactionID(ctx context.Context, c client.Client, transactionID string) (*reservationv1alpha1.Reservation, error) {
+	// Get all the Reservations
+	reservations := &reservationv1alpha1.ReservationList{}
+	if err := c.List(ctx, reservations, client.InNamespace(flags.FluidosNamespace)); err != nil {
+		klog.Errorf("Error getting the Reservations: %s", err)
+		return nil, err
+	}
+
+	for i := range reservations.Items {
+		reservation := reservations.Items[i]
+		if reservation.Status.TransactionID == transactionID {
+			return &reservation, nil
+		}
+	}
+
+	return nil, fmt.Errorf("reservation with transaction ID %s not found", transactionID)
+}
+
 // GetAllocationByClusterIDSpec retrieves the name of the allocation with the given in its Specs.
 func GetAllocationByClusterIDSpec(ctx context.Context, c client.Client, clusterID string) (nodecorev1alpha1.AllocationList, error) {
 	filteredAllocations := nodecorev1alpha1.AllocationList{}

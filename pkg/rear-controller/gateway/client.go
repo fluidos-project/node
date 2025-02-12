@@ -144,6 +144,15 @@ func (g *Gateway) PurchaseFlavor(ctx context.Context, transactionID string,
 		return nil, err
 	}
 
+	// Get Reservation from the transaction
+	reservation, err := getters.GetReservationByTransactionID(ctx, g.client, transactionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the IngressTelemetryEndpoint
+	ite := parseutil.ParseTelemetryServer(reservation.Spec.IngressTelemetryEndpoint)
+
 	klog.Infof("Transaction %s for flavor %s", transactionID, transaction.FlavorID)
 
 	var liqoCredentials *models.LiqoCredentials
@@ -156,7 +165,8 @@ func (g *Gateway) PurchaseFlavor(ctx context.Context, transactionID string,
 	}
 
 	body := models.PurchaseRequest{
-		LiqoCredentials: liqoCredentials,
+		LiqoCredentials:          liqoCredentials,
+		IngressTelemetryEndpoint: ite,
 	}
 
 	selectorBytes, err := json.Marshal(body)

@@ -776,9 +776,21 @@ func ParseContract(contract *reservationv1alpha1.Contract) *models.Contract {
 			Token:       contract.Spec.PeeringTargetCredentials.Token,
 			Endpoint:    contract.Spec.PeeringTargetCredentials.Endpoint,
 		},
-		ExpirationTime:   contract.Spec.ExpirationTime,
-		ExtraInformation: contract.Spec.ExtraInformation,
-		NetworkRequests:  contract.Spec.NetworkRequests,
+		ExpirationTime:           contract.Spec.ExpirationTime,
+		ExtraInformation:         contract.Spec.ExtraInformation,
+		NetworkRequests:          contract.Spec.NetworkRequests,
+		IngressTelemetryEndpoint: ParseTelemetryServer(contract.Spec.IngressTelemetryEndpoint),
+	}
+}
+
+// ParseTelemetryServer parses a TelemetryServer CR into a TelemetryServer model.
+func ParseTelemetryServer(telemetryServer *reservationv1alpha1.TelemetryServer) *models.TelemetryServer {
+	if telemetryServer == nil {
+		return nil
+	}
+	return &models.TelemetryServer{
+		Endpoint: telemetryServer.Endpoint,
+		Intents:  telemetryServer.Intents,
 	}
 }
 

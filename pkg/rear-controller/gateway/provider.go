@@ -541,7 +541,13 @@ func (g *Gateway) purchaseFlavor(w http.ResponseWriter, r *http.Request) {
 	// Create a new contract
 	klog.Infof("Creating a new contract...")
 	// Forge the contract object
-	contract = *resourceforge.ForgeContract(flavorSold, &transaction, liqoCredentials, sellerLiqoCredentials.ClusterID)
+	contract = *resourceforge.ForgeContract(
+		flavorSold,
+		&transaction,
+		liqoCredentials,
+		sellerLiqoCredentials.ClusterID,
+		purchase.IngressTelemetryEndpoint,
+	)
 	err = g.client.Create(context.Background(), &contract)
 	if err != nil {
 		klog.Errorf("Error creating the Contract: %s", err)

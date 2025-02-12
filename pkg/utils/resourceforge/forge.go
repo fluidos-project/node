@@ -127,9 +127,24 @@ func ForgeReservation(pc *advertisementv1alpha1.PeeringCandidate,
 	return reservation
 }
 
+// ForgeTelemetryServer creates a TelemetryServer CR from a TelemetryServer model.
+func ForgeTelemetryServer(telemetryServer *models.TelemetryServer) *reservationv1alpha1.TelemetryServer {
+	if telemetryServer == nil {
+		return nil
+	}
+	return &reservationv1alpha1.TelemetryServer{
+		Endpoint: telemetryServer.Endpoint,
+		Intents:  telemetryServer.Intents,
+	}
+}
+
 // ForgeContract creates a Contract CR.
-func ForgeContract(flavor *nodecorev1alpha1.Flavor, transaction *models.Transaction,
-	peeringTargetLiqoCredentials *nodecorev1alpha1.LiqoCredentials, sellerLiqoID string) *reservationv1alpha1.Contract {
+func ForgeContract(
+	flavor *nodecorev1alpha1.Flavor,
+	transaction *models.Transaction,
+	peeringTargetLiqoCredentials *nodecorev1alpha1.LiqoCredentials,
+	sellerLiqoID string,
+	ingressTelemetryEndpoint *models.TelemetryServer) *reservationv1alpha1.Contract {
 	return &reservationv1alpha1.Contract{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namings.ForgeContractName(flavor.Name),
@@ -172,7 +187,8 @@ func ForgeContract(flavor *nodecorev1alpha1.Flavor, transaction *models.Transact
 			ExpirationTime:   time.Now().Add(flags.ExpirationContract).Format(time.RFC3339),
 			ExtraInformation: nil,
 			// TODO: Add logic to network requests
-			NetworkRequests: "",
+			NetworkRequests:          "",
+			IngressTelemetryEndpoint: ForgeTelemetryServer(ingressTelemetryEndpoint),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{
@@ -513,6 +529,8 @@ func ForgeContractFromObj(contract *models.Contract) (*reservationv1alpha1.Contr
 				}
 				return nil
 			}(),
+			NetworkRequests:          contract.NetworkRequests,
+			IngressTelemetryEndpoint: ForgeTelemetryServer(contract.IngressTelemetryEndpoint),
 		},
 		Status: reservationv1alpha1.ContractStatus{
 			Phase: nodecorev1alpha1.PhaseStatus{

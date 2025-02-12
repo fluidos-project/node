@@ -52,6 +52,9 @@ type ContractSpec struct {
 
 	// NetworkRequests contains the reference to the resource containing the network requests.
 	NetworkRequests string `json:"networkRequests,omitempty"`
+
+	// IngressTelemetryEndpoint is the endpoint where the ingress telemetry is sent by the provider
+	IngressTelemetryEndpoint *TelemetryServer `json:"ingressTelemetryEndpoint,omitempty"`
 }
 
 // ContractStatus defines the observed state of Contract.
