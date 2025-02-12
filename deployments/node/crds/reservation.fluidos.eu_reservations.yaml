@@ -119,6 +119,22 @@ spec:
                 - data
                 - type
                 type: object
+              ingressTelemetryEndpoint:
+                description: IngressTelemetryEndpoint is the endpoint where the ingress
+                  telemetry is sent by the provider
+                properties:
+                  endpoint:
+                    description: Endpoint is the endpoint where the telemetry is sent
+                      by the provider
+                    type: string
+                  intents:
+                    description: Intents is the list of intents
+                    items:
+                      type: string
+                    type: array
+                required:
+                - endpoint
+                type: object
               peeringCandidate:
                 description: PeeringCandidate is the reference to the PeeringCandidate
                   of the Reservation
