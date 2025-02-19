@@ -124,6 +124,16 @@ rearController:
       # -- The target port used by the REAR Gateway service.
       targetPort: 3004
 
+npDiscovery:
+  # -- enable the discovery of KnownCluster and Flavors via the neuropil cybersecurity mesh
+  enabled: False
+  # -- the initial bootstrap url to initiate participation in the mesh structure. Please note: there is no SLA attached to this demo instance, but you may run your own
+  np_bootstrap_url: '*:udp4:demo.neuropil.io:3400'
+  # -- the name of the np discovery pod / deployment
+  name: np-fluidos-discovery
+  # -- the image to be used (mainly used for testing local changes)
+  imageName: registry.gitlab.com/pi-lar/neuropil-k8s/fluidos_discovery
+
 networkManager:
   # -- The number of Network Manager, which can be increased for active/passive high availability.
   replicas: 1

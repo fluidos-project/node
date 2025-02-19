@@ -1,0 +1,47 @@
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - network.fluidos.eu
+  resources:
+  - knownclusters
+  verbs:
+  - create
+  - get
+  - patch
+  - list
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - flavors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nodecore.fluidos.eu
+  resources:
+  - flavors/status
+  verbs:
+  - get
+  - patch
+  - update
