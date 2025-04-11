@@ -270,7 +270,7 @@ func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Conte
 			return ctrl.Result{}, err
 		}
 		// We can set the Allocation to Active
-		klog.Infof("Allocation will be used locally, we can put it in 'Active' State", req.NamespacedName)
+		klog.Info("Allocation will be used locally, we can put it in 'Active' State", req.NamespacedName)
 		allocation.SetStatus(nodecorev1alpha1.Active, "Allocation ready, will be used locally")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
@@ -1199,7 +1199,7 @@ func reduceFlavorAvailability(ctx context.Context, flavor *nodecorev1alpha1.Flav
 				return err
 			}
 			if configurationTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
-				klog.Errorf("Configuration %s is not a K8Slice type", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
+				klog.Errorf("Configuration %s is not a K8Slice type %v", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
 				return err
 			}
 			// Force casting

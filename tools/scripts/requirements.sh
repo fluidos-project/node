@@ -178,7 +178,7 @@ check_and_install_liqoctl() {
       echo "liqoctl client version: $CLIENT_VERSION"
       # TODO: Update the version check based on the stable version
       # Version currently used is an unstable version, rc.3
-      if [ "$CLIENT_VERSION" != "v1.0.0-rc.3" ]; then
+      if [ "$CLIENT_VERSION" != "v1.0.0" ]; then
         echo "liqoctl is not installed at the desired version of v1.0.0-rc.3. Installing liqoctl..."
         install_liqo_not_stable_version
       else 

@@ -940,7 +940,7 @@ outerLoopSignedNonce:
 			return fmt.Errorf("timed out waiting for signed nonce")
 		case <-tick:
 			// Retrieve the signed nonce secret
-			signedNonce, err = authenticationUtils.RetrieveSignedNonce(ctx, localClient, remoteClusterIdentity)
+			signedNonce, err = authenticationUtils.RetrieveSignedNonce(ctx, localClient, remoteClusterIdentity, localNamespaceName)
 			if err != nil {
 				if client.IgnoreNotFound(err) != nil {
 					klog.Error(err)
@@ -953,7 +953,15 @@ outerLoopSignedNonce:
 		}
 	}
 
-	tenant, err := authenticationUtils.GenerateTenant(ctx, localClient, localClusterIdentity, consts.LiqoNamespace, signedNonce, nil)
+	tenant, err := authenticationUtils.GenerateTenant(
+		ctx,
+		localClient,
+		localClusterIdentity,
+		consts.LiqoNamespace,
+		remoteNamespaceName,
+		signedNonce,
+		nil,
+	)
 	if err != nil {
 		klog.Error(err)
 		return err
@@ -997,6 +1005,7 @@ outerLoopTenant:
 		localClusterIdentity,
 		localNamespaceName,
 		remoteClusterIdentity,
+		&remoteNamespaceName,
 	)
 
 	if err != nil {
@@ -1165,14 +1174,14 @@ func createConfiguration(
 	localClusterID corev1beta1.ClusterID) (*networkingv1beta1.Configuration, error) {
 	klog.InfoDepth(1, "Creating configuration...")
 	// Retrieve local pod CIDR
-	localPodCIDR, err := ipamLiqo.GetPodCIDR(ctx, cl)
+	localPodCIDR, err := ipamLiqo.GetPodCIDR(ctx, cl, consts.LiqoNamespace)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
 	}
 
 	// Retrieve local external CIDR
-	localExternalCIDR, err := ipamLiqo.GetExternalCIDR(ctx, cl)
+	localExternalCIDR, err := ipamLiqo.GetExternalCIDR(ctx, cl, consts.LiqoNamespace)
 	if err != nil {
 		klog.Error(err)
 		return nil, err

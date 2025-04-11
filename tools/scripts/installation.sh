@@ -148,6 +148,9 @@ function install_components() {
 
         liqoctl_path=$(alias liqoctl | sed -E "s/alias liqoctl='(.*)'/\1/")
         echo "Liqoctl version in installation.sh CLUSTER LOOP: $(liqoctl version 2>&1 | grep -oP 'Client version: \K\S+')"
+        if [ -z "$liqoctl_path" ]; then
+            liqoctl_path='/usr/local/bin/liqoctl'
+        fi
         echo "Liqoctl path is: $liqoctl_path"
 
         # Get the kubeconfig file which depends on variable installation_type
