@@ -10,8 +10,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          #ref: ${{ github.event.pull_request.head.sha }}
-          #repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
 
       - name: Setup Go
@@ -35,8 +35,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          #ref: "${{ github.event.pull_request.head.sha }}"
-          #repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: "${{ github.event.pull_request.head.sha }}"
+          repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
 
       - name: Setup Go
@@ -54,8 +54,7 @@ jobs:
       - name: Issue a comment in case the of failure
         uses: peter-evans/create-or-update-comment@v3
         with:
-          #token: ${{ secrets.CI_TOKEN }}
-          token: "dummy"
+          token: ${{ secrets.CI_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             The `go.mod` and/or `go.sum` files appear not to be correctly tidied.
@@ -72,8 +71,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          #ref: "${{ github.event.pull_request.head.sha }}"
-          #repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: "${{ github.event.pull_request.head.sha }}"
+          repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
       - name: Run Shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
@@ -88,8 +87,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
         with:
-          #ref: "${{ github.event.pull_request.head.sha }}"
-          #repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: "${{ github.event.pull_request.head.sha }}"
+          repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
       - name: Lint markdown files
         uses: avto-dev/markdown-lint@v1
