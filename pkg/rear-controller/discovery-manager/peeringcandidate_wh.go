@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,7 +114,6 @@ func (v *PCValidator) HandleUpdate(_ context.Context, req admission.Request) adm
 		return admission.Denied("Peering candidate can be updated if Available flag is changed from false to true")
 	}
 
-	//nolint:lll // This is a long line
 	return admission.Allowed("")
 }
 

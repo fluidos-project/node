@@ -10,21 +10,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          #ref: ${{ github.event.pull_request.head.sha }}
+          #repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23"
+          go-version: "1.24"
           cache: false
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.7.0
         with:
           only-new-issues: true
-          version: v1.60
+          version: v1.64.2
           args: --timeout=900s
 
   gomodtidy:
@@ -35,14 +35,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: "${{ github.event.pull_request.head.sha }}"
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          #ref: "${{ github.event.pull_request.head.sha }}"
+          #repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.24"
 
       - name: Execute go mod tidy and check the outcome
         working-directory: ./
@@ -54,7 +54,8 @@ jobs:
       - name: Issue a comment in case the of failure
         uses: peter-evans/create-or-update-comment@v3
         with:
-          token: ${{ secrets.CI_TOKEN }}
+          #token: ${{ secrets.CI_TOKEN }}
+          token: "dummy"
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             The `go.mod` and/or `go.sum` files appear not to be correctly tidied.
@@ -71,8 +72,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: "${{ github.event.pull_request.head.sha }}"
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          #ref: "${{ github.event.pull_request.head.sha }}"
+          #repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
       - name: Run Shellcheck
         uses: ludeeus/action-shellcheck@2.0.0
@@ -87,8 +88,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
         with:
-          ref: "${{ github.event.pull_request.head.sha }}"
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          #ref: "${{ github.event.pull_request.head.sha }}"
+          #repository: ${{github.event.pull_request.head.repo.full_name}}
           persist-credentials: false
       - name: Lint markdown files
         uses: avto-dev/markdown-lint@v1
