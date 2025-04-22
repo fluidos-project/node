@@ -146,7 +146,12 @@ function install_components() {
         echo "Cluster is: $cluster"
         echo "Cluster value is: ${clusters[$cluster]}"
 
-        liqoctl_path=$(alias liqoctl | sed -E "s/alias liqoctl='(.*)'/\1/")
+        if alias liqoctl &>/dev/null; then
+            liqoctl_path=$(alias liqoctl | sed -E "s/alias liqoctl='(.*)'/\1/")
+        else
+            liqoctl_path=$(which liqoctl)
+        fi
+        
         echo "Liqoctl version in installation.sh CLUSTER LOOP: $(liqoctl version 2>&1 | grep -oP 'Client version: \K\S+')"
         if [ -z "$liqoctl_path" ]; then
             liqoctl_path='/usr/local/bin/liqoctl'

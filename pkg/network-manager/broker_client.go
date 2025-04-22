@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,15 +116,15 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	bc.clientCert = &corev1.Secret{}
 	bc.rootCert = &corev1.Secret{}
 
-	klog.Infof("Root Secret Name: %s\n", broker.Spec.CaCert.Name)
-	klog.Infof("Client Secret Name: %s\n", broker.Spec.ClCert.Name)
+	klog.Infof("Root Secret Name: %s\n", broker.Spec.CaCert)
+	klog.Infof("Client Secret Name: %s\n", broker.Spec.ClCert)
 	secretNamespace := "fluidos"
 
-	err = bc.extractSecret(cl, broker.Spec.ClCert.Name, secretNamespace, bc.clientCert)
+	err = bc.extractSecret(cl, broker.Spec.ClCert, secretNamespace, bc.clientCert)
 	if err != nil {
 		return err
 	}
-	err = bc.extractSecret(cl, broker.Spec.CaCert.Name, secretNamespace, bc.rootCert)
+	err = bc.extractSecret(cl, broker.Spec.CaCert, secretNamespace, bc.rootCert)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	// Load client cert and privKey.
 	cert, err := tls.X509KeyPair(clientCert, clientKey)
 	if err != nil {
-		klog.Error("error X509KeyPair: %v", err)
+		klog.Errorf("error X509KeyPair: %v", err)
 		return err
 	}
 
@@ -156,13 +156,13 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	caCertPool := x509.NewCertPool()
 	ok = caCertPool.AppendCertsFromPEM(caCertData)
 	if !ok {
-		klog.Error("AppendCertsFromPEM error: %v", ok)
+		klog.Errorf("AppendCertsFromPEM error: %v", ok)
 	}
 
 	// Routing key for topic.
 	bc.brokerConn.routingKey, err = extractCNfromCert(&clientCert)
 	if err != nil {
-		klog.Error("Common Name extraction error: %v", err)
+		klog.Errorf("Common Name extraction error: %v", err)
 	}
 	bc.brokerConn.queueName = bc.brokerConn.routingKey
 
@@ -219,7 +219,7 @@ func (bc *BrokerClient) publishOnBroker() {
 					Expiration:  "30000", // TTL ms
 				})
 			if err != nil {
-				klog.Error("Error pub message: %v", err)
+				klog.Errorf("Error pub message: %v", err)
 			}
 
 			select {
@@ -295,7 +295,7 @@ func extractCNfromCert(certPEM *[]byte) (string, error) {
 		// Parsing X.509
 		cert, err = x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			klog.Error("Error parsing certificate X.509 in CN extraction: %v", err)
+			klog.Errorf("Error parsing certificate X.509 in CN extraction: %v", err)
 		} else {
 			CN = cert.Subject.CommonName
 		}
@@ -317,14 +317,14 @@ func (bc *BrokerClient) brokerConnectionConfig(tlsConfig *tls.Config) error {
 
 	bc.brokerConn.amqpConn, err = amqp.DialConfig(serverURL, config)
 	if err != nil {
-		klog.Error("RabbitMQ connection error: %v", err)
+		klog.Errorf("RabbitMQ connection error: %v", err)
 		return err
 	}
 
 	// Channel creation
 	bc.brokerConn.amqpChan, err = bc.brokerConn.amqpConn.Channel()
 	if err != nil {
-		klog.Error("channel creation error: %v", err)
+		klog.Errorf("channel creation error: %v", err)
 		return err
 	}
 
@@ -339,13 +339,13 @@ func (bc *BrokerClient) brokerConnectionConfig(tlsConfig *tls.Config) error {
 		nil,                     // Arguments
 	)
 	if err != nil {
-		klog.Error("Error subscribing queue: %s", err)
+		klog.Errorf("Error subscribing queue: %s", err)
 		return err
 	}
 
 	// Write confirm broker
 	if err := bc.brokerConn.amqpChan.Confirm(false); err != nil {
-		klog.Error("Failed to enable publisher confirms: %v", err)
+		klog.Errorf("Failed to enable publisher confirms: %v", err)
 		return err
 	}
 
@@ -363,7 +363,7 @@ func (bc *BrokerClient) extractSecret(cl client.Client, secretName, secretNamesp
 		Namespace: secretNamespace,
 	}, secretDest)
 	if err != nil {
-		klog.Error("Error retrieving Secret: %v\n", err)
+		klog.Errorf("Error retrieving Secret: %v\n", err)
 		return err
 	}
 	return nil

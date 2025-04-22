@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,11 +22,11 @@ import (
 type BrokerSpec struct {
 
 	// Address of the Broker.
-	Address string         `json:"address"`
-	Name    string         `json:"name"`
-	ClCert  *corev1.Secret `json:"clcert"`
-	CaCert  *corev1.Secret `json:"cacert"`
-	Role    string         `json:"role"`
+	Address string `json:"address"`
+	Name    string `json:"name"`
+	ClCert  string `json:"clcert"`
+	CaCert  string `json:"cacert"`
+	Role    string `json:"role"`
 }
 
 // BrokerStatus defines the observed state of Broker.

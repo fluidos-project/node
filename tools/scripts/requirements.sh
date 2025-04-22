@@ -145,11 +145,11 @@ function install_liqoctl() {
     # Install liqoctl if AMD64
     if [ "$ARCH" == "amd64" ]; then
         echo "Install liqoctl AMD64..."
-        curl --fail -LS "https://github.com/liqotech/liqo/releases/download/v0.10.1/liqoctl-linux-amd64.tar.gz" | tar -xz
+        curl --fail -LS "https://github.com/liqotech/liqo/releases/download/v1.0.0/liqoctl-linux-amd64.tar.gz" | tar -xz
         sudo install -o root -g root -m 0755 liqoctl /usr/local/bin/liqoctl
     elif [ "$ARCH" == "arm64" ]; then
         echo "Install liqoctl ARM64..."
-        curl --fail -LS "https://github.com/liqotech/liqo/releases/download/v0.10.1/liqoctl-linux-arm64.tar.gz" | tar -xz
+        curl --fail -LS "https://github.com/liqotech/liqo/releases/download/v1.0.0/liqoctl-linux-arm64.tar.gz" | tar -xz
         sudo install -o root -g root -m 0755 liqoctl /usr/local/bin/liqoctl
     fi
     print_title "Liqo installed successfully."

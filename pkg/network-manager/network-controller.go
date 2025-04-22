@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,9 +99,9 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 			// Update
 			if err := r.brokerUpdate(&broker, brokerCl, i); err != nil {
-				klog.Error("brokerUpdate failed: %s", err)
+				klog.Errorf("brokerUpdate failed: %s", err)
 				if err = cleanBroker(ctx, r.Client, &broker); err != nil {
-					klog.Error("cleanBroker failed: %s", err)
+					klog.Errorf("cleanBroker failed: %s", err)
 				}
 				return ctrl.Result{}, err
 			}
@@ -110,7 +110,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			sameAddr = true
 			klog.Error("brokerUpdate failed: same address found in another BrokerClient")
 			if err := cleanBroker(ctx, r.Client, &broker); err != nil {
-				klog.Error("cleanBroker failed: %s", err)
+				klog.Errorf("cleanBroker failed: %s", err)
 			}
 		}
 	}
@@ -118,9 +118,9 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if (!found) && (!sameAddr) {
 		// Create
 		if err := r.brokerCreate(&broker); err != nil {
-			klog.Error("brokerCreate failed: %s", err)
+			klog.Errorf("brokerCreate failed: %s", err)
 			if err = cleanBroker(ctx, r.Client, &broker); err != nil {
-				klog.Error("cleanBroker failed: %s", err)
+				klog.Errorf("cleanBroker failed: %s", err)
 			}
 			return ctrl.Result{}, err
 		}
@@ -361,7 +361,7 @@ func (r *BrokerReconciler) brokerDelete(brokerCl *BrokerClient, index int) error
 func cleanBroker(ctx context.Context, cl client.Client, broker *networkv1alpha1.Broker) error {
 	err := cl.Delete(ctx, broker)
 	if err != nil {
-		klog.Error("error during Broker deletion '%s': %w", broker.Spec.Name, err)
+		klog.Errorf("error during Broker deletion '%s': %v", broker.Spec.Name, err)
 		return err
 	}
 	return nil

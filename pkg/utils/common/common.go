@@ -114,7 +114,7 @@ func filterResourceQuantityFilter(selectorValue resource.Quantity, filter models
 		}
 		// Check if the selector value matches the filter value
 		if selectorValue.Cmp(matchFilter.Value) != 0 {
-			klog.Infof("Match Filter: %d - Selector Value: %d", matchFilter.Value, selectorValue)
+			klog.Infof("Match Filter: %v - Selector Value: %v", matchFilter.Value, selectorValue)
 			return false
 		}
 	case models.RangeFilter:
@@ -129,14 +129,14 @@ func filterResourceQuantityFilter(selectorValue resource.Quantity, filter models
 		// If the rangeFilter.Min exists check if the selector value is greater or equal to it
 		if rangeFilter.Min != nil {
 			if selectorValue.Cmp(*rangeFilter.Min) < 0 {
-				klog.Infof("Range Filter: %d-%d - Selector Value: %d", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				klog.Infof("Range Filter: %v-%v - Selector Value: %v", rangeFilter.Min, rangeFilter.Max, selectorValue)
 				return false
 			}
 		}
 		// If the rangeFilter.Max exists check if the selector value is less or equal to it
 		if rangeFilter.Max != nil {
 			if selectorValue.Cmp(*rangeFilter.Max) > 0 {
-				klog.Infof("Range Filter: %d-%d - Selector Value: %d", rangeFilter.Min, rangeFilter.Max, selectorValue)
+				klog.Infof("Range Filter: %v-%v - Selector Value: %v", rangeFilter.Min, rangeFilter.Max, selectorValue)
 				return false
 			}
 		}
@@ -328,7 +328,7 @@ func CheckSelector(selector models.Selector) error {
 // DiscoveryStatusCheck checks the status of the discovery.
 func DiscoveryStatusCheck(solver *nodecorev1alpha1.Solver, discovery *advertisementv1alpha1.Discovery) {
 	if discovery.Status.Phase.Phase == nodecorev1alpha1.PhaseSolved {
-		klog.Infof("Discovery %s has found candidates: %s", discovery.Name, discovery.Status.PeeringCandidateList)
+		klog.Infof("Discovery %s has found candidates: %v", discovery.Name, discovery.Status.PeeringCandidateList)
 		solver.Status.FindCandidate = nodecorev1alpha1.PhaseSolved
 		solver.Status.DiscoveryPhase = nodecorev1alpha1.PhaseSolved
 		solver.SetPhase(nodecorev1alpha1.PhaseRunning, "Solver has completed the Discovery phase")
