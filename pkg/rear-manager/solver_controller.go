@@ -1,4 +1,4 @@
-// Copyright 2022-2024 FLUIDOS Project
+// Copyright 2022-2025 FLUIDOS Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -223,6 +223,7 @@ func checkInitialStatus(solver *nodecorev1alpha1.Solver) bool {
 	return false
 }
 
+//nolint:unparam // result is required by the function
 func (r *SolverReconciler) handleFindCandidate(ctx context.Context, req ctrl.Request, solver *nodecorev1alpha1.Solver) (ctrl.Result, error) {
 	findCandidateStatus := solver.Status.FindCandidate
 	switch findCandidateStatus {
@@ -349,6 +350,7 @@ func (r *SolverReconciler) getContractByPeeringCandidate(ctx context.Context, pc
 	return contract, nil
 }
 
+//nolint:unparam // result is required by the function
 func (r *SolverReconciler) handleReserveAndBuy(ctx context.Context, req ctrl.Request, solver *nodecorev1alpha1.Solver) (ctrl.Result, error) {
 	reserveAndBuyStatus := solver.Status.ReserveAndBuy
 	switch reserveAndBuyStatus {
@@ -559,6 +561,7 @@ func contains(slice []string, s string) bool {
 	return false
 }
 
+//nolint:unparam // result is required by the function
 func (r *SolverReconciler) handlePeering(
 	ctx context.Context,
 	req ctrl.Request,
