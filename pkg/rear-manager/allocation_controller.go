@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 
 	"github.com/ghodss/yaml"
-	liqodiscovery "github.com/liqotech/liqo/apis/discovery/v1alpha1"
-	discovery "github.com/liqotech/liqo/pkg/discovery"
-	fcutils "github.com/liqotech/liqo/pkg/utils/foreignCluster"
+	"github.com/liqotech/liqo/apis/core/v1beta1"
+	constsLiqo "github.com/liqotech/liqo/pkg/consts"
+	fcutils "github.com/liqotech/liqo/pkg/utils/foreigncluster"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -59,11 +60,14 @@ import (
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=serviceblueprints,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=serviceblueprints/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=nodecore.fluidos.eu,resources=allocations/finalizers,verbs=update
-// +kubebuilder:rbac:groups=discovery.liqo.io,resources=foreignclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=discovery.liqo.io,resources=foreignclusters/status,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=discovery.liqo.io,resources=foreignclusters/finalizers,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.liqo.io,resources=foreignclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.liqo.io,resources=foreignclusters/status,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.liqo.io,resources=foreignclusters/finalizers,verbs=get;update;patch
 // +kubebuilder:rbac:groups=offloading.liqo.io,resources=namespaceoffloadings,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=offloading.liqo.io,resources=namespaceoffloadings/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=offloading.liqo.io,resources=virtualnodes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ipam.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=authentication.liqo.io,resources=*,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=create;delete;deletecollection;patch;update;get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;delete;deletecollection;patch;update;get;list;watch
@@ -82,8 +86,9 @@ import (
 // AllocationReconciler reconciles a Allocation object.
 type AllocationReconciler struct {
 	client.Client
-	Manager manager.Manager
-	Scheme  *runtime.Scheme
+	RestConfig *rest.Config
+	Manager    manager.Manager
+	Scheme     *runtime.Scheme
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -228,7 +233,10 @@ func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Conte
 		// If the ForeignCluster is Ready the Allocation can be set to Active
 		// else we need to wait for the ForeignCluster to be Ready
 		klog.Infof("Allocation %s is provisioning", req.NamespacedName)
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.Buyer.AdditionalInformation.LiqoID)
+
+		// Retrieve
+
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(contract.Spec.Buyer.AdditionalInformation.LiqoID))
 		// check if not found
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -244,10 +252,13 @@ func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Conte
 			}
 			return ctrl.Result{}, nil
 		}
-		if fcutils.IsIncomingJoined(fc) &&
-			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-			fcutils.IsAuthenticated(fc) &&
-			!fcutils.IsUnpeered(fc) {
+		// Check if the ForeignCluster is ready with Liqo checks
+		// Network is established, authentication is enabled, offloading is enabled
+		if fcutils.IsConsumer(fc.Status.Role) &&
+			fcutils.IsNetworkingModuleEnabled(fc) &&
+			fcutils.IsNetworkingEstablished(fc) &&
+			fcutils.IsAuthenticationModuleEnabled(fc) &&
+			fcutils.IsOffloadingModuleEnabled(fc) {
 			klog.Infof("ForeignCluster %s is ready, incoming peering established", contract.Spec.PeeringTargetCredentials.ClusterID)
 			allocation.SetStatus(nodecorev1alpha1.Active, "Incoming peering ready, Allocation is now Active")
 		} else {
@@ -259,7 +270,7 @@ func (r *AllocationReconciler) handleK8SliceProviderAllocation(ctx context.Conte
 			return ctrl.Result{}, err
 		}
 		// We can set the Allocation to Active
-		klog.Infof("Allocation will be used locally, we can put it in 'Active' State", req.NamespacedName)
+		klog.Info("Allocation will be used locally, we can put it in 'Active' State", req.NamespacedName)
 		allocation.SetStatus(nodecorev1alpha1.Active, "Allocation ready, will be used locally")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
@@ -321,7 +332,7 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 		// We need to check if the ForeignCluster is ready
 
 		// Get the foreign cluster related to the Allocation
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.PeeringTargetCredentials.ClusterID)
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(contract.Spec.PeeringTargetCredentials.ClusterID))
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// The ForeignCluster is not found
@@ -350,10 +361,11 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 		})
 
 		// Check if the ForeignCluster is ready with Liqo checks
-		if fcutils.IsOutgoingJoined(fc) &&
-			fcutils.IsAuthenticated(fc) &&
-			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-			!fcutils.IsUnpeered(fc) {
+		if fcutils.IsProvider(fc.Status.Role) &&
+			fcutils.IsNetworkingModuleEnabled(fc) &&
+			fcutils.IsNetworkingEstablished(fc) &&
+			fcutils.IsAuthenticationModuleEnabled(fc) &&
+			fcutils.IsOffloadingModuleEnabled(fc) {
 			// The ForeignCluster is ready
 			klog.Infof("ForeignCluster %s is ready, outgoing peering established", contract.Spec.PeeringTargetCredentials.ClusterID)
 			// Change the status of the Allocation to Active
@@ -386,16 +398,43 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
 		credentials := contract.Spec.PeeringTargetCredentials
 		// Check if a Liqo peering has been already established
-		_, err := fcutils.GetForeignClusterByID(ctx, r.Client, credentials.ClusterID)
+		_, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(credentials.ClusterID))
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// Establish peering
-				klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterName)
-				_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
-					credentials.ClusterName, credentials.Endpoint, credentials.Token)
+				klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterID)
+				// Decode Kubeconfig
+				kubeconfig, err := virtualfabricmanager.DecodeKubeconfig(credentials.Kubeconfig)
 				if err != nil {
-					klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterName, err)
-					allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterName)
+					klog.Errorf("Error when decoding Kubeconfig: %v", err)
+					allocation.SetStatus(nodecorev1alpha1.Error, "Error when decoding Kubeconfig")
+					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+						klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+				remoteClient, remoteRestConfig, err := virtualfabricmanager.CreateKubeClientFromConfig(kubeconfig, r.Client.Scheme())
+				if err != nil {
+					klog.Errorf("Error when creating remote client: %v", err)
+					allocation.SetStatus(nodecorev1alpha1.Error, "Error when creating remote client")
+					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+						klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+				_, err = virtualfabricmanager.PeerWithCluster(
+					ctx,
+					r.Client,
+					r.RestConfig,
+					remoteClient,
+					remoteRestConfig,
+					contract,
+				)
+				if err != nil {
+					klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterID, err)
+					allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterID)
 					if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 						klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 						return ctrl.Result{}, err
@@ -403,7 +442,7 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 					return ctrl.Result{}, err
 				}
 				// Peering established
-				klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+				klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
 
 				// Change the status of the Allocation to Active
 				allocation.SetStatus(nodecorev1alpha1.Active, "Allocation is now Active")
@@ -421,7 +460,7 @@ func (r *AllocationReconciler) handleK8SliceConsumerAllocation(ctx context.Conte
 			}
 		} else {
 			// Peering already established
-			klog.Infof("Allocation %s has already peered with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
+			klog.Infof("Allocation %s has already peered with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
 			return ctrl.Result{}, nil
 		}
 
@@ -454,7 +493,7 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 	case nodecorev1alpha1.Active:
 		// We need to check if the ForeignCluster is still ready
 		// Get the foreign cluster related to the Allocation
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.PeeringTargetCredentials.ClusterID)
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(contract.Spec.Buyer.AdditionalInformation.LiqoID))
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// The ForeignCluster is not found
@@ -476,17 +515,17 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 		}
 
 		// Check if the ForeignCluster is ready with Liqo checks
-		if fcutils.IsOutgoingJoined(fc) &&
-			fcutils.IsAuthenticated(fc) &&
-			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-			!fcutils.IsUnpeered(fc) {
+		if fcutils.IsNetworkingModuleEnabled(fc) &&
+			fcutils.IsNetworkingEstablished(fc) &&
+			fcutils.IsAuthenticationModuleEnabled(fc) &&
+			fcutils.IsOffloadingModuleEnabled(fc) {
 			// The ForeignCluster is ready
-			klog.Infof("ForeignCluster %s is ready, outgoing peering established", contract.Spec.PeeringTargetCredentials.ClusterID)
+			klog.Infof("ForeignCluster %s is ready, outgoing peering established", contract.Spec.Buyer.AdditionalInformation.LiqoID)
 			// Change the status of the Allocation to Active
 			// allocation.SetStatus(nodecorev1alpha1.Active, "Outgoing peering ready, Allocation is Active")
 		} else {
 			// The ForeignCluster is not ready
-			klog.Infof("ForeignCluster %s is not ready yet", contract.Spec.PeeringTargetCredentials.ClusterID)
+			klog.Infof("ForeignCluster %s is not ready yet", contract.Spec.Buyer.AdditionalInformation.LiqoID)
 			// Change the status of the Allocation to Active
 			allocation.SetStatus(nodecorev1alpha1.Active, "Outgoing peering not yet ready, Allocation is Active")
 
@@ -536,6 +575,7 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 
 		klog.Infof("Allocation %s is provisioning", req.NamespacedName)
 
+		// Check if the peering has been established
 		readiness, err := r.checkOutgoingForeignClusterReadiness(ctx, contract.Spec.Buyer.AdditionalInformation.LiqoID, allocation)
 		if err != nil {
 			klog.Errorf("Error when checking ForeignCluster readiness: %v", err)
@@ -552,38 +592,6 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 		// Update the status of the Allocation
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{}, nil
-	case nodecorev1alpha1.Peering:
-		// Create peering with the consumer
-		klog.Infof("Allocation %s is peering", req.NamespacedName)
-
-		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
-		credentials := contract.Spec.PeeringTargetCredentials
-
-		// Establish peering
-		klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterName)
-		_, err := virtualfabricmanager.PeerWithCluster(ctx, r.Client, credentials.ClusterID,
-			credentials.ClusterName, credentials.Endpoint, credentials.Token)
-		if err != nil {
-			klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterName, err)
-			allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterName)
-			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, err
-		}
-
-		// Peering established
-		klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterName)
-
-		// Change the status of the Allocation to Active
-		allocation.SetStatus(nodecorev1alpha1.Provisioning, "Allocation is now provisioning")
-		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
-			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
 			return ctrl.Result{}, err
 		}
 
@@ -622,8 +630,8 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 
 		klog.Infof("Flavor %s availability reduced", contract.Spec.Flavor.Name)
 
-		// Switch to Peering state
-		allocation.SetStatus(nodecorev1alpha1.Peering, "Starting peering")
+		// Switch to Provisioning state
+		allocation.SetStatus(nodecorev1alpha1.Provisioning, "Resources reserved, switching to Provisioning")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
 			return ctrl.Result{}, err
@@ -638,14 +646,14 @@ func (r *AllocationReconciler) handleServiceProviderAllocation(ctx context.Conte
 func (r *AllocationReconciler) checkOutgoingForeignClusterReadiness(ctx context.Context,
 	clusterID string, allocation *nodecorev1alpha1.Allocation) (ready bool, err error) {
 	// Get the foreign cluster related to the Allocation
-	fc, er := fcutils.GetForeignClusterByID(ctx, r.Client, clusterID)
+	fc, er := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(clusterID))
 	if er != nil {
 		if apierrors.IsNotFound(er) {
 			// The ForeignCluster is not found
 			// We need to roll back to the establish peering phase
 			klog.Infof("ForeignCluster %s not found", clusterID)
 			// Change the status of the Allocation to Reserved
-			allocation.SetStatus(nodecorev1alpha1.Peering, "ForeignCluster not found, peering not yet started")
+			allocation.SetStatus(nodecorev1alpha1.Provisioning, "ForeignCluster not found, peering not yet started")
 		} else {
 			// Error when getting the ForeignCluster
 			klog.Errorf("Error when getting ForeignCluster %s: %v", clusterID, er)
@@ -657,10 +665,10 @@ func (r *AllocationReconciler) checkOutgoingForeignClusterReadiness(ctx context.
 	}
 
 	// Check if the ForeignCluster is ready with Liqo checks
-	if fcutils.IsOutgoingJoined(fc) &&
-		fcutils.IsAuthenticated(fc) &&
-		fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-		!fcutils.IsUnpeered(fc) {
+	if fcutils.IsProvider(fc.Status.Role) &&
+		fcutils.IsNetworkingModuleEnabled(fc) &&
+		fcutils.IsNetworkingEstablished(fc) &&
+		fcutils.IsAuthenticationModuleEnabled(fc) {
 		// The ForeignCluster is ready
 		klog.Infof("ForeignCluster %s is ready, outgoing peering established", clusterID)
 	} else {
@@ -723,11 +731,11 @@ func (r *AllocationReconciler) createConsumerNamespace(ctx context.Context, req 
 	klog.Infof("PodOffloadingStrategy %s forged", podOffloadingStrategy)
 	klog.Infof("PeeringTargetCredentials %s forged", contract.Spec.PeeringTargetCredentials)
 
-	credentials := contract.Spec.PeeringTargetCredentials
+	credentials := contract.Spec.Buyer.AdditionalInformation.LiqoID
 
-	klog.Infof("Credentials clusterID: %s", credentials.ClusterID)
+	klog.Infof("Credentials clusterID: %s", credentials)
 
-	no, err := virtualfabricmanager.OffloadNamespace(ctx, r.Client, namespaceName, podOffloadingStrategy, credentials.ClusterID)
+	no, err := virtualfabricmanager.OffloadNamespace(ctx, r.Client, namespaceName, podOffloadingStrategy, credentials)
 
 	if err != nil {
 		klog.Errorf("Error when offloading namespace %s: %v", namespaceName, err)
@@ -739,7 +747,7 @@ func (r *AllocationReconciler) createConsumerNamespace(ctx context.Context, req 
 		return "", err
 	}
 
-	klog.Infof("Namespace %s offloaded to cluster %s with OffloadingNamespace %s", namespaceName, credentials.ClusterName, no.Name)
+	klog.Infof("Namespace %s offloaded to cluster %s with OffloadingNamespace %s", namespaceName, credentials, no.Name)
 
 	return namespaceName, nil
 }
@@ -871,7 +879,7 @@ func (r *AllocationReconciler) handleServiceConsumerAllocation(ctx context.Conte
 		klog.Infof("Allocation %s is provisioning", req.NamespacedName)
 
 		// The Allocation can look for incoming peering associated with the contract
-		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, contract.Spec.Seller.AdditionalInformation.LiqoID)
+		fc, err := fcutils.GetForeignClusterByID(ctx, r.Client, v1beta1.ClusterID(contract.Spec.Seller.AdditionalInformation.LiqoID))
 		// check if not found
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -887,10 +895,11 @@ func (r *AllocationReconciler) handleServiceConsumerAllocation(ctx context.Conte
 			}
 			return ctrl.Result{}, nil
 		}
-		if fcutils.IsIncomingJoined(fc) &&
-			fcutils.IsNetworkingEstablishedOrExternal(fc) &&
-			fcutils.IsAuthenticated(fc) &&
-			!fcutils.IsUnpeered(fc) {
+		if fcutils.IsConsumer(fc.Status.Role) &&
+			fcutils.IsNetworkingModuleEnabled(fc) &&
+			fcutils.IsNetworkingEstablished(fc) &&
+			fcutils.IsAuthenticationModuleEnabled(fc) &&
+			fcutils.IsOffloadingModuleEnabled(fc) {
 			klog.Infof("ForeignCluster %s is ready, incoming peering established", contract.Spec.Seller.AdditionalInformation.LiqoID)
 			allocation.SetStatus(nodecorev1alpha1.Active, "Incoming peering ready, Allocation is now Active")
 		} else {
@@ -922,6 +931,8 @@ func (r *AllocationReconciler) handleServiceConsumerAllocation(ctx context.Conte
 			return ctrl.Result{}, nil
 		}
 
+		// Check if the offloaded namespaces are found
+		// If not found, the Allocation is still provisioning
 		if len(offloadedNamespaces.Items) == 0 {
 			klog.Infof("No offloaded namespaces found")
 			allocation.SetStatus(nodecorev1alpha1.Provisioning, "No offloaded namespaces found, still provisioning")
@@ -1013,11 +1024,75 @@ func (r *AllocationReconciler) handleServiceConsumerAllocation(ctx context.Conte
 		klog.Infof("Allocation %s is released", req.NamespacedName)
 		// We need to check if the ForeignCluster is again ready
 		return ctrl.Result{}, nil
+	case nodecorev1alpha1.Peering:
+		// Create peering with the provider
+		klog.Infof("Allocation %s is peering", req.NamespacedName)
+
+		// Get the Liqo credentials for the peering target cluster, that in this scenario is the provider
+		credentials := contract.Spec.PeeringTargetCredentials
+
+		// Establish peering
+		klog.InfofDepth(1, "Allocation %s is peering with cluster %s", req.NamespacedName, credentials.ClusterID)
+		// Decode the kubeconfig
+		kubeconfig, err := virtualfabricmanager.DecodeKubeconfig(credentials.Kubeconfig)
+		if err != nil {
+			klog.Errorf("Error when decoding kubeconfig: %v", err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when decoding kubeconfig")
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+		// Create Kubernetes client for the target cluster
+		remoteClient, remoteRestConfig, err := virtualfabricmanager.CreateKubeClientFromConfig(kubeconfig, r.Client.Scheme())
+		if err != nil {
+			klog.Errorf("Error when creating Kubernetes client: %v", err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when creating Kubernetes client")
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+
+		// Perform peering with inverted localCluster as Remote and remoteCluster as Local
+		// This is to establish a peering in a direction Provider->Consumer, so the provider can consume consumer resources to deploy its service.
+		_, err = virtualfabricmanager.PeerWithCluster(
+			ctx,
+			remoteClient,
+			remoteRestConfig,
+			r.Client,
+			r.RestConfig,
+			contract,
+		)
+		if err != nil {
+			klog.Errorf("Error when peering with cluster %s: %s", credentials.ClusterID, err)
+			allocation.SetStatus(nodecorev1alpha1.Error, "Error when peering with cluster "+credentials.ClusterID)
+			if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+				klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+
+		// Peering established
+		klog.Infof("Allocation %s has started the peering with cluster %s", req.NamespacedName.Name, credentials.ClusterID)
+
+		// Change the status of the Allocation to Active
+		allocation.SetStatus(nodecorev1alpha1.Provisioning, "Allocation is now provisioning")
+		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
+			klog.Errorf("Error when updating Solver %s status: %s", req.NamespacedName, err)
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+
 	case nodecorev1alpha1.Inactive:
 		klog.Infof("Allocation %s is inactive", req.NamespacedName)
 
-		// No particular action is needed, the Allocation can be set to Provisioning
-		allocation.SetStatus(nodecorev1alpha1.Provisioning, "Resources provisioning")
+		// No particular action is needed, the Allocation can be set to Peering
+		allocation.SetStatus(nodecorev1alpha1.Peering, "Allocation is now in Peering")
 		if err := r.updateAllocationStatus(ctx, allocation); err != nil {
 			klog.Errorf("Error when updating Allocation %s status: %v", req.NamespacedName, err)
 			return ctrl.Result{}, err
@@ -1124,7 +1199,7 @@ func reduceFlavorAvailability(ctx context.Context, flavor *nodecorev1alpha1.Flav
 				return err
 			}
 			if configurationTypeIdentifier != nodecorev1alpha1.TypeK8Slice {
-				klog.Errorf("Configuration %s is not a K8Slice type", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
+				klog.Errorf("Configuration %s is not a K8Slice type %v", contract.Spec.Configuration.ConfigurationTypeIdentifier, err)
 				return err
 			}
 			// Force casting
@@ -1206,7 +1281,7 @@ func (r *AllocationReconciler) updateAllocationStatus(ctx context.Context, alloc
 func (r *AllocationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&nodecorev1alpha1.Allocation{}).
-		Watches(&liqodiscovery.ForeignCluster{}, handler.EnqueueRequestsFromMapFunc(r.fcToAllocation), builder.WithPredicates(foreignClusterPredicate())).
+		Watches(&v1beta1.ForeignCluster{}, handler.EnqueueRequestsFromMapFunc(r.fcToAllocation), builder.WithPredicates(foreignClusterPredicate())).
 		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(r.nsToAllocation), builder.WithPredicates(namespacePredicate())).
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.secretToAllocation), builder.WithPredicates(secretPredicate())).
 		Complete(r)
@@ -1215,8 +1290,8 @@ func (r *AllocationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func foreignClusterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return fcutils.IsOutgoingJoined(e.ObjectNew.(*liqodiscovery.ForeignCluster)) ||
-				fcutils.IsIncomingJoined(e.ObjectNew.(*liqodiscovery.ForeignCluster))
+			return fcutils.IsConsumer(e.ObjectNew.(*v1beta1.ForeignCluster).Status.Role) ||
+				fcutils.IsProvider(e.ObjectNew.(*v1beta1.ForeignCluster).Status.Role)
 		},
 	}
 }
@@ -1256,7 +1331,7 @@ func secretPredicate() predicate.Predicate {
 }
 
 func (r *AllocationReconciler) fcToAllocation(_ context.Context, o client.Object) []reconcile.Request {
-	clusterID := o.GetLabels()[discovery.ClusterIDLabel]
+	clusterID := o.GetLabels()[constsLiqo.RemoteClusterID]
 	allocations, err := getters.GetAllocationByClusterIDSpec(context.Background(), r.Client, clusterID)
 	if err != nil {
 		klog.Errorf("Error when getting Allocation by clusterID %s: %v", clusterID, err)
@@ -1270,12 +1345,12 @@ func (r *AllocationReconciler) fcToAllocation(_ context.Context, o client.Object
 	var filteredAllocations []nodecorev1alpha1.Allocation
 	for i := range allocations.Items {
 		allocation := allocations.Items[i]
-		if allocation.Status.Status != nodecorev1alpha1.Peering {
+		if allocation.Status.Status == nodecorev1alpha1.Active || allocation.Status.Status == nodecorev1alpha1.Provisioning {
 			filteredAllocations = append(filteredAllocations, allocation)
 		}
 	}
 	if len(filteredAllocations) == 0 {
-		klog.Infof("No Allocation found with clusterID %s not in Peering status", clusterID)
+		klog.Infof("No allocations found in Active or Provisioning status")
 		return nil
 	}
 	var requests []reconcile.Request

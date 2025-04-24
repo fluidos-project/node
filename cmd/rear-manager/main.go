@@ -19,10 +19,11 @@ import (
 	"flag"
 	"os"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-	liqodiscovery "github.com/liqotech/liqo/apis/discovery/v1alpha1"
-	liqooffloading "github.com/liqotech/liqo/apis/offloading/v1alpha1"
+	liqoauthentication "github.com/liqotech/liqo/apis/authentication/v1beta1"
+	liqocore "github.com/liqotech/liqo/apis/core/v1beta1"
+	liqoipam "github.com/liqotech/liqo/apis/ipam/v1alpha1"
+	liqonetworking "github.com/liqotech/liqo/apis/networking/v1beta1"
+	liqooffloading "github.com/liqotech/liqo/apis/offloading/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	advertisementv1alpha1 "github.com/fluidos-project/node/apis/advertisement/v1alpha1"
@@ -49,8 +51,11 @@ func init() {
 	utilruntime.Must(nodecorev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(advertisementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(reservationv1alpha1.AddToScheme(scheme))
-	utilruntime.Must(liqodiscovery.AddToScheme(scheme))
+	utilruntime.Must(liqocore.AddToScheme(scheme))
 	utilruntime.Must(liqooffloading.AddToScheme(scheme))
+	utilruntime.Must(liqoipam.AddToScheme(scheme))
+	utilruntime.Must(liqonetworking.AddToScheme(scheme))
+	utilruntime.Must(liqoauthentication.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -81,8 +86,10 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: metricsAddr,
+		},
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
@@ -115,9 +122,10 @@ func main() {
 	}
 
 	if err = (&rearmanager.AllocationReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Manager: mgr,
+		Client:     mgr.GetClient(),
+		RestConfig: mgr.GetConfig(),
+		Scheme:     mgr.GetScheme(),
+		Manager:    mgr,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Allocation")
 		os.Exit(1)

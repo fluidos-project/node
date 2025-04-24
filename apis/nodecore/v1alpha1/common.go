@@ -78,10 +78,8 @@ type Configuration struct {
 
 // LiqoCredentials contains the credentials of a Liqo cluster to enstablish a peering.
 type LiqoCredentials struct {
-	ClusterID   string `json:"clusterID"`
-	ClusterName string `json:"clusterName"`
-	Token       string `json:"token"`
-	Endpoint    string `json:"endpoint"`
+	ClusterID  string `json:"liqoID"`
+	Kubeconfig string `json:"kubeconfig"`
 }
 
 // ParseConfiguration parses the configuration data into the correct type.

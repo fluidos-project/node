@@ -55,18 +55,9 @@ spec:
   name: $broker_name
   address: $address
   role: $role
-  cacert:
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: $broker_ca_secret
-      namespace: fluidos
-  clcert:
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: $broker_client_secret
-      namespace: fluidos
+  cacert: $broker_ca_secret
+  clcert: $broker_client_secret
+
 EOF
 
 if [ -f "$broker_name.yaml" ]; then
