@@ -49,16 +49,22 @@ spec:
                 type: string
               clcert:
                 type: string
+              metric:
+                type: string
               name:
                 type: string
               role:
+                type: string
+              rule:
                 type: string
             required:
             - address
             - cacert
             - clcert
+            - metric
             - name
             - role
+            - rule
             type: object
           status:
             description: BrokerStatus defines the observed state of Broker.

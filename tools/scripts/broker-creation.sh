@@ -19,6 +19,8 @@ broker_ca_cert="null"
 broker_client_cert="null"
 broker_priv_key="null"
 role="null"
+rule_file="null"
+metric_file="null"
 
 read_input "Broker's name of your choice" "broker_name"
 read_input "Broker server address (must match certificate CN)" "address"
@@ -26,6 +28,11 @@ read_input ".pem ROOT certificate" "broker_ca_cert"
 read_input ".pem client certificate" "broker_client_cert"
 read_input ".pem private key" "broker_priv_key"
 read_input "Type the role: publisher | subscriber | both" "role"
+read_input ".json file for RULE" "rule_file"
+read_input ".json file for metrics" "metric_file"
+
+rule_json=$(jq -c . "$rule_file" | sed 's/"/\\"/g')
+metric_json=$(jq -c . "$metric_file" | sed 's/"/\\"/g')
 
 broker_ca_secret="$broker_name"-ca-"$RANDOM"
 broker_client_secret="$broker_name"-cl-"$RANDOM"
@@ -55,6 +62,8 @@ spec:
   name: $broker_name
   address: $address
   role: $role
+  rule: "$rule_json"
+  metric: "$metric_json"
   cacert: $broker_ca_secret
   clcert: $broker_client_secret
 

@@ -56,20 +56,22 @@ type BrokerClient struct {
 	serverAddr string
 	clientCert *corev1.Secret
 	rootCert   *corev1.Secret
-
+	metric     string
+	clientName string
 	brokerConn *brokerConnection
 }
 
 // BrokerConnection keeps all the broker connection data.
 type brokerConnection struct {
-	amqpConn     *amqp.Connection
-	amqpChan     *amqp.Channel
-	exchangeName string
-	routingKey   string
-	queueName    string
-	inboundMsgs  <-chan amqp.Delivery
-	outboundMsg  []byte
-	confirms     chan amqp.Confirmation
+	amqpConn             *amqp.Connection
+	amqpChan             *amqp.Channel
+	announceExchangeName string
+	ruleExchangeName     string
+	queueName            string
+	inboundMsgs          <-chan amqp.Delivery
+	outboundAnnounceMsg  []byte
+	outboundRuleMsg      []byte
+	confirms             chan amqp.Confirmation
 }
 
 // SetupBrokerClient sets the Broker Client from NM reconcile.
@@ -90,9 +92,10 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	bc.serverAddr = broker.Spec.Address
 
 	bc.brokerConn = &brokerConnection{}
-	bc.brokerConn.exchangeName = "DefaultPeerRequest"
+	bc.brokerConn.announceExchangeName = "announcements_exchange"
+	bc.brokerConn.ruleExchangeName = "rules_exchange"
 
-	bc.brokerConn.outboundMsg, err = json.Marshal(bc.ID)
+	bc.brokerConn.outboundAnnounceMsg, err = json.Marshal(bc.ID)
 	if err != nil {
 		return err
 	}
@@ -113,12 +116,13 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	}
 
 	// Certificates.
-	bc.clientCert = &corev1.Secret{}
-	bc.rootCert = &corev1.Secret{}
 
 	klog.Infof("Root Secret Name: %s\n", broker.Spec.CaCert)
 	klog.Infof("Client Secret Name: %s\n", broker.Spec.ClCert)
 	secretNamespace := "fluidos"
+
+	bc.clientCert = &corev1.Secret{}
+	bc.rootCert = &corev1.Secret{}
 
 	err = bc.extractSecret(cl, broker.Spec.ClCert, secretNamespace, bc.clientCert)
 	if err != nil {
@@ -160,12 +164,25 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 	}
 
 	// Routing key for topic.
-	bc.brokerConn.routingKey, err = extractCNfromCert(&clientCert)
+	bc.brokerConn.queueName, err = extractCNfromCert(&clientCert)
 	if err != nil {
 		klog.Errorf("Common Name extraction error: %v", err)
 	}
-	bc.brokerConn.queueName = bc.brokerConn.routingKey
 
+	bc.brokerConn.outboundRuleMsg, err = json.Marshal(broker.Spec.Rule)
+	if err != nil {
+		klog.Errorf("Error reading rules JSON: %s", err)
+	}
+
+	// Set the metric to be sent to the broker.
+	bc.metric = broker.Spec.Metric
+	bc.brokerConn.outboundAnnounceMsg = nil
+	err = bc.buildOutboundMessage()
+	if err != nil {
+		klog.Errorf("Message building error: %v", err)
+	}
+
+	klog.Infof("outbound msg: %s\n", bc.brokerConn.outboundRuleMsg)
 	// TLS config.
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
@@ -174,6 +191,8 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 		MinVersion:   tls.VersionTLS12,
 	}
 
+	bc.clientName = bc.brokerConn.queueName
+
 	err = bc.brokerConnectionConfig(tlsConfig)
 
 	return err
@@ -181,16 +200,16 @@ func (bc *BrokerClient) SetupBrokerClient(cl client.Client, broker *networkv1alp
 
 // ExecuteBrokerClient executes the Network Manager Broker routines.
 func (bc *BrokerClient) ExecuteBrokerClient(cl client.Client) error {
-	// Start sending messages
+	// Start sending announcement messages
 	klog.Info("executing broker client routines")
 	var err error
 	if bc.pubFlag {
 		go func() {
-			bc.publishOnBroker()
+			bc.publishOnBroker(bc.brokerConn.announceExchangeName, bc.brokerConn.outboundAnnounceMsg)
 		}()
 	}
 
-	// Start receiving messages
+	// Start receiving announcement messages
 	if bc.subFlag {
 		go func() {
 			if err = bc.readMsgOnBroker(bc.ctx, cl); err != nil {
@@ -198,10 +217,16 @@ func (bc *BrokerClient) ExecuteBrokerClient(cl client.Client) error {
 			}
 		}()
 	}
+
+	// Start sending rule messages
+	go func() {
+		bc.publishOnBroker(bc.brokerConn.ruleExchangeName, bc.brokerConn.outboundRuleMsg)
+	}()
+
 	return err
 }
 
-func (bc *BrokerClient) publishOnBroker() {
+func (bc *BrokerClient) publishOnBroker(exchangeName string, message []byte) {
 	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
@@ -209,13 +234,14 @@ func (bc *BrokerClient) publishOnBroker() {
 
 			// Pub on exchange
 			err := bc.brokerConn.amqpChan.Publish(
-				bc.brokerConn.exchangeName,
-				bc.brokerConn.routingKey,
-				true,  // Mandatory: if not routable -> error
+				exchangeName,
+				"",    // routingKey
+				false, // Mandatory: if not routable -> error
 				false, // Immediate
 				amqp.Publishing{
 					ContentType: "application/json",
-					Body:        bc.brokerConn.outboundMsg,
+					UserId:      bc.clientName,
+					Body:        message,
 					Expiration:  "30000", // TTL ms
 				})
 			if err != nil {
@@ -225,12 +251,12 @@ func (bc *BrokerClient) publishOnBroker() {
 			select {
 			case confirm := <-bc.brokerConn.confirms:
 				if confirm.Ack {
-					klog.Info("Message successfully published!")
+					klog.InfoS("Message successfully published on ", exchangeName)
 				} else {
-					klog.Info("Message failed to publish!")
+					klog.InfoS("Message failed to publish on ", exchangeName)
 				}
-			case <-time.After(5 * time.Second): // Timeout
-				klog.Info("No confirmation received, message status unknown.")
+			case <-time.After(15 * time.Second): // Timeout
+				klog.InfoS("No confirmation received, message status unknown from ", exchangeName)
 			}
 
 		case <-bc.ctx.Done():
@@ -309,7 +335,7 @@ func (bc *BrokerClient) brokerConnectionConfig(tlsConfig *tls.Config) error {
 		SASL:            []amqp.Authentication{&amqp.ExternalAuth{}}, // auth EXTERNAL
 		TLSClientConfig: tlsConfig,                                   // config TLS
 		Vhost:           "/",                                         // vhost
-		Heartbeat:       10 * time.Second,                            // heartbeat
+		Heartbeat:       5 * time.Second,                             // heartbeat
 	}
 
 	// Config connection
@@ -343,17 +369,16 @@ func (bc *BrokerClient) brokerConnectionConfig(tlsConfig *tls.Config) error {
 		return err
 	}
 
-	// Write confirm broker
+	// Write confirmations
 	if err := bc.brokerConn.amqpChan.Confirm(false); err != nil {
-		klog.Errorf("Failed to enable publisher confirms: %v", err)
+		klog.Errorf("Failed to enable publisher confirms for Announcements: %v", err)
 		return err
 	}
 
-	// Channels for write confirm
-	bc.brokerConn.confirms = bc.brokerConn.amqpChan.NotifyPublish(make(chan amqp.Confirmation, 1))
+	// Channels for write confirmations
+	bc.brokerConn.confirms = bc.brokerConn.amqpChan.NotifyPublish(make(chan amqp.Confirmation, 5))
 
-	klog.InfoS("Node", "ID", bc.ID.NodeID, "Client Address", bc.ID.IP, "Server Address", bc.serverAddr, "RoutingKey", bc.brokerConn.routingKey)
-
+	klog.InfoS("Node", "ID", bc.ID.NodeID, "Client Address", bc.ID.IP, "Server Address", bc.serverAddr /*, "RoutingKey" , bc.brokerConn.routingKey*/)
 	return nil
 }
 
@@ -364,6 +389,28 @@ func (bc *BrokerClient) extractSecret(cl client.Client, secretName, secretNamesp
 	}, secretDest)
 	if err != nil {
 		klog.Errorf("Error retrieving Secret: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func (bc *BrokerClient) buildOutboundMessage() error {
+	var err error
+
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(bc.metric), &data)
+	if err != nil {
+		klog.Error("Error parsing JSON in builOutboundMessage:", err)
+		return err
+	}
+
+	data["ip"] = bc.ID.IP
+	data["domain"] = bc.ID.Domain
+	data["nodeID"] = bc.ID.NodeID
+
+	bc.brokerConn.outboundAnnounceMsg, err = json.Marshal(data)
+	if err != nil {
+		klog.Errorf("Error reading metric JSON: %s", err)
 		return err
 	}
 	return nil

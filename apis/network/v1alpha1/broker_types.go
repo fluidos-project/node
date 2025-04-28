@@ -27,7 +27,12 @@ type BrokerSpec struct {
 	ClCert  string `json:"clcert"`
 	CaCert  string `json:"cacert"`
 	Role    string `json:"role"`
+	Rule    string `json:"rule"`
+	Metric  string `json:"metric"`
 }
+
+// ClCert  *corev1.Secret `json:"clcert"`
+// CaCert  *corev1.Secret `json:"cacert"`
 
 // BrokerStatus defines the observed state of Broker.
 type BrokerStatus struct {

@@ -1,0 +1,6 @@
+{
+    "MAXlatency": 1000,
+    "MINbandwidth": 1,
+    "locations": ["K","J","Z"],
+    "example": "aAbB12"
+}
