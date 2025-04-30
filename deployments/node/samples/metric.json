@@ -1,0 +1,6 @@
+{
+    "bandwidth": 1,
+    "latency": 10,
+    "location": "K",
+    "foo": "bar"
+}

@@ -5,12 +5,15 @@ metadata:
   name: broker-sample
   namespace: fluidos
 spec:
-  name: fluidos.top-ix.org
+  name: broker-sample
   address: fluidos.top-ix.org
-  # "publisher" only publisher
-  # "subscriber" only subscriber
-  # anything else both publisher AND subscriber
+  # role
+  # "publisher" -> publisher only, "subscriber" -> subscriber only
+  # anything else -> both publisher AND subscriber
   role: both
-  #secrets must be created from certificate and key provided by broker server
+  rule: "{\"MAXlatency\":1000,\"MINbandwidth\":1,\"locations\":[\"K\",\"J\",\"Z\"],\"example\":\"aAbB12\"}"
+  metric: "{\"bandwidth\":1,\"latency\":10,\"location\":\"K\",\"foo\":\"bar\"}"
+  #secrets must be created from certificates and key provided by broker server's administrator
   cacert: brokera-ca-xxxxx
   clcert: brokera-cl-yyyyy
+
