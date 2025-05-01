@@ -1,0 +1,42 @@
+# Editor configuration, see https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Golang
+[*.go]
+indent_style = tab
+
+# yaml
+[*.{yml,yaml}]
+indent_size = 2
+indent_style = space
+
+# Markdown
+[*.{md,markdown}]
+indent_style = tab
+trim_trailing_whitespace = false
+
+# Bash
+[*.{sh,bash}]
+indent_style = tab
+
+# JSON
+[*.json]
+indent_size = 2
+indent_style = space
+
+# Dockerfile
+[Dockerfile]
+indent_style = space
+indent_size = 4
+
+# Makefile
+[Makefile]
+indent_style = tab
