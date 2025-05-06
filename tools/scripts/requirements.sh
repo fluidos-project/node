@@ -114,7 +114,7 @@ function install_kubectl() {
         sudo rm kubectl
     elif [ "$ARCH" == "arm64" ]; then
         echo "Install kubectl ARM64..."
-        curl -LO "https://dl.k8s.io/release/v1.21.0/bin/linux/arm64/kubectl"
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
         sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
         sudo rm kubectl
     fi
@@ -219,20 +219,6 @@ check_and_install_liqoctl() {
       fi
     fi
   fi
-}
-
-install_liqo_not_stable_version() {
-  # Delete if exists the temporary liqo folder
-  rm -rf /tmp/liqo
-  # Clone Liqo repository to local tmp folder
-  git clone --depth 1 --branch v1.0.0-rc.3 https://github.com/liqotech/liqo.git /tmp/liqo || { echo "Failed to clone Liqo repository"; exit 1; }
-  make -C /tmp/liqo ctl || { echo "Failed to install Liqo"; exit 1; }
-  echo "Liqo compiled successfully in /tmp/liqo."
-  # Create temporary alias for liqoctl to make it available in the current shell
-  alias liqoctl=/tmp/liqo/liqoctl
-  echo "liqoctl alias created to /tmp/liqo/liqoctl for the current shell."
-
-  shopt -s expand_aliases
 }
 
 # Install jq function
