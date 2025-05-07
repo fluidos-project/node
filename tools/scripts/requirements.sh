@@ -38,12 +38,12 @@ function install_kind() {
     # Install kind if AMD64
     if [ "$ARCH" == "amd64" ]; then
         echo "Install kind AMD64..."
-        [ "$(uname -m)" = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-amd64
+        [ "$(uname -m)" = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
         chmod +x kind
         sudo mv kind /usr/local/bin/kind
     elif [ "$ARCH" == "arm64" ]; then
         echo "Install kind ARM64..."
-        [ "$(uname -m)" = aarch64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.21.0/kind-linux-arm64
+        [ "$(uname -m)" = aarch64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-arm64
         chmod +x kind
         sudo mv kind /usr/local/bin/kind
     fi
