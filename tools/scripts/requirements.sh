@@ -91,6 +91,9 @@ function check_docker() {
             return 1
         fi
     fi
+    echo "Setting inotify..."
+    sudo sysctl fs.inotify.max_user_watches=52428899
+    sudo sysctl fs.inotify.max_user_instances=8192
 }
 
 # Install Kubectl function
