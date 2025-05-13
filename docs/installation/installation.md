@@ -23,13 +23,15 @@ However, if you want to test FLUIDOS Node on your cluster already setup, we sugg
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-- [Helm](https://helm.sh/docs/intro/install/)
-- [Liqo CLI tool](https://docs.liqo.io/en/stable/installation/liqoctl.html) 
+Below are the required tools, along with the versions used by the script:
 
-> **Note** The installation script will automatically check if these tools are installed and will ask for your confirmation to install them if they are missing. It will install each tool using a fixed version, except for Docker, which will be installed at the latest version. After Docker installation, an additional CLI command will be required to ensure its proper functionality.
+- [Docker](https://docs.docker.com/get-docker/) v28.1.1
+- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) v1.33.0
+- [KIND](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) v0.27.0
+- [Helm](https://helm.sh/docs/intro/install/) v3.17.3
+- [Liqo CLI tool](https://docs.liqo.io/en/stable/installation/liqoctl.html) v1.0.0
+
+> **Note** The installation script will automatically check if these tools are installed and will ask for your confirmation to install them if they are missing. It will install each tool using a fixed version, except for Docker, which will be installed at the stable version. After Docker installation, an additional CLI command will be required to ensure its proper functionality.
 
 ## Common issues with KIND
 
@@ -99,13 +101,14 @@ The script will create two different types of Kubernetes clusters, each consisti
     Do you want to enable LAN node discovery? [y/n] y
     ```
 
-5. At the beginning of the script execution, a check is performed to ensure all [required tools](#requirements) are installed. If any dependencies are missing, the script will prompt you for confirmation before proceeding with their automatic installation.
+5. At the beginning of the script execution, a check is performed to ensure all [required tools](#prerequisites) are installed. If any dependencies are missing, the script will prompt you for confirmation before proceeding with their automatic installation.
 
     If Docker is not installed and you choose to install it, the script will terminate after its installation. This is necessary because the Docker group must be reloaded in order to use Docker commands without sudo. You can achieve this by running:
 
     ```sh
     newgrp docker
     ```
+
     This command opens a new shell with updated group permissions. After executing it, simply restart the installation script.
 
 6. After executing the script, you can verify the status of the pods in the consumer cluster using the following commands:
@@ -172,7 +175,7 @@ Let’s start by deploying an example `solver` Custom Resource (CR) on the `flui
 
     The result should be something like this:
 
-    ```
+    ```sh
     NAME            INTENT ID       FIND CANDIDATE   RESERVE AND BUY   PEERING   STATUS   MESSAGE                               AGE
     solver-sample   intent-sample   true             true              true      Solved   Solver has completed all the phases   83s
     ```
@@ -229,7 +232,7 @@ Another example involves deploying the `solver-service`, which requests a provid
 
     The result should be something like this:
 
-    ```
+    ```sh
     NAME                    INTENT ID               FIND CANDIDATE   RESERVE AND BUY   PEERING   STATUS   MESSAGE                               AGE
     solver-sample-service   intent-sample-service   true             true              true      Solved   Solver has completed all the phases   83s
     ```
@@ -247,7 +250,7 @@ This script will delete both the kind clusters and their corresponding kubeconfi
 
 ## Manual installation
 
-Please, make sure you have [helm](https://helm.sh/docs/intro/install/) installed. (prerequisites installed?)
+Please, make sure you have [helm](https://helm.sh/docs/intro/install/) installed.
 
 To install the FLUIDOS Node on your Kubernetes cluster already up and running, you must ensure you have [Liqo](https://liqo.io/) up and running.
 
