@@ -262,7 +262,8 @@ To ensure you have Liqo, please run the following script:
 
 ```bash
 cd ../../tools/scripts
-./install-liqo.sh <provider> <cluster-name> $KUBECONFIG
+chmod +x install_liqo.sh
+./install_liqo.sh <provider> <cluster-name> $KUBECONFIG <liqoctl PATH>
 ```
 
 Please, note that you need to pass a few parameters.
@@ -272,11 +273,14 @@ Please, note that you need to pass a few parameters.
     1. kubeadm
     2. k3s
     3. kind
+
 - "cluster-name": this is the name you want to give to your Liqo local cluster (e.g.: `fluidos-turin-1`)
 
 - $KUBECONFIG: it is the typical environment variable that points to the path of your Kubernetes cluster configuration.
 
-For more information, check out [Liqo official documentation](https://docs.liqo.io/en/v0.10.3/installation/install.html#install-with-liqoctl) for all supported providers.
+- "liqoctl PATH": it is the path to the liqoctl command. If installed via Liqo guide, liqoctl is sufficient.
+
+For more information, check out [Liqo official documentation](https://docs.liqo.io/en/v1.0.0/installation/install.html#install-with-liqoctl) for all supported providers.
 
 **DISCLAIMER:** before going ahead, ensure that at least one node is tagged with `node-role.fluidos.eu/worker: "true"` and, if acting as a provider, choose the nodes that exposes their Kubernetes resources with the label `node-role.fluidos.eu/resources: "true"`.
 
@@ -288,7 +292,7 @@ helm repo add fluidos https://fluidos-project.github.io/node/
 
 helm upgrade --install node fluidos/node \
     -n fluidos --version "$FLUIDOS_VERSION" \
-    --create-namespace -f consumer-values.yaml \
+    --create-namespace -f $PWD/node/quickstart/utils/consumer-values.yaml \
     --set networkManager.configMaps.nodeIdentity.ip="$NODE_IP" \
     --set rearController.service.gateway.nodePort.port="$REAR_PORT" \
     --set networkManager.config.enableLocalDiscovery="$ENABLE_LOCAL_DISCOVERY" \
