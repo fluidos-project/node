@@ -110,7 +110,7 @@ The script will create two different types of Kubernetes clusters, each consisti
 
     This command opens a new shell with updated group permissions. After executing it, simply restart the installation script.
 
-1. After executing the script, you can verify the status of the pods in the consumer cluster using the following commands:
+6. After executing the script, you can verify the status of the pods in the consumer cluster using the following commands:
 
     ```sh
     export KUBECONFIG=fluidos-consumer-1-config
@@ -132,7 +132,7 @@ The script will create two different types of Kubernetes clusters, each consisti
 
     This approach enables seamless monitoring of both consumer and provider clusters without needing to re-export environment variables manually.
 
-2. You should see 4 pods running on the `fluidos-consumer` cluster and 4 pods running on the `fluidos-provider` cluster:
+7. You should see 4 pods running on the `fluidos-consumer` cluster and 4 pods running on the `fluidos-provider` cluster:
 
     - `node-local-resource-manager-<random>`
     - `node-network-manager-<random>`
