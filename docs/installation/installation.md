@@ -100,6 +100,7 @@ The script will create two different types of Kubernetes clusters, each consisti
     ```
 
 5. At the beginning of the script execution, a check is performed to ensure all [required tools](#prerequisites) are installed. If any dependencies are missing, the script will prompt you for confirmation before proceeding with their automatic installation.
+    > **Note** The tools will be installed assuming Linux as the operating system. If you are not using Linux, you will need to install them manually.
 
     If Docker is not installed and you choose to install it, the script will terminate after its installation. This is necessary because the Docker group must be reloaded in order to use Docker commands without sudo. You can achieve this by running:
 
@@ -109,7 +110,7 @@ The script will create two different types of Kubernetes clusters, each consisti
 
     This command opens a new shell with updated group permissions. After executing it, simply restart the installation script.
 
-6. After executing the script, you can verify the status of the pods in the consumer cluster using the following commands:
+1. After executing the script, you can verify the status of the pods in the consumer cluster using the following commands:
 
     ```sh
     export KUBECONFIG=fluidos-consumer-1-config
@@ -131,7 +132,7 @@ The script will create two different types of Kubernetes clusters, each consisti
 
     This approach enables seamless monitoring of both consumer and provider clusters without needing to re-export environment variables manually.
 
-7. You should see 4 pods running on the `fluidos-consumer` cluster and 4 pods running on the `fluidos-provider` cluster:
+2. You should see 4 pods running on the `fluidos-consumer` cluster and 4 pods running on the `fluidos-provider` cluster:
 
     - `node-local-resource-manager-<random>`
     - `node-network-manager-<random>`
