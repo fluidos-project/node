@@ -43,8 +43,6 @@ When running multiple KIND clusters, certain issues may arise—particularly rel
 2. `sudo sysctl fs.inotify.max_user_instances=8192`
 3. `sudo sysctl fs.inotify.max_user_watches=524288`
 
-> **Note**: These commands are automatically applied during the installation process by the requirements.sh script.
-
 ## Testbed installation
 
 ### What will be installed

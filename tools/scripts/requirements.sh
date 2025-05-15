@@ -71,8 +71,8 @@ function install_docker() {
     # Add current user to docker group
     echo "Adding user '$USER' to group 'docker'..."
     sudo usermod -aG docker "$USER"
-    sudo sysctl fs.inotify.max_user_watches=52428899
-    sudo sysctl fs.inotify.max_user_instances=8192
+    #sudo sysctl fs.inotify.max_user_watches=52428899
+    #sudo sysctl fs.inotify.max_user_instances=8192
     # TODO: Check if it's possible to replace all Docker commands with 'sudo docker', since 'newgrp' will block the script
     echo "You must run 'newgrp docker' or log out and back in to apply group change."
     exit 0
@@ -92,8 +92,8 @@ function check_docker() {
         fi
     fi
     echo "Setting inotify..."
-    sudo sysctl fs.inotify.max_user_watches=52428899
-    sudo sysctl fs.inotify.max_user_instances=8192
+    #sudo sysctl fs.inotify.max_user_watches=52428899
+    #sudo sysctl fs.inotify.max_user_instances=8192
 }
 
 # Install Kubectl function
