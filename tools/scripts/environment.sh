@@ -49,6 +49,17 @@ create_kind_clusters() {
     # Get provider JSON tmp file from parameter
     provider_json=$2
 
+    # Check AMD64 or ARM64
+    ARCH=$(uname -m)
+    if [ "$ARCH" == "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" == "aarch64" ] || [ "$ARCH" == "arm64" ]; then
+        ARCH="arm64"
+    else
+        echo "Unsupported architecture."
+        exit 1
+    fi
+
     print_title "Create KIND clusters..."
 
     # Map of clusters:
@@ -78,8 +89,8 @@ create_kind_clusters() {
                     for j in $(seq 1 "$num_workers"); do
                         (
                             docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" mkdir -p cni-plugins
-                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
-                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-$ARCH-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-$ARCH-v1.5.1.tgz
                             docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" cp macvlan /opt/cni/bin
                             docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" rm -r cni-plugins
                         )
@@ -110,8 +121,8 @@ create_kind_clusters() {
                     for j in $(seq 1 "$num_workers"); do
                         (
                             docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" mkdir -p cni-plugins
-                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
-                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-amd64-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-$ARCH-v1.5.1.tgz
+                            docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" tar xvfz cni-plugins-linux-$ARCH-v1.5.1.tgz
                             docker exec --workdir /tmp/cni-plugins "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" cp macvlan /opt/cni/bin
                             docker exec --workdir /tmp "$name"-worker"$([ "$j" = 1 ] && echo "" || echo "$j")" rm -r cni-plugins
                         )

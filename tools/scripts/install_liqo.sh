@@ -5,7 +5,21 @@ if [ -z "$1" ]; then
   echo "No provider specified. Please provide a cloud provider (aws, azure, gcp, etc.)."
   exit 1
 fi
-
+# Check if cluster name parameter is provided
+if [ -z "$2" ]; then
+  echo "No cluster name specified. Please provide a cluster name."
+  exit 1
+fi
+# Check if kubeconfig parameter is provided
+if [ -z "$3" ]; then
+  echo "No kubeconfig specified. Please provide a kubeconfig file."
+  exit 1
+fi
+# Check if liqoctl path is provided
+if [ -z "$4" ]; then
+  echo "No liqoctl path specified. Please provide the path to liqoctl."
+  exit 1
+fi
 
 # Get the provider parameter
 # Get the provider parameter
